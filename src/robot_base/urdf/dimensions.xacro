@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- dimensions of the robot -->
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="wheeldiam" value="0.1" />
+  <xacro:property name="wheelwidth" value="0.05" />
+  
+  <xacro:property name="chassis_x" value="0.7" />
+  <xacro:property name="chassis_y" value="0.5" />
+  <xacro:property name="chassis_z" value="0.2" />
+  
+  <!-- How high the chassis box is above the ground (defines wheel placement) -->
+  <xacro:property name="chassis_height" value="0.01"/>
+
+  <!-- How far the caster wheels are away from the robot edges -->
+  <xacro:property name="caster_edge_offset" value="0.05"/>
+
+  <!-- <xacro:property name="arm_ext_x" value="0.2" />
+  <xacro:property name="arm_ext_y" value="0.02" />
+  <xacro:property name="arm_ext_z" value="0.02" />
+  
+  <xacro:property name="chassis_to_wheel" value="0.0155"/>
+  <xacro:property name="wheel_separation" value="${chassis_y + 2*chassis_to_wheel}"/> -->
+</robot>

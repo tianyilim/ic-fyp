@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<robot name="robot_base" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- include robot params -->
+  <xacro:include filename="materials.xacro"/>
+  <xacro:include filename="dimensions.xacro"/>
+  <xacro:include filename="inertia_properties.xacro"/>
+
+  <!-- Base chassis box -->
+  <link name="base_link">
+    <xacro:box_inertia m="10.0" w="${chassis_x}" h="${chassis_y}" d="${chassis_z}"/>
+    <visual>
+      <geometry>
+        <box size="${chassis_x} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${chassis_x} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Wheels -->
+  <xacro:macro name="wheel" params="suffix reflect">
+    <link name="${suffix}_wheel">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheeldiam/2}" length="${wheelwidth}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheeldiam/2}" length="${wheelwidth}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertia m="0.2" r="${wheeldiam/2}" h="${wheelwidth}"/>
+    </link>
+    <joint name="${suffix}_wheel_joint" type="continuous">
+      <axis xyz="0 1 0" rpy="0 0 0" />
+      <parent link="base_link"/>
+      <child link="${suffix}_wheel"/>
+      <!-- (y) Places the wheel such that it is on the outside of the chassis -->
+      <!-- (z) Places the wheel such that chassis is `chassis_height` above the ground -->
+      <origin xyz="0 ${(chassis_y+wheelwidth)*reflect/2} ${wheeldiam/2 - chassis_z/2 - chassis_height}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel suffix="left" reflect="1"/>
+  <xacro:wheel suffix="right" reflect="-1"/>
+
+  <!-- Caster wheels -->
+  <xacro:macro name="caster" params="suffix reflect">
+    <link name="${suffix}_caster">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <sphere radius="${chassis_height/2}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <sphere radius="${chassis_height/2}"/>
+        </geometry>
+      </collision>
+      <xacro:sphere_inertia m="0.1" r="${chassis_height/2}"/>
+    </link>
+    <joint name="${suffix}_caster_joint" type="continuous">
+      <axis xyz="0 1 0" rpy="0 0 0" />
+      <parent link="base_link"/>
+      <child link="${suffix}_caster"/>
+      <origin xyz="${(chassis_x-caster_edge_offset)*reflect/2} 0 ${-chassis_z/2 - chassis_height/2}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:caster suffix="front" reflect="1"/>
+  <xacro:caster suffix="rear" reflect="-1"/>
+
+</robot>
