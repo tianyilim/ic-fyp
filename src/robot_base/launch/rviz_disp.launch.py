@@ -8,6 +8,10 @@ from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
+'''
+Shows the URDF model of a simple robot in RVIZ for sanity check purposes
+'''
+
 def generate_launch_description():
     urdf_tutorial_path = get_package_share_path('robot_base')
     default_model_path = urdf_tutorial_path / 'robot_base.xacro'
