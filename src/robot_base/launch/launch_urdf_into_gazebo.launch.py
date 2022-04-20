@@ -63,86 +63,86 @@ def generate_launch_description():
   gz_pause = LaunchConfiguration('pause')
   
   # Declare the launch arguments  
-  declare_use_joint_state_publisher_cmd = DeclareLaunchArgument(
+  declare_use_joint_state_publisher = DeclareLaunchArgument(
     name='gui',
     default_value='True',
     description='Flag to enable joint_state_publisher_gui')
     
-  declare_namespace_cmd = DeclareLaunchArgument(
+  declare_namespace = DeclareLaunchArgument(
     name='namespace',
     default_value='',
     description='Top-level namespace')
 
-  declare_use_namespace_cmd = DeclareLaunchArgument(
+  declare_use_namespace = DeclareLaunchArgument(
     name='use_namespace',
     default_value='false',
     description='Whether to apply a namespace to the navigation stack')
             
-  declare_rviz_config_file_cmd = DeclareLaunchArgument(
+  declare_rviz_config_file = DeclareLaunchArgument(
     name='rviz_config_file',
     default_value=default_rviz_config_path,
     description='Full path to the RVIZ config file to use')
 
-  declare_simulator_cmd = DeclareLaunchArgument(
+  declare_simulator = DeclareLaunchArgument(
     name='headless',
     default_value='False',
     description='Whether to execute gzclient')
 
-  declare_urdf_model_path_cmd = DeclareLaunchArgument(
+  declare_urdf_model_path = DeclareLaunchArgument(
     name='urdf_model', 
     default_value=default_urdf_model_path, 
     description='Absolute path to robot urdf file')
     
-  declare_use_robot_state_pub_cmd = DeclareLaunchArgument(
+  declare_use_robot_state_pub = DeclareLaunchArgument(
     name='use_robot_state_pub',
     default_value='True',
     description='Whether to start the robot state publisher')
 
-  declare_use_rviz_cmd = DeclareLaunchArgument(
+  declare_use_rviz = DeclareLaunchArgument(
     name='use_rviz',
     default_value='True',
     description='Whether to start RVIZ')
     
-  declare_use_sim_time_cmd = DeclareLaunchArgument(
+  declare_use_sim_time = DeclareLaunchArgument(
     name='use_sim_time',
     default_value='true',
     description='Use simulation (Gazebo) clock if true')
 
-  declare_use_simulator_cmd = DeclareLaunchArgument(
+  declare_use_simulator = DeclareLaunchArgument(
     name='use_simulator',
     default_value='True',
     description='Whether to start the simulator')
 
-  declare_world_cmd = DeclareLaunchArgument(
+  declare_world = DeclareLaunchArgument(
     name='world',
     default_value=world_path,
     description='Full path to the world model file to load')
 
-  declare_verbose_cmd = DeclareLaunchArgument(
+  declare_verbose = DeclareLaunchArgument(
     name='verbose',
     default_value='false',
     description='Whether to start simulator in verbose mode')
 
-  declare_pause_cmd = DeclareLaunchArgument(
+  declare_pause = DeclareLaunchArgument(
     name='pause',
     default_value='false',
     description='Whether to start simulator in paused state')
   
   # Subscribe to the joint states of the robot, and publish the 3D pose of each link.    
-  start_robot_state_publisher_cmd = Node(
+  start_robot_state_publisher = Node(
     package='robot_state_publisher',
     executable='robot_state_publisher',
     parameters=[{'robot_description': Command(['xacro ', urdf_model])}])
 
   # Publish the joint states of the robot
-  start_joint_state_publisher_cmd = Node(
+  start_joint_state_publisher = Node(
     package='joint_state_publisher',
     executable='joint_state_publisher',
     name='joint_state_publisher',
     condition=UnlessCondition(gui))
 
   # Launch RViz
-  start_rviz_cmd = Node(
+  start_rviz = Node(
     package='rviz2',
     executable='rviz2',
     name='rviz2',
@@ -150,7 +150,7 @@ def generate_launch_description():
     arguments=['-d', rviz_config_file])
 
   # Start Gazebo server
-  start_gazebo_server_cmd = IncludeLaunchDescription(
+  start_gazebo_server = IncludeLaunchDescription(
     PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
     condition=IfCondition(use_simulator),
     launch_arguments={'world': world, 
@@ -159,7 +159,7 @@ def generate_launch_description():
                       }.items())
 
   # Start Gazebo client    
-  start_gazebo_client_cmd = IncludeLaunchDescription(
+  start_gazebo_client = IncludeLaunchDescription(
     PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
     condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
 
@@ -168,9 +168,8 @@ def generate_launch_description():
   #         output='screen'
   # )
 
-
   # Launch the robot
-  spawn_entity_cmd = Node(
+  spawn_entity = Node(
     package='gazebo_ros', 
     executable='spawn_entity.py',
     arguments=['-entity', robot_name_in_model, 
@@ -181,31 +180,39 @@ def generate_launch_description():
                     '-Y', spawn_yaw_val],
                     output='screen')
 
+  # Start EKF node
+  start_robot_localization_node = Node(
+    package='robot_localization',
+    executable='ekf_node',
+    name='ekf_filter_node',
+    output='screen',
+    parameters=[os.path.join(pkg_share, 'config/ekf.yaml'), {'use_sim_time': use_sim_time}]
+  )
+
   # Create the launch description and populate
-  ld = LaunchDescription()
+  return LaunchDescription( 
+    [   
+    # Declare the launch options
+    declare_use_joint_state_publisher,
+    declare_namespace,
+    declare_use_namespace,
+    declare_rviz_config_file,
+    declare_simulator,
+    declare_urdf_model_path,
+    declare_use_robot_state_pub,
+    declare_use_rviz,
+    declare_use_sim_time,
+    declare_use_simulator,
+    declare_world,
+    declare_verbose,
+    declare_pause,
 
-  # Declare the launch options
-  ld.add_action(declare_use_joint_state_publisher_cmd)
-  ld.add_action(declare_namespace_cmd)
-  ld.add_action(declare_use_namespace_cmd)
-  ld.add_action(declare_rviz_config_file_cmd)
-  ld.add_action(declare_simulator_cmd)
-  ld.add_action(declare_urdf_model_path_cmd)
-  ld.add_action(declare_use_robot_state_pub_cmd)  
-  ld.add_action(declare_use_rviz_cmd) 
-  ld.add_action(declare_use_sim_time_cmd)
-  ld.add_action(declare_use_simulator_cmd)
-  ld.add_action(declare_world_cmd)
-  ld.add_action(declare_verbose_cmd)
-  ld.add_action(declare_pause_cmd)
-
-  # Add any actions
-  ld.add_action(start_robot_state_publisher_cmd)
-  ld.add_action(start_rviz_cmd)
-  ld.add_action(start_gazebo_server_cmd)
-  ld.add_action(start_gazebo_client_cmd)
-  # ld.add_action(start_gazebo)
-  ld.add_action(spawn_entity_cmd)
-  # ld.add_action(start_joint_state_publisher_cmd)
-
-  return ld
+    # Add actions
+    start_robot_state_publisher,
+    start_rviz,
+    start_gazebo_server,
+    start_gazebo_client,
+    spawn_entity,
+    start_robot_localization_node,
+    ]
+  )
