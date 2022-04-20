@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <!-- Source: https://kiranpalla.com/blog/ros-using-differential-drive-gazebo-plugin/ -->
 <!-- Migrated to ROS2 with https://github.com/ros-simulation/gazebo_ros_pkgs/wiki/ROS-2-Migration%3A-Diff-drive -->
+<!-- Further tutorials taken from the Nav2 Tutorials https://navigation.ros.org/setup_guides/index.html -->
 
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <!--Gazebo Differential Drive Plugin-->
@@ -9,7 +10,7 @@
       <!-- default namespace -->
       <ros>
         <!-- Set namespace -->
-        <!-- <namespace></namespace> -->
+        <namespace>demo</namespace>
         <!-- Remap default topics -->
         <!-- <argument>cmd_vel:=cmd_demo</argument> -->
         <!-- <argument>odom:=odom_demo</argument> -->
@@ -19,20 +20,21 @@
       <!-- <update_rate>50</update_rate> -->
       <left_joint>left_wheel_joint</left_joint>
       <right_joint>right_wheel_joint</right_joint>
-      <wheel_separation>${chassis_y+wheelwidth}</wheel_separation>
+      <wheel_separation>${chassis_y+wheelwidth+2*wheelgap}</wheel_separation>
       <wheel_diameter>${wheeldiam}</wheel_diameter>
-      <!-- Wheel acceleration, in rad/s^2, defaults to 0.0 rad/s^2 -->
-      <!-- <max_wheel_acceleration>1.0</max_wheel_acceleration> -->
       <!-- Maximum torque which the wheels can produce, in Nm, defaults to 5 Nm -->
       <max_wheel_torque>20</max_wheel_torque>
+      <!-- Wheel acceleration, in rad/s^2, defaults to 0.0 rad/s^2 -->
+      <max_wheel_acceleration>1.0</max_wheel_acceleration>
+
       <odometry_frame>odom</odometry_frame>
-      <robotBaseFrame>base_footprint</robotBaseFrame>
+      <robotBaseFrame>base_link</robotBaseFrame>
       
       <!-- Set to true to publish transforms for the odometry, defaults to true -->
       <publish_odom>true</publish_odom>
       <!-- Set to true to publish transforms for the wheel links, defaults to false -->
+      <publish_odom_tf>false</publish_odom_tf>
       <publish_wheel_tf>true</publish_wheel_tf>
-      <publish_odom_tf>true</publish_odom_tf>
 
     </plugin>
 
@@ -42,4 +44,84 @@
       <joint_name>left_wheel_joint</joint_name>
     </plugin>    
   </gazebo>
+
+  <gazebo reference="imu_link">
+    <gravity>true</gravity>
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>true</visualize>
+      <topic>__default_topic__</topic>
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <ros>
+          <!-- Put namespace stuff here -->
+          <namespace>/demo</namespace>
+          <remapping>~/out:=imu</remapping>
+        </ros>
+        <gaussianNoise>0.0</gaussianNoise>
+        <xyzOffset>0 0 0</xyzOffset>
+        <rpyOffset>0 0 0</rpyOffset>
+        <frame_name>imu_link</frame_name>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+      </plugin>
+      <pose>0 0 0 0 0 0</pose>
+      
+      <imu>
+        <angular_velocity>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </z>
+        </linear_acceleration>
+      </imu>
+
+    </sensor>
+  </gazebo>
+  
 </robot>
