@@ -4,6 +4,7 @@
 # https://automaticaddison.com
 
 import os
+from xmlrpc.client import gzip_decode
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
@@ -41,7 +42,6 @@ def generate_launch_description():
   world_path = os.path.join(pkg_src, world_file_path)
   gazebo_models_path = os.path.join(pkg_src, gazebo_models_path)
   os.environ["GAZEBO_MODEL_PATH"] = gazebo_models_path
-  print(gazebo_models_path)
   
   # Launch configuration variables specific to simulation
   gui = LaunchConfiguration('gui')
@@ -55,6 +55,8 @@ def generate_launch_description():
   use_sim_time = LaunchConfiguration('use_sim_time')
   use_simulator = LaunchConfiguration('use_simulator')
   world = LaunchConfiguration('world')
+  gz_verbose = LaunchConfiguration('verbose')
+  gz_pause = LaunchConfiguration('pause')
   
   # Declare the launch arguments  
   declare_use_joint_state_publisher_cmd = DeclareLaunchArgument(
@@ -111,6 +113,16 @@ def generate_launch_description():
     name='world',
     default_value=world_path,
     description='Full path to the world model file to load')
+
+  declare_verbose_cmd = DeclareLaunchArgument(
+    name='verbose',
+    default_value='false',
+    description='Whether to start simulator in verbose mode')
+
+  declare_pause_cmd = DeclareLaunchArgument(
+    name='pause',
+    default_value='false',
+    description='Whether to start simulator in paused state')
   
   # Subscribe to the joint states of the robot, and publish the 3D pose of each link.    
   start_robot_state_publisher_cmd = Node(
@@ -133,21 +145,24 @@ def generate_launch_description():
     output='screen',
     arguments=['-d', rviz_config_file])
 
-  # # Start Gazebo server
-  # start_gazebo_server_cmd = IncludeLaunchDescription(
-  #   PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
-  #   condition=IfCondition(use_simulator),
-  #   launch_arguments={'world': world}.items())
+  # Start Gazebo server
+  start_gazebo_server_cmd = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
+    condition=IfCondition(use_simulator),
+    launch_arguments={'world': world, 
+                      'verbose': gz_verbose, 
+                      'pause': gz_pause,
+                      }.items())
 
-  # # Start Gazebo client    
-  # start_gazebo_client_cmd = IncludeLaunchDescription(
-  #   PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
-  #   condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
+  # Start Gazebo client    
+  start_gazebo_client_cmd = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
+    condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
 
-  start_gazebo = ExecuteProcess(
-    cmd=['gazebo', '--verbose', '--pause', '-s', 'libgazebo_ros_factory.so', world],
-          output='screen'
-  )
+  # start_gazebo = ExecuteProcess(
+  #   cmd=['gazebo', '--verbose', '--pause', '-s', 'libgazebo_ros_factory.so', world],
+  #         output='screen'
+  # )
 
 
   # Launch the robot
@@ -177,13 +192,15 @@ def generate_launch_description():
   ld.add_action(declare_use_sim_time_cmd)
   ld.add_action(declare_use_simulator_cmd)
   ld.add_action(declare_world_cmd)
+  ld.add_action(declare_verbose_cmd)
+  ld.add_action(declare_pause_cmd)
 
   # Add any actions
   ld.add_action(start_robot_state_publisher_cmd)
   ld.add_action(start_rviz_cmd)
-  # ld.add_action(start_gazebo_server_cmd)
-  # ld.add_action(start_gazebo_client_cmd)
-  ld.add_action(start_gazebo)
+  ld.add_action(start_gazebo_server_cmd)
+  ld.add_action(start_gazebo_client_cmd)
+  # ld.add_action(start_gazebo)
   ld.add_action(spawn_entity_cmd)
   # ld.add_action(start_joint_state_publisher_cmd)
 
