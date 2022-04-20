@@ -8,7 +8,7 @@ Panels:
         - /LaserScan1/Topic1
         - /Image1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 317
+    Tree Height: 330
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -34,6 +34,65 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        base_footprint:
+          Value: true
+        base_link:
+          Value: true
+        camera_depth_frame:
+          Value: true
+        camera_link:
+          Value: true
+        front_caster:
+          Value: true
+        imu_link:
+          Value: true
+        left_wheel:
+          Value: true
+        lidar_link:
+          Value: true
+        map:
+          Value: true
+        odom:
+          Value: true
+        rear_caster:
+          Value: true
+        right_wheel:
+          Value: true
+      Marker Scale: 0.5
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        base_link:
+          base_footprint:
+            {}
+          camera_link:
+            camera_depth_frame:
+              {}
+          front_caster:
+            {}
+          imu_link:
+            {}
+          left_wheel:
+            {}
+          lidar_link:
+            {}
+          rear_caster:
+            {}
+          right_wheel:
+            {}
+        map:
+          {}
+        odom:
+          {}
+      Update Interval: 0
       Value: true
     - Alpha: 0.800000011920929
       Class: rviz_default_plugins/RobotModel
@@ -107,61 +166,6 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        base_footprint:
-          Value: true
-        base_link:
-          Value: true
-        camera_depth_frame:
-          Value: true
-        camera_link:
-          Value: true
-        front_caster:
-          Value: true
-        imu_link:
-          Value: true
-        left_wheel:
-          Value: true
-        lidar_link:
-          Value: true
-        odom:
-          Value: true
-        rear_caster:
-          Value: true
-        right_wheel:
-          Value: true
-      Marker Scale: 0.5
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: false
-      Tree:
-        base_link:
-          base_footprint:
-            {}
-          camera_link:
-            camera_depth_frame:
-              {}
-          front_caster:
-            {}
-          imu_link:
-            {}
-          left_wheel:
-            {}
-          lidar_link:
-            {}
-          rear_caster:
-            {}
-          right_wheel:
-            {}
-        odom:
-          {}
-      Update Interval: 0
-      Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz_default_plugins/Odometry
       Covariance:
@@ -284,6 +288,48 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap_updates
+      Use Timestamp: false
+      Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /local_costmap/costmap
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /local_costmap/costmap_updates
+      Use Timestamp: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -299,37 +345,37 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.540781021118164
+      Distance: 20.46763801574707
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.6992111206054688
-        Y: 1.6230298280715942
-        Z: -4.210358142852783
+        X: 0.8984768390655518
+        Y: 3.1780178546905518
+        Z: -2.583540916442871
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8149997591972351
+      Pitch: 0.584999680519104
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.753153085708618
+      Yaw: 4.21815299987793
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1043
+  Height: 1016
   Hide Left Dock: false
   Hide Right Dock: false
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001b8000003b9fc0200000003fb000000100044006900730070006c006100790073010000003d000001c0000000c900fffffffb0000000a00560069006500770073010000020300000121000000a400fffffffb0000000a0049006d006100670065010000032a000000cc0000002800ffffff000005c2000003b900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002140000039efc0200000003fb000000100044006900730070006c006100790073010000003d000001cd000000c900fffffffb0000000a005600690065007700730100000210000000a4000000a400fffffffb0000000a0049006d00610067006501000002ba000001210000002800ffffff000005660000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1920
-  X: 1920
-  Y: 0
+  X: 0
+  Y: 27
