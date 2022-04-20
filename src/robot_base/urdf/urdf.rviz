@@ -8,12 +8,16 @@ Panels:
         - /LaserScan1/Topic1
         - /Image1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 330
+    Tree Height: 253
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
     Name: Views
     Splitter Ratio: 0.5
+  - Class: nav2_rviz_plugins/Navigation 2
+    Name: Navigation 2
+  - Class: slam_toolbox::SlamToolboxPlugin
+    Name: SlamToolboxPlugin
 Visualization Manager:
   Class: ""
   Displays:
@@ -56,8 +60,6 @@ Visualization Manager:
           Value: true
         lidar_link:
           Value: true
-        map:
-          Value: true
         odom:
           Value: true
         rear_caster:
@@ -88,8 +90,6 @@ Visualization Manager:
             {}
           right_wheel:
             {}
-        map:
-          {}
         odom:
           {}
       Update Interval: 0
@@ -338,6 +338,23 @@ Visualization Manager:
   Name: root
   Tools:
     - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: goal_pose
+    - Class: rviz_default_plugins/SetInitialPose
+      Covariance x: 0.25
+      Covariance y: 0.25
+      Covariance yaw: 0.06853891909122467
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: initialpose
   Transformation:
     Current:
       Class: rviz_default_plugins/TF
@@ -373,7 +390,11 @@ Window Geometry:
   Hide Right Dock: false
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002140000039efc0200000003fb000000100044006900730070006c006100790073010000003d000001cd000000c900fffffffb0000000a005600690065007700730100000210000000a4000000a400fffffffb0000000a0049006d00610067006501000002ba000001210000002800ffffff000005660000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Navigation 2:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000200000000000002140000039efc0200000003fb000000100044006900730070006c006100790073010000003d00000180000000c900fffffffb0000000a0056006900650077007301000001c300000121000000a400fffffffb0000000a0049006d00610067006501000002ea000000f10000002800ffffff00000001000002070000039efc0200000003fb000000220053006c0061006d0054006f006f006c0062006f00780050006c007500670069006e010000003d000001fe0000018500fffffffb00000018004e0061007600690067006100740069006f006e0020003201000002410000019a0000013900fffffffb00000018004e0061007600690067006100740069006f006e002000320100000307000001390000000000000000000003590000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  SlamToolboxPlugin:
+    collapsed: false
   Views:
     collapsed: false
   Width: 1920
