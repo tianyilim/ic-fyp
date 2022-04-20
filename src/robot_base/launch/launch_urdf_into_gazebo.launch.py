@@ -42,6 +42,10 @@ def generate_launch_description():
   world_path = os.path.join(pkg_src, world_file_path)
   gazebo_models_path = os.path.join(pkg_src, gazebo_models_path)
   os.environ["GAZEBO_MODEL_PATH"] = gazebo_models_path
+  if 'GAZEBO_PLUGIN_PATH' in os.environ:
+    os.environ["GAZEBO_PLUGIN_PATH"] = os.getenv["GAZEBO_PLUGIN_PATH"] + ":" + "/opt/ros/galactic/lib"
+  else:
+    os.environ["GAZEBO_PLUGIN_PATH"] = "/opt/ros/galactic/lib"
   
   # Launch configuration variables specific to simulation
   gui = LaunchConfiguration('gui')
@@ -160,7 +164,7 @@ def generate_launch_description():
     condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
 
   # start_gazebo = ExecuteProcess(
-  #   cmd=['gazebo', '--verbose', '--pause', '-s', 'libgazebo_ros_factory.so', world],
+  #   cmd=['gazebo', '--verbose', '--pause', '-s', 'libgazebo_ros_factory.so', '-s', 'libgazebo_ros_init.so', world],
   #         output='screen'
   # )
 
