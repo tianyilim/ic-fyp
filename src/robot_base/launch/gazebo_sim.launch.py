@@ -14,12 +14,13 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
-    urdf_path = get_package_share_path('robot_base')
+    package_path = get_package_share_path('robot_base')
+    urdf_path = os.path.join(package_path, 'urdf')
 
     gui_arg = DeclareLaunchArgument(name='gui', default_value='true', choices=['true', 'false'],
                                     description='Flag to enable joint_state_publisher_gui')
 
-    default_rviz_config_path = urdf_path / 'urdf.rviz'
+    default_rviz_config_path = os.path.join(urdf_path, 'urdf.rviz')
     # This will not save back to src -> if any changes are done, point RVIZ back to the src file manually!
     rviz_arg = DeclareLaunchArgument(name='rvizconfig', default_value=str(default_rviz_config_path),
                                     description='Absolute path to rviz config file')
@@ -29,7 +30,7 @@ def generate_launch_description():
                                     description='Use simulation (Gazebo) clock if true')
 
     # Instanstiate robot model
-    default_robot_model_path = urdf_path / 'robot_base.xacro'
+    default_robot_model_path = os.path.join(urdf_path, 'robot_base.xacro')
     model_arg = DeclareLaunchArgument(name='robot_model', default_value=str(default_robot_model_path),
                                     description='Absolute path to robot urdf file')
     robot_base_desc = ParameterValue(Command(['xacro ', LaunchConfiguration('robot_model')]),

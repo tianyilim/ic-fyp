@@ -17,10 +17,10 @@ def generate_launch_description():
 
   # Constants for paths to different files and folders
   gazebo_models_path = 'models'
-  package_name = 'two_wheeled_robot'
-  robot_name_in_model = 'two_wheeled_robot'
-  rviz_config_file_path = 'rviz/urdf_gazebo_config.rviz'
-  urdf_file_path = 'urdf/two_wheeled_robot_with_gazebo_plugins.urdf'
+  package_name = 'robot_base'
+  robot_name_in_model = 'robot_base'
+  rviz_config_file_path = 'urdf/urdf.rviz'
+  urdf_file_path = 'urdf/robot_base.xacro'
   world_file_path = 'worlds/warehouse.world'
     
   # Pose where we want to spawn the robot
@@ -146,7 +146,7 @@ def generate_launch_description():
     package='gazebo_ros', 
     executable='spawn_entity.py',
     arguments=['-entity', robot_name_in_model, 
-                '-topic', 'robot_description',
+                '-topic', '/robot_description',
                     '-x', spawn_x_val,
                     '-y', spawn_y_val,
                     '-z', spawn_z_val,
@@ -174,7 +174,7 @@ def generate_launch_description():
   ld.add_action(start_gazebo_client_cmd)
   ld.add_action(spawn_entity_cmd)
   ld.add_action(start_robot_state_publisher_cmd)
-  ld.add_action(start_joint_state_publisher_cmd)
+  # ld.add_action(start_joint_state_publisher_cmd)
   ld.add_action(start_rviz_cmd)
 
   return ld
