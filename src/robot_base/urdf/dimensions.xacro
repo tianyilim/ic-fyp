@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!-- dimensions of the robot -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:property name="wheeldiam" value="0.1" />
+  <xacro:property name="wheeldiam" value="0.2" />
   <xacro:property name="wheelwidth" value="0.05" />
   
   <xacro:property name="chassis_x" value="0.7" />

@@ -15,7 +15,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     package_path = get_package_share_path('robot_base')
-    urdf_path = os.path.join(package_path, 'urdf')
+    pkg_src = os.path.join(package_path, '../../../../src/robot_base')
+    urdf_path = os.path.join(pkg_src, 'urdf')
 
     gui_arg = DeclareLaunchArgument(name='gui', default_value='true', choices=['true', 'false'],
                                     description='Flag to enable joint_state_publisher_gui')

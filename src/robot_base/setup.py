@@ -18,9 +18,9 @@ setup(
         # Include URDF and RVIZ config files
         (os.path.join('share', package_name, 'urdf'), glob('urdf/*')),
         # include models (if they are files, glob returns files and directories)
-        (os.path.join('share', package_name, 'meshes'), [f for f in glob('meshes/**', recursive=True) if os.path.isfile(f)]),
-        (os.path.join('share', package_name, 'models'), [f for f in glob('models/**', recursive=True) if os.path.isfile(f)]),
-        (os.path.join('share', package_name, 'worlds'), [f for f in glob('worlds/**', recursive=True) if os.path.isfile(f)]),
+        # (os.path.join('share', package_name, 'meshes'), [f for f in glob('meshes/**', recursive=True) if os.path.isfile(f)]),
+        # (os.path.join('share', package_name, 'models'), [f for f in glob('models/**', recursive=True) if os.path.isfile(f)]),
+        # (os.path.join('share', package_name, 'worlds'), [f for f in glob('worlds/**', recursive=True) if os.path.isfile(f)]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

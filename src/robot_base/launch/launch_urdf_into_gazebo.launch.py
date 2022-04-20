@@ -34,11 +34,14 @@ def generate_launch_description():
   # Set the path to different files and folders.  
   pkg_gazebo_ros = FindPackageShare(package='gazebo_ros').find('gazebo_ros')   
   pkg_share = FindPackageShare(package=package_name).find(package_name)
-  default_urdf_model_path = os.path.join(pkg_share, urdf_file_path)
-  default_rviz_config_path = os.path.join(pkg_share, rviz_config_file_path)
-  world_path = os.path.join(pkg_share, world_file_path)
-  gazebo_models_path = os.path.join(pkg_share, gazebo_models_path)
+  pkg_src = os.path.join(pkg_share, '../../../../src/robot_base')
+
+  default_urdf_model_path = os.path.join(pkg_src, urdf_file_path)
+  default_rviz_config_path = os.path.join(pkg_src, rviz_config_file_path)
+  world_path = os.path.join(pkg_src, world_file_path)
+  gazebo_models_path = os.path.join(pkg_src, gazebo_models_path)
   os.environ["GAZEBO_MODEL_PATH"] = gazebo_models_path
+  print(gazebo_models_path)
   
   # Launch configuration variables specific to simulation
   gui = LaunchConfiguration('gui')
@@ -130,16 +133,22 @@ def generate_launch_description():
     output='screen',
     arguments=['-d', rviz_config_file])
 
-  # Start Gazebo server
-  start_gazebo_server_cmd = IncludeLaunchDescription(
-    PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
-    condition=IfCondition(use_simulator),
-    launch_arguments={'world': world}.items())
+  # # Start Gazebo server
+  # start_gazebo_server_cmd = IncludeLaunchDescription(
+  #   PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
+  #   condition=IfCondition(use_simulator),
+  #   launch_arguments={'world': world}.items())
 
-  # Start Gazebo client    
-  start_gazebo_client_cmd = IncludeLaunchDescription(
-    PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
-    condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
+  # # Start Gazebo client    
+  # start_gazebo_client_cmd = IncludeLaunchDescription(
+  #   PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
+  #   condition=IfCondition(PythonExpression([use_simulator, ' and not ', headless])))
+
+  start_gazebo = ExecuteProcess(
+    cmd=['gazebo', '--verbose', '--pause', '-s', 'libgazebo_ros_factory.so', world],
+          output='screen'
+  )
+
 
   # Launch the robot
   spawn_entity_cmd = Node(
@@ -170,11 +179,12 @@ def generate_launch_description():
   ld.add_action(declare_world_cmd)
 
   # Add any actions
-  ld.add_action(start_gazebo_server_cmd)
-  ld.add_action(start_gazebo_client_cmd)
-  ld.add_action(spawn_entity_cmd)
   ld.add_action(start_robot_state_publisher_cmd)
-  # ld.add_action(start_joint_state_publisher_cmd)
   ld.add_action(start_rviz_cmd)
+  # ld.add_action(start_gazebo_server_cmd)
+  # ld.add_action(start_gazebo_client_cmd)
+  ld.add_action(start_gazebo)
+  ld.add_action(spawn_entity_cmd)
+  # ld.add_action(start_joint_state_publisher_cmd)
 
   return ld
