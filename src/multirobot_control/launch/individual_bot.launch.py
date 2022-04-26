@@ -92,25 +92,40 @@ def generate_launch_description():
 
     declare_urdf_cmd = DeclareLaunchArgument(
         'urdf',
-        default_value=os.path.join(robot_model_dir, 'robots', 'mp_400', 'mp_400.urdf'),
+        default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf'),
         description='Full path to robot URDF to load'
     )
 
     # os.environ["GAZEBO_MODEL_PATH"] = ''
 
     # Start node commands
+    # spawn_entity_cmd = Node(
+    #     package='gazebo_ros',
+    #     executable='spawn_entity.py',
+    #     arguments=[ '-entity', namespace,
+    #                 '-robot_namespace', namespace,
+    #                '-file', urdf,
+    #                 '-x', x_pose,
+    #                 '-y', y_pose,
+    #                 '-z', z_pose,
+    #                 '-Y', yaw_pose],
+    #     output='screen',
+    #     remappings=remappings_tf
+    # )
+
     spawn_entity_cmd = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        arguments=[ '-entity', namespace,
-                    '-robot_namespace', namespace,
-                   '-file', urdf,
-                    '-x', x_pose,
-                    '-y', y_pose,
-                    '-z', z_pose,
-                    '-Y', yaw_pose],
-        output='screen',
-        remappings=remappings_tf
+        package='multirobot_control',
+        executable='spawn_single_bot',
+        arguments=[
+            '--robot_name', namespace,
+            '--robot_namespace', namespace,
+            '--urdf', urdf,
+            '-x', x_pose,
+            '-y', y_pose,
+            '-z', z_pose,
+            '-Y', yaw_pose
+        ],
+        output='screen'
     )
 
     start_robot_state_publisher_cmd = Node(
