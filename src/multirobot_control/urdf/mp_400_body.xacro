@@ -2,14 +2,6 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mp_400">
 
   <xacro:macro name="mp_400_base" params="name parent prefix *origin">
-    <joint name="${prefix}${name}_joint" type="fixed">
-      <xacro:insert_block name="origin" />
-      <axis xyz="0 0 -1" />
-      <!-- <limit effort="1000.0" lower="-1e+16" upper="1e+16" velocity="3.5"/> -->
-      <joint_properties damping="1" friction="1" />
-      <parent link="${prefix}${parent}" />
-      <child link="${prefix}${name}" />
-   </joint>
     <link name="${prefix}${name}">
     <inertial>
         <mass value="30" />
@@ -34,7 +26,6 @@
         </geometry>
       </collision>
     </link>
-
     <gazebo reference="${prefix}${name}">
       <kp>10000.0</kp>
       <kd>10.0</kd>
@@ -44,5 +35,13 @@
       <maxVel>10.0</maxVel>
       <minDepth>0.0005</minDepth>
     </gazebo>
+    <joint name="${prefix}${name}_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <axis xyz="0 0 -1" />
+      <!-- <limit effort="1000.0" lower="-1e+16" upper="1e+16" velocity="3.5"/> -->
+      <joint_properties damping="1" friction="1" />
+      <parent link="${prefix}${parent}" />
+      <child link="${prefix}${name}" />
+    </joint>
   </xacro:macro>  
 </robot>
