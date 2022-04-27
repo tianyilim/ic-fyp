@@ -11,10 +11,10 @@
       <plugin name="joint_states" filename="libgazebo_ros_joint_state_publisher.so">
         <joint_name>mp_400_fixed_wheel_left_joint</joint_name>
         <joint_name>mp_400_fixed_wheel_right_joint</joint_name>
+        <update_rate>100</update_rate>
       </plugin>
 
       <plugin name='diff_drive' filename='libgazebo_ros_diff_drive.so'>
-        <!-- TODO - remap this and add namespacing -->
         <ros>
           <remapping>/tf:=tf</remapping>
           <namespace></namespace>
@@ -74,7 +74,6 @@
       <plugin filename="libgazebo_ros_ray_sensor.so" name="lidar_1">
       <ros>
         <remapping>~/out:=scan</remapping>
-        <!-- TODO -->
         <namespace></namespace>
       </ros>
       <!-- Set output to sensor_msgs/LaserScan to get same output type as gazebo_ros_laser -->
@@ -103,7 +102,7 @@
     <visual name="body">
       <origin rpy="0 0 1.57" xyz="0.0 0.0 0."/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-BODY.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-BODY.dae" scale="0.001 0.001 0.001"/>
         <!--cylinder length="0.381" radius="0.2545"/-->
         <!--box size="0.445 0.277 0.17"/-->
       </geometry>
@@ -111,7 +110,7 @@
     <collision name="body_collision">
       <origin rpy="0 0 1.57" xyz="0.0 0.0 0.0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-BODY.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-BODY.dae" scale="0.001 0.001 0.001"/>
         <!--cylinder length="0.381" radius="0.2545"/-->
       </geometry>
     </collision>
@@ -141,7 +140,7 @@
     <visual name="caster_wheel">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -177,7 +176,7 @@
     <visual name="caster_wheel">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -213,7 +212,7 @@
     <visual name="caster_wheel">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -249,7 +248,7 @@
     <visual name="caster_wheel">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-CASTER-WHEEL.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -285,7 +284,7 @@
     <visual name="fixed_wheel_right">
       <origin rpy="0 0 3.14" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-FIXED-WHEEL-RIGHT.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-FIXED-WHEEL-RIGHT.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -320,7 +319,7 @@
     <visual name="fixed_wheel_left">
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/robots/mp_400/meshes/MP-400-FIXED-WHEEL-LEFT.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/robots/mp_400/meshes/MP-400-FIXED-WHEEL-LEFT.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
@@ -355,13 +354,13 @@
     <visual>
       <origin rpy="1.57 0 0" xyz="-0.0 0 -0.06"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/components/sensors/SICK-MICROSCAN3.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/components/sensors/SICK-MICROSCAN3.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
       <origin rpy="1.57 0 0" xyz="-0.0 0 -0.06"/>
       <geometry>
-        <mesh filename="package://neo_simulation2/components/sensors/SICK-MICROSCAN3.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find neo_simulation2)/components/sensors/SICK-MICROSCAN3.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
