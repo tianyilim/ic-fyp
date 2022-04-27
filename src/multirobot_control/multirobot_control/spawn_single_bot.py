@@ -77,9 +77,16 @@ def main():
     # each plugin broadcasting a transform. These argument entries provide the
     # remapping rule, i.e. /tf -> /<robot_id>/tf
     
-    root = ET.fromstring(xacro.process(args.urdf))
+    root = ET.fromstring(xacro.process(args.urdf, mappings={'prefix': args.robot_namespace}))
     if args.robot_namespace:
         for plugin in root.iter('plugin'):
+            # # Find all frames and add the relevant prefix
+            # for elem in plugin:
+            #     # if 'joint' in elem.tag or 'frame' in elem.tag:
+            #     #     elem.text = args.robot_namespace + elem.text
+            #     if 'frame' in elem.tag:
+            #         elem.text = args.robot_namespace + elem.text
+
             ros_params = plugin.find('ros')
             if ros_params is not None:
                 # only remap for diff drive plugin
