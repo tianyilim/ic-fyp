@@ -37,8 +37,8 @@ def generate_launch_description():
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
 
     robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.01, 'yaw_pose': 0.0},
-        # {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.01, 'yaw_pose': 0.0}
+        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.1, 'yaw_pose': 0.0},
+        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.1, 'yaw_pose': 3.14}
     ]
 
     # Create the launch configuration variables
@@ -62,8 +62,8 @@ def generate_launch_description():
 
     declare_world_cmd = DeclareLaunchArgument(
         'world', default_value=os.path.join(
-            warehouse_dir, 'worlds', 'no_roof_small_warehouse', 
-                'no_roof_small_warehouse.world' ),
+            warehouse_dir, 'worlds', 'no_roof_small_warehouse', 'no_roof_small_warehouse.world' ),
+            # robot_model_dir, 'worlds', 'aws.world' ),
         description="Full path to world file"
     )
 
@@ -79,13 +79,23 @@ def generate_launch_description():
 
     # Launch commands
 
-    start_gazebo_server_cmd = ExecuteProcess(
-        cmd=['gzserver', '-s', 'libgazebo_ros_factory.so', world],
-        cwd=[warehouse_dir], output='screen')
+    gazebo_cmd = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py')
+            ),
+            launch_arguments={
+                'world': world,
+                'verbose': 'true',
+            }.items()
+        )
 
-    start_gazebo_client_cmd = ExecuteProcess(
-        cmd=['gzclient'],
-        cwd=[warehouse_dir], output='screen')
+    # start_gazebo_server_cmd = ExecuteProcess(
+    #     cmd=['gzserver', '-s', 'libgazebo_ros_factory.so', '-s', 'libgazebo_ros_init.so', world, '--verbose'],
+    #     cwd=[warehouse_dir], output='screen' )
+
+    # start_gazebo_client_cmd = ExecuteProcess(
+    #     cmd=['gzclient'],
+    #     cwd=[warehouse_dir], output='screen')
 
     spawn_robot_cmds = []
     for robot in robots:
@@ -122,8 +132,9 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
 
     # Add the actions to launch all of the navigation nodes
-    ld.add_action(start_gazebo_server_cmd)
-    ld.add_action(start_gazebo_client_cmd)
+    ld.add_action(gazebo_cmd),
+    # ld.add_action(start_gazebo_server_cmd)
+    # ld.add_action(start_gazebo_client_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
 
