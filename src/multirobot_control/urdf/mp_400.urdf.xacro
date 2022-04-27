@@ -120,7 +120,7 @@
 
   <!--+++++++++++++++++++laserscanner_link++++++++++++++++++++++++-->
   <!-- S300, NanoScan and Microscan -->
-  <xacro:sick_laser_v0 name="lidar_1" parent="base_link" prefix="$(arg prefix)">
+  <xacro:sick_laser_v0 name="lidar_1" parent="base_footprint" prefix="$(arg prefix)">
     <origin xyz="0.230 0 0.110" rpy="0 3.14 3.14" />
   </xacro:sick_laser_v0>
 
