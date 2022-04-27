@@ -195,10 +195,10 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_urdf_cmd)
     
-    ld.add_action(spawn_entity_cmd)
     ld.add_action(start_robot_state_publisher_cmd)
     ld.add_action(start_tf_relay_cmd)
     ld.add_action(start_tf_static_relay_cmd)
+    ld.add_action(spawn_entity_cmd)
     # ld.add_action(start_rviz_cmd)
 
     return ld
