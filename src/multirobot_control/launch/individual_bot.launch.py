@@ -2,6 +2,7 @@
 Launch file for an individual robot, complete with its own namespace etc.
 '''
 import os
+from re import S
 from tracemalloc import start
 
 from ament_index_python.packages import get_package_share_directory
@@ -93,7 +94,7 @@ def generate_launch_description():
 
     declare_urdf_cmd = DeclareLaunchArgument(
         'urdf',
-        default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf'),
+        default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
         description='Full path to robot URDF to load'
     )
 
@@ -126,8 +127,8 @@ def generate_launch_description():
         output='screen',
         remappings=remappings_tf,
         parameters=[{'use_sim_time': use_sim_time,
-            'robot_description': Command(['xacro ', urdf]),
-            'frame_prefix': namespace
+            'robot_description': Command(['xacro ', urdf, ' prefix:=', '"', namespace, '"']),
+            # 'frame_prefix': namespace
         }]
     )
 
@@ -181,6 +182,12 @@ def generate_launch_description():
         output='screen'
     )
 
+    bringup_group_cmd = GroupAction([
+        start_robot_state_publisher_cmd,
+        start_tf_relay_cmd,
+        start_tf_static_relay_cmd,
+        spawn_entity_cmd,
+    ])
 
     ld = LaunchDescription()
     ld.add_action(declare_namespace_cmd)
@@ -195,10 +202,11 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_urdf_cmd)
     
-    ld.add_action(start_robot_state_publisher_cmd)
-    ld.add_action(start_tf_relay_cmd)
-    ld.add_action(start_tf_static_relay_cmd)
-    ld.add_action(spawn_entity_cmd)
+    # ld.add_action(start_robot_state_publisher_cmd)
+    # ld.add_action(start_tf_relay_cmd)
+    # ld.add_action(start_tf_static_relay_cmd)
+    # ld.add_action(spawn_entity_cmd)
+    ld.add_action(bringup_group_cmd)
     # ld.add_action(start_rviz_cmd)
 
     return ld
