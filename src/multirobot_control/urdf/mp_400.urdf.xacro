@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mp_400">
+  <xacro:arg name="prefix" default=""/>
+  
+  <!-- Lidar sensor -->
+  <gazebo>
+    <plugin name="joint_states" filename="libgazebo_ros_joint_state_publisher.so">
+      <joint_name>$(arg prefix)mp_400_fixed_wheel_left_joint</joint_name>
+      <joint_name>$(arg prefix)mp_400_fixed_wheel_right_joint</joint_name>
+      <update_rate>100</update_rate>
+    </plugin>
+
+    <plugin name='diff_drive' filename='libgazebo_ros_diff_drive.so'>
+      <ros>
+        <remapping>/tf:=tf</remapping>
+        <namespace>$(arg prefix)</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <wheel_separation>0.529</wheel_separation>
+      <wheel_diameter>0.15</wheel_diameter>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
+      <command_topic>cmd_vel</command_topic>
+      
+      <odometry_topic>odom</odometry_topic>
+      
+      <odometry_frame>$(arg prefix)odom</odometry_frame>
+      <robot_base_frame>$(arg prefix)base_footprint</robot_base_frame>
+      <right_joint>$(arg prefix)mp_400_fixed_wheel_right_joint</right_joint>
+      <left_joint>$(arg prefix)mp_400_fixed_wheel_left_joint</left_joint>
+
+      <!-- wheelTorque and wheelAcceleration now have max_ prefix -->
+      <max_wheel_torque>1000</max_wheel_torque>
+      <max_acceleration>20.0</max_acceleration>
+
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="$(arg prefix)lidar_1_link">
+    <sensor name="lidar_1_sensor" type="ray">
+      <always_on>true</always_on>
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>true</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-1.48</min_angle>
+            <max_angle>1.48</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.10</min>
+          <max>30.0</max>
+          <resolution>0.05</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <!-- Noise parameters based on published spec for Hokuyo laser
+                   achieving "+-30mm" accuracy at range < 10m.  A mean of 0.0m and
+                   stddev of 0.01m will put 99.7% of samples within 0.03m of the true
+                   reading. -->
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+      <plugin filename="libgazebo_ros_ray_sensor.so" name="lidar_1">
+      <ros>
+        <remapping>~/out:=scan</remapping>
+        <namespace>$(arg prefix)</namespace>
+      </ros>
+      <!-- Set output to sensor_msgs/LaserScan to get same output type as gazebo_ros_laser -->
+      <output_type>sensor_msgs/LaserScan</output_type>
+      <frame_name>$(arg prefix)lidar_1_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <xacro:include filename="$(find multirobot_control)/urdf/mp_400_body.xacro" />
+  <xacro:include filename="$(find multirobot_control)/urdf/mp_400_caster_wheel.xacro" />
+  <xacro:include filename="$(find multirobot_control)/urdf/mp_400_wheel_left.xacro" />
+  <xacro:include filename="$(find multirobot_control)/urdf/mp_400_wheel_right.xacro" />
+  <xacro:include filename="$(find multirobot_control)/urdf/micro_scan.xacro" />
+
+  <link name="$(arg prefix)base_link" />
+
+  <!-- Base link macro -->
+  <xacro:mp_400_base name="base_footprint" parent="base_link" prefix="$(arg prefix)">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </xacro:mp_400_base>
+
+  <!-- Wheel Macro -->
+  <xacro:caster_wheel name="mp_400_wheel_front_left" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="0.165 0.155 0.036" rpy="0 0 1.57" />
+  </xacro:caster_wheel>
+
+  <xacro:caster_wheel name="mp_400_wheel_back_left" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="-0.220 0.155 0.036" rpy="0 0 1.57" />
+  </xacro:caster_wheel>
+
+  <xacro:caster_wheel name="mp_400_wheel_front_right" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="0.165 -0.155 0.036" rpy="0 0 1.57" />
+  </xacro:caster_wheel>
+
+   <xacro:caster_wheel name="mp_400_wheel_back_right" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="-0.220 -0.155 0.036" rpy="0 0 1.57" />
+  </xacro:caster_wheel>
+
+  <xacro:wheel_right name="mp_400_wheel_right" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="0. -0.26 0.074" rpy="0 0 1.57" />
+  </xacro:wheel_right>
+
+  <xacro:wheel_left name="mp_400_wheel_left" parent="base_footprint" prefix="$(arg prefix)">
+    <origin xyz="-0. 0.26 0.074" rpy="0 0 1.57" />
+  </xacro:wheel_left>
+
+  <!--+++++++++++++++++++laserscanner_link++++++++++++++++++++++++-->
+  <!-- S300, NanoScan and Microscan -->
+  <xacro:sick_laser_v0 name="lidar_1" parent="base_link" prefix="$(arg prefix)">
+    <origin xyz="0.230 0 0.110" rpy="0 3.14 3.14" />
+  </xacro:sick_laser_v0>
+
+     <!--+++++++++++++++++++ IMU ++++++++++++++++++++++++-->
+ <!-- Comment or uncomment based on your requirement -->
+<!--   <xacro:imu name="imu_1" parent="base_link">
+    <origin xyz="0.100 0 0.300" rpy="0 0 3.14" />
+  </xacro:imu> -->
+
+  <!--+++++++++++++++++++ Ultra Sonic ++++++++++++++++++++++++-->
+  <!-- Comment or uncomment based on your requirement -->
+  <!-- SENSOR 1 --> 
+  <!-- xacro:us_sensor name="us_1" parent="base_link">
+    <origin xyz="0.100 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 2 --> 
+  <!-- xacro:us_sensor name="us_2" parent="base_link">
+    <origin xyz="0.110 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 3 --> 
+  <!-- xacro:us_sensor name="us_3" parent="base_link">
+    <origin xyz="0.120 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 4 --> 
+  <!-- xacro:us_sensor name="us_4" parent="base_link">
+    <origin xyz="0.130 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 5 --> 
+  <!-- xacro:us_sensor name="us_5" parent="base_link">
+    <origin xyz="0.140 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 6 --> 
+  <!-- xacro:us_sensor name="us_6" parent="base_link">
+    <origin xyz="0.150 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 7 --> 
+  <!-- xacro:us_sensor name="us_7" parent="base_link">
+    <origin xyz="0.160 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 8 --> 
+  <!-- xacro:us_sensor name="us_8" parent="base_link">
+    <origin xyz="0.170 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 9 --> 
+  <!-- xacro:us_sensor name="us_9" parent="base_link">
+    <origin xyz="0.180 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 10 --> 
+  <!-- xacro:us_sensor name="us_10" parent="base_link">
+    <origin xyz="0.100 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 11 --> 
+  <!-- xacro:us_sensor name="us_11" parent="base_link">
+    <origin xyz="0.100 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 12 --> 
+  <!-- xacro:us_sensor name="us_12" parent="base_link">
+    <origin xyz="0.190 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 13 --> 
+  <!-- xacro:us_sensor name="us_13" parent="base_link">
+    <origin xyz="0.200 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 14 --> 
+  <!-- xacro:us_sensor name="us_14" parent="base_link">
+    <origin xyz="0.210 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 15 --> 
+  <!-- xacro:us_sensor name="us_15" parent="base_link">
+    <origin xyz="0.220 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+  <!-- SENSOR 16 --> 
+  <!-- xacro:us_sensor name="us_16" parent="base_link">
+    <origin xyz="0.230 0 0.300" rpy="0 3.14 3.14" />
+  </xacro:us_sensor-->
+    
+    <!--Camera  -->
+<!-- <xacro:camera name="camera" parent="base_link">
+    <origin xyz="0 0 0.38" rpy="0 0 0" />
+  </xacro:camera> -->
+</robot>
