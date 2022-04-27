@@ -134,11 +134,12 @@ def generate_launch_description():
     start_tf_relay_cmd = Node(
         package='topic_tools',
         executable = 'relay',
-        # name=PythonExpression(["'", namespace, "' + '_relay_tf'"]),
+        name=PythonExpression(["'", namespace, "' + '_relay_tf'"]),
         output='screen',
-        # namespace=namespace,
+        namespace=namespace,
         parameters=[{
-            'input_topic': PythonExpression(["'", namespace, "' + '/tf'"]),
+            # 'input_topic': '~/tf',
+            'input_topic': PythonExpression(["'/'", "+", "'", namespace, "'", "+", "'/tf'"]),
             'output_topic': "/tf", 
             'lazy': False, 
             'stealth ': False, 
@@ -149,11 +150,12 @@ def generate_launch_description():
     start_tf_static_relay_cmd = Node(
         package='topic_tools',
         executable = 'relay',
-        # name=PythonExpression(["'", namespace, "' + '_relay_tf_static'"]),
+        name=PythonExpression(["'", namespace, "' + '_relay_tf_static'"]),
         output='screen',
-        # namespace=namespace,
+        namespace=namespace,
         parameters=[{
-            'input_topic': PythonExpression(["'", namespace, "' + '/tf_static'"]),
+            # 'input_topic': '~/tf_static',
+            'input_topic': PythonExpression(["'/'", "+", "'", namespace, "'", "+", "'/tf_static'"]),
             'output_topic': "/tf_static", 
             'lazy': False, 
             'stealth ': False, 
