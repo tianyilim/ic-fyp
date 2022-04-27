@@ -20,6 +20,7 @@ import argparse
 import os
 from re import A
 import xml.etree.ElementTree as ET
+import xacro
 
 from ament_index_python.packages import get_package_share_directory
 from gazebo_msgs.srv import SpawnEntity
@@ -75,20 +76,28 @@ def main():
     # We do this by adding `ROS argument entries` to the sdf file for
     # each plugin broadcasting a transform. These argument entries provide the
     # remapping rule, i.e. /tf -> /<robot_id>/tf
-    tree = ET.parse(args.urdf)
-    root = tree.getroot()
+    
+    root = ET.fromstring(xacro.process(args.urdf))
     if args.robot_namespace:
         for plugin in root.iter('plugin'):
             ros_params = plugin.find('ros')
             if ros_params is not None:
-                remap = ros_params.find('remapping')
-                if remap is None:
-                    remap = ET.SubElement(ros_params, 'remapping')
-                remap.text = f'/tf:=/{args.robot_namespace}/tf'
+                # only remap for diff drive plugin
+                if 'ros_diff_drive' in plugin.get('filename'):
+                    remap = ros_params.find('remapping')
+                    if remap is None:
+                        remap = ET.SubElement(ros_params, 'remapping')
+                    remap.text = f'/tf:=/{args.robot_namespace}/tf'
+                # add namespaces to all plugins
                 ns = ros_params.find('namespace')
                 if ns is None:
                     ns = ET.SubElement(ros_params, 'namespace')
                 ns.text = '/' + args.robot_namespace
+                ns.text = args.robot_namespace
+
+    # Save file for reference
+    with open('out.xml', 'wb') as f:
+        ET.ElementTree(root).write(f)
 
     # Set data for request
     request = SpawnEntity.Request()
@@ -100,7 +109,7 @@ def main():
     request.initial_pose.position.z = float(args.z)
     
     # Convert yaw into quarternion
-    quat = quaternion_from_euler(0.0, float(args.yaw), 0.0)
+    quat = quaternion_from_euler(0.0, 0.0, float(args.yaw))
     request.initial_pose.orientation.x = quat[0]
     request.initial_pose.orientation.y = quat[1]
     request.initial_pose.orientation.z = quat[2]
