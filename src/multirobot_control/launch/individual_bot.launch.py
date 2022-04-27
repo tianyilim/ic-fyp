@@ -10,7 +10,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, \
                             SetEnvironmentVariable, ExecuteProcess
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression, Command
+from launch.substitutions import LaunchConfiguration, PythonExpression, Command, \
+                            TextSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
@@ -96,22 +97,11 @@ def generate_launch_description():
         description='Full path to robot URDF to load'
     )
 
-    # os.environ["GAZEBO_MODEL_PATH"] = ''
+    # os.environ["GAZEBO_MODEL_PATH"] = os.environ.get("GAZEBO_MODEL_PATH") + ':' \
+    #     + os.path.join(robot_model_dir, 'components') + ':' \
+    #     + os.path.join(robot_model_dir, 'robots')
 
-    # Start node commands
-    # spawn_entity_cmd = Node(
-    #     package='gazebo_ros',
-    #     executable='spawn_entity.py',
-    #     arguments=[ '-entity', namespace,
-    #                 '-robot_namespace', namespace,
-    #                '-file', urdf,
-    #                 '-x', x_pose,
-    #                 '-y', y_pose,
-    #                 '-z', z_pose,
-    #                 '-Y', yaw_pose],
-    #     output='screen',
-    #     remappings=remappings_tf
-    # )
+    # print(os.environ.get("GAZEBO_MODEL_PATH"))
 
     spawn_entity_cmd = Node(
         package='multirobot_control',
@@ -135,20 +125,58 @@ def generate_launch_description():
         namespace=namespace,
         output='screen',
         remappings=remappings_tf,
-        parameters=[{'use_sim_time': use_sim_time},
-            {'robot_description': Command(['xacro ', urdf])}
-        ]
+        parameters=[{'use_sim_time': use_sim_time,
+            'robot_description': Command(['xacro ', urdf]),
+            'frame_prefix': namespace
+        }]
     )
 
-    rviz_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, 'launch', 'rviz_launch.py')),
-        launch_arguments={'namespace': namespace,
-                          'use_namespace': 'True',
-                          'use_sim_time': use_sim_time,
-                          'rviz_config': os.path.join(
-                                nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz')   
-                          }.items()
+    start_tf_relay_cmd = Node(
+        package='topic_tools',
+        executable = 'relay',
+        # name=PythonExpression(["'", namespace, "' + '_relay_tf'"]),
+        output='screen',
+        # namespace=namespace,
+        parameters=[{
+            'input_topic': PythonExpression(["'", namespace, "' + '/tf'"]),
+            'output_topic': "/tf", 
+            'lazy': False, 
+            'stealth ': False, 
+            'monitor_rate': 100.0
+        }]
+    )
+
+    start_tf_static_relay_cmd = Node(
+        package='topic_tools',
+        executable = 'relay',
+        # name=PythonExpression(["'", namespace, "' + '_relay_tf_static'"]),
+        output='screen',
+        # namespace=namespace,
+        parameters=[{
+            'input_topic': PythonExpression(["'", namespace, "' + '/tf_static'"]),
+            'output_topic': "/tf_static", 
+            'lazy': False, 
+            'stealth ': False, 
+            'monitor_rate': 100.0
+        }]
+    )
+
+    # start_rviz_cmd = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(nav2_bringup_dir, 'launch', 'rviz_launch.py')),
+    #     launch_arguments={'namespace': namespace,
+    #                       'use_namespace': 'True',
+    #                       'use_sim_time': use_sim_time,
+    #                       'rviz_config': os.path.join(
+    #                             nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz')
+    #                       }.items()
+    # )
+
+    start_rviz_cmd = Node(
+        package='rviz2',
+        executable='rviz2',
+        namespace=namespace,
+        output='screen'
     )
 
 
@@ -167,6 +195,8 @@ def generate_launch_description():
     
     ld.add_action(spawn_entity_cmd)
     ld.add_action(start_robot_state_publisher_cmd)
-    # ld.add_action(rviz_cmd)
+    ld.add_action(start_tf_relay_cmd)
+    ld.add_action(start_tf_static_relay_cmd)
+    # ld.add_action(start_rviz_cmd)
 
     return ld
