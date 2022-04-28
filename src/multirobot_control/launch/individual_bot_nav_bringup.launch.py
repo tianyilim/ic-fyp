@@ -91,24 +91,6 @@ def generate_launch_description():
     declare_autostart_cmd = DeclareLaunchArgument(
         'autostart', default_value='true',
         description='Automatically startup the nav2 stack')
-    
-    # Launch localization to give map -> transform
-    start_localization_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(bringup_dir, 'launch', 'localization.launch.py')
-        ),
-        launch_arguments={
-            'namespace': namespace,
-            'map_yaml_file': map_yaml_file,
-            'use_sim_time': use_sim_time,
-            'autostart': autostart,
-            'params_file': params_file,
-            'x_pose' : x_pose,
-            'y_pose' : y_pose,
-            'z_pose' : z_pose,
-            'yaw_pose' : yaw_pose,
-        }.items()
-    )
 
     start_gt_cmd = Node(
         package='multirobot_control',
@@ -134,6 +116,41 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Launch localization to give map -> transform
+    start_localization_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_dir, 'launch', 'localization.launch.py')
+        ),
+        launch_arguments={
+            'namespace': namespace,
+            'map_yaml_file': map_yaml_file,
+            'use_sim_time': use_sim_time,
+            'autostart': autostart,
+            'params_file': params_file,
+            'x_pose' : x_pose,
+            'y_pose' : y_pose,
+            'z_pose' : z_pose,
+            'yaw_pose' : yaw_pose,
+        }.items()
+    )
+
+    start_navigation_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_dir, 'launch', 'navigation.launch.py')
+        ),
+        launch_arguments={
+            'namespace': namespace,
+            'map_yaml_file': map_yaml_file,
+            'use_sim_time': use_sim_time,
+            'autostart': autostart,
+            'params_file': params_file,
+            'x_pose' : x_pose,
+            'y_pose' : y_pose,
+            'z_pose' : z_pose,
+            'yaw_pose' : yaw_pose,
+        }.items()
+    )
+
     ld = LaunchDescription()
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_namespace_cmd)
@@ -149,5 +166,6 @@ def generate_launch_description():
     ld.add_action(start_gt_cmd)
     ld.add_action(start_static_transform_cmd)
     ld.add_action(start_localization_cmd)
+    # ld.add_action(start_navigation_cmd)
 
     return ld

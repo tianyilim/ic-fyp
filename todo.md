@@ -32,4 +32,7 @@
 ### Thu 28/04/22
 - Created a new node, `GazeboOdomGroundTruth` in `gt_odom.py` that listens to the world pose of a given link and attempts to broadcast it (and its relavant tf transforms).
 - This is a replacement for trying to call the `/get_entity_state` Gazebo ROS service, which somehow doesn't exist anymore. Hopefully this workaround helps the people in [this thread](https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1287).
-- [ ] Refactor out `link_name` parameter for tf broadcaster
+- Implement `localization.launch.py` which launches the map server and the lifecycle manager needed to get it running.
+
+### Fri 29/04/22
+- Added in `navigation.launch.py` which is supposed to bring up navigation, but so far has been quite a pain.
