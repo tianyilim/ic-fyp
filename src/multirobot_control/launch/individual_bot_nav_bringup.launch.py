@@ -110,41 +110,17 @@ def generate_launch_description():
         }.items()
     )
 
-    start_gt_cmds = [
-        Node(
-            package='multirobot_control',
-            executable='gt_odom',
-            name='base_footprint_gt',
-            namespace=namespace,
-            arguments=[
-                '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"]),
-                '--namespace', namespace
-            ],
-            output='screen'
-        ),
-        # Node(
-        #     package='multirobot_control',
-        #     executable='gt_odom',
-        #     name='right_wheel_gt',
-        #     namespace=namespace,
-        #     arguments=[
-        #         '--link_name', PythonExpression(["'", namespace, "' + 'mp_400_fixed_wheel_right_link'"]),
-        #         '--namespace', namespace
-        #     ],
-        #     output='screen'
-        # ),
-        # Node(
-        #     package='multirobot_control',
-        #     executable='gt_odom',
-        #     name='left_wheel_gt',
-        #     namespace=namespace,
-        #     arguments=[
-        #         '--link_name', PythonExpression(["'", namespace, "' + 'mp_400_fixed_wheel_left_link'"]),
-        #         '--namespace', namespace
-        #     ],
-        #     output='screen'
-        # )
-    ]
+    start_gt_cmd = Node(
+        package='multirobot_control',
+        executable='gt_odom',
+        name='base_footprint_gt',
+        namespace=namespace,
+        arguments=[
+            '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"]),
+            '--namespace', namespace
+        ],
+        output='screen'
+    )
 
     start_static_transform_cmd = Node(
         package='tf2_ros',
@@ -170,9 +146,8 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
     
-    # ld.add_action(start_localization_cmd)
-    for cmd in start_gt_cmds:
-        ld.add_action(cmd)
+    ld.add_action(start_gt_cmd)
     ld.add_action(start_static_transform_cmd)
+    ld.add_action(start_localization_cmd)
 
     return ld

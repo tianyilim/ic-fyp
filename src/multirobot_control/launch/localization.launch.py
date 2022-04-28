@@ -36,7 +36,10 @@ def generate_launch_description():
     z_pose = LaunchConfiguration('z_pose')
     yaw_pose = LaunchConfiguration('yaw_pose')
 
-    lifecycle_nodes = ['map_server', 'amcl']
+    lifecycle_nodes = [
+        'map_server', 
+        # 'amcl',
+    ]
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -82,6 +85,82 @@ def generate_launch_description():
         convert_types=True
     )
 
+    start_map_server_cmd = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        # name=PythonExpression(["'", namespace, "' + '_map_server'"]),
+        name='map_server',
+        namespace=namespace,
+        output='screen',
+        parameters=[{
+            'use_sim_time' : use_sim_time,
+            'yaml_filename' : map_yaml_file
+        }],
+        remappings=remappings
+    )
+
+    start_amcl_cmd = Node(
+        package='nav2_amcl',
+        executable='amcl',
+        # name=PythonExpression(["'", namespace, "' + '_amcl'"]),
+        name='amcl',
+        namespace=namespace,
+        output='screen',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            # 'alpha1': 0.2,
+            # 'alpha2': 0.2,
+            # 'alpha3': 0.2,
+            # 'alpha4': 0.2,
+            # 'alpha5': 0.2,
+            'base_frame_id': append_base_footprint,
+            # 'beam_skip_distance': 0.5,
+            # 'beam_skip_error_threshold': 0.9,
+            # 'beam_skip_threshold': 0.3,
+            # 'do_beamskip': false,
+            'global_frame_id': "map",
+            # 'lambda_short': 0.1,
+            # 'laser_likelihood_max_dist': 2.0,
+            # 'laser_max_range': 100.0,
+            # 'laser_min_range': -1.0,
+            # 'laser_model_type': "likelihood_field",
+            # 'max_beams': 60,
+            # 'max_particles': 2000,
+            # 'min_particles': 500,
+            'odom_frame_id': append_odom_frame,
+            # 'pf_err': 0.05,
+            # 'pf_z': 0.99,
+            # 'recovery_alpha_fast': 0.0,
+            # 'recovery_alpha_slow': 0.0,
+            # 'resample_interval': 1,
+            # 'robot_model_type': "differential",
+            # 'save_pose_rate': 0.5,
+            # 'sigma_hit': 0.2,
+            # 'tf_broadcast': true,
+            # 'transform_tolerance': 1.0,
+            # 'update_min_a': 0.2,
+            # 'update_min_d': 0.25,
+            # 'z_hit': 0.5,
+            # 'z_max': 0.05,
+            # 'z_rand': 0.5,
+            # 'z_short': 0.05,
+            'scan_topic': append_scan_topic
+        }],
+        remappings=remappings
+    )
+
+    start_lifecycle_cmd = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        # name=PythonExpression(["'", namespace, "' + '_lifecycle_manager_localization'"]),
+        name="lifecycle_manager_localization",
+        namespace=namespace,
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time},
+                    {'autostart': autostart},
+                    {'node_names': lifecycle_nodes}]
+    )
+
     return LaunchDescription([
         # Set env var to print messages to stdout immediately
         SetEnvironmentVariable('RCUTILS_LOGGING_BUFFERED_STREAM', '1'),
@@ -123,80 +202,8 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'yaw_pose', default_value='3.14',
             description="Initial yaw of robot"),
-
-        Node(
-            package='nav2_map_server',
-            executable='map_server',
-            # name=PythonExpression(["'", namespace, "' + '_map_server'"]),
-            name='map_server',
-            namespace=namespace,
-            output='screen',
-            parameters=[{
-                'use_sim_time' : use_sim_time,
-                'yaml_filename' : map_yaml_file
-            }],
-            remappings=remappings
-        ),
-
-        Node(
-            package='nav2_amcl',
-            executable='amcl',
-            # name=PythonExpression(["'", namespace, "' + '_amcl'"]),
-            name='amcl',
-            namespace=namespace,
-            output='screen',
-            parameters=[{
-                'use_sim_time': use_sim_time,
-                # 'alpha1': 0.2,
-                # 'alpha2': 0.2,
-                # 'alpha3': 0.2,
-                # 'alpha4': 0.2,
-                # 'alpha5': 0.2,
-                'base_frame_id': append_base_footprint,
-                # 'beam_skip_distance': 0.5,
-                # 'beam_skip_error_threshold': 0.9,
-                # 'beam_skip_threshold': 0.3,
-                # 'do_beamskip': false,
-                'global_frame_id': "map",
-                # 'lambda_short': 0.1,
-                # 'laser_likelihood_max_dist': 2.0,
-                # 'laser_max_range': 100.0,
-                # 'laser_min_range': -1.0,
-                # 'laser_model_type': "likelihood_field",
-                # 'max_beams': 60,
-                # 'max_particles': 2000,
-                # 'min_particles': 500,
-                'odom_frame_id': append_odom_frame,
-                # 'pf_err': 0.05,
-                # 'pf_z': 0.99,
-                # 'recovery_alpha_fast': 0.0,
-                # 'recovery_alpha_slow': 0.0,
-                # 'resample_interval': 1,
-                # 'robot_model_type': "differential",
-                # 'save_pose_rate': 0.5,
-                # 'sigma_hit': 0.2,
-                # 'tf_broadcast': true,
-                # 'transform_tolerance': 1.0,
-                # 'update_min_a': 0.2,
-                # 'update_min_d': 0.25,
-                # 'z_hit': 0.5,
-                # 'z_max': 0.05,
-                # 'z_rand': 0.5,
-                # 'z_short': 0.05,
-                'scan_topic': append_scan_topic
-            }],
-            remappings=remappings
-        ),
-
-        Node(
-            package='nav2_lifecycle_manager',
-            executable='lifecycle_manager',
-            # name=PythonExpression(["'", namespace, "' + '_lifecycle_manager_localization'"]),
-            name="lifecycle_manager_localization",
-            namespace=namespace,
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time},
-                        {'autostart': autostart},
-                        {'node_names': lifecycle_nodes}]
-        )
+        
+        start_map_server_cmd,
+        # start_amcl_cmd,
+        start_lifecycle_cmd
     ])
