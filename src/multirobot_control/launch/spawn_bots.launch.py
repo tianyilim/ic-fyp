@@ -37,8 +37,8 @@ def generate_launch_description():
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
 
     robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 0.0},
-        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 3.14}
+        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 3.14},
+        # {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 3.14}
     ]
 
     # Create the launch configuration variables
@@ -135,6 +135,7 @@ def generate_launch_description():
                     'y_pose': TextSubstitution(text=str(robot['y_pose'])),
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
+                    'autostart': 'true'
                 }.items()
             )
         )
@@ -158,7 +159,7 @@ def generate_launch_description():
     # ld.add_action(start_gazebo_client_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
-    # for cmd in start_navigation_cmds:
-    #     ld.add_action(cmd)
+    for cmd in start_navigation_cmds:
+        ld.add_action(cmd)
 
     return ld
