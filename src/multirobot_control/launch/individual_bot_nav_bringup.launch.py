@@ -35,7 +35,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
-    urdf = LaunchConfiguration('urdf')
+    autostart = LaunchConfiguration('autostart')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -87,6 +87,10 @@ def generate_launch_description():
         'params_file',
         default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
+
+    declare_autostart_cmd = DeclareLaunchArgument(
+        'autostart', default_value='true',
+        description='Automatically startup the nav2 stack')
     
     # Launch localization to give map -> transform
     start_localization_cmd = IncludeLaunchDescription(
@@ -97,8 +101,23 @@ def generate_launch_description():
             'namespace': namespace,
             'map_yaml_file': map_yaml_file,
             'use_sim_time': use_sim_time,
-            'params_file': params_file
+            'autostart': autostart,
+            'params_file': params_file,
+            'x_pose' : x_pose,
+            'y_pose' : y_pose,
+            'z_pose' : z_pose,
+            'yaw_pose' : yaw_pose,
         }.items()
+    )
+
+    start_gt_cmd = Node(
+        package='multirobot_control',
+        executable='gt_odom',
+        namespace=namespace,
+        arguments=[
+            '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"])
+        ],
+        output='screen'
     )
 
     ld = LaunchDescription()
@@ -111,7 +130,9 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
+    ld.add_action(declare_autostart_cmd)
     
-    ld.add_action(start_localization_cmd)
+    # ld.add_action(start_localization_cmd)
+    ld.add_action(start_gt_cmd)
 
     return ld

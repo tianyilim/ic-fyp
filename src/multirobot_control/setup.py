@@ -31,7 +31,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'spawn_single_bot = multirobot_control.spawn_single_bot:main'
+            'spawn_single_bot = multirobot_control.spawn_single_bot:main',
+            'gt_odom = multirobot_control.gt_odom:main'
         ],
     },
 )
