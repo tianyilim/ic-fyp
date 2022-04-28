@@ -37,8 +37,8 @@ def generate_launch_description():
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
 
     robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.1, 'yaw_pose': 0.0},
-        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.1, 'yaw_pose': 3.14}
+        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 3.14}
     ]
 
     # Create the launch configuration variables
@@ -70,7 +70,8 @@ def generate_launch_description():
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map', default_value=os.path.join(
-            warehouse_dir, 'maps', '005', 'map.yaml' ),
+            # warehouse_dir, 'maps', '005', 'map.yaml' ),
+            robot_model_dir, 'maps', 'neo_workshop.yaml' ),
         description='Full path to map yaml file to load')
 
     declare_params_file_cmd = DeclareLaunchArgument(
@@ -108,6 +109,25 @@ def generate_launch_description():
                 launch_arguments={
                     'namespace': robot['name'],
                     'use_namespace': 'True',
+                    'use_sim_time': 'True',
+                    'x_pose': TextSubstitution(text=str(robot['x_pose'])),
+                    'y_pose': TextSubstitution(text=str(robot['y_pose'])),
+                    'z_pose': TextSubstitution(text=str(robot['z_pose'])),
+                    'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
+                }.items()
+            )
+        )
+
+    start_navigation_cmds = []
+    for robot in robots:
+        start_navigation_cmds.append(
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_dir, 'launch', 'individual_bot_nav_bringup.launch.py')
+                ),
+                launch_arguments={
+                    'namespace': robot['name'],
+                    'use_namespace': 'True',
                     'map': map_yaml_file,
                     'use_sim_time': 'True',
                     'params': params_file,
@@ -138,5 +158,7 @@ def generate_launch_description():
     # ld.add_action(start_gazebo_client_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
+    # for cmd in start_navigation_cmds:
+    #     ld.add_action(cmd)
 
     return ld
