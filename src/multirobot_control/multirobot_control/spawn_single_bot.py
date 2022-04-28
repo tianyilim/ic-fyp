@@ -103,8 +103,8 @@ def main():
                 ns.text = args.robot_namespace
 
     # Save file for reference
-    with open('out.xml', 'wb') as f:
-        ET.ElementTree(root).write(f)
+    # with open('out.xml', 'wb') as f:
+    #     ET.ElementTree(root).write(f)
 
     # Set data for request
     request = SpawnEntity.Request()
