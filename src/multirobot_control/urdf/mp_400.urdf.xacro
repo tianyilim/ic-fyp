@@ -126,4 +126,22 @@
       </plugin>
     </sensor>
   </gazebo>
+
+  <!--
+  <gazebo>
+    <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)base_footprint</body_name>
+      <topic_name>ground_truth/state</topic_name>
+      <gaussianNoise>0.00</gaussianNoise>
+      <frameName>map</frameName>
+      <xyzOffsets>0 0 0</xyzOffsets>
+      <rpyOffsets>0 0 0</rpyOffsets>
+    </plugin>
+  </gazebo> -->
+
 </robot>
