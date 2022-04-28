@@ -47,12 +47,14 @@ class GazeboOdomGroundTruth(Node):
 
         frame_pos = msg.pose.pose.position
         frame_ori = msg.pose.pose.orientation
+        frame_child_id = msg.child_frame_id
 
         # Read message content and assign it to
         # corresponding tf variables
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = self.odom_frame
-        t.child_frame_id = self.link_name
+        # t.child_frame_id = self.link_name
+        t.child_frame_id = frame_child_id
 
         t.transform.translation.x = frame_pos.x
         t.transform.translation.y = frame_pos.y

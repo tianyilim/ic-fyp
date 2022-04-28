@@ -130,17 +130,48 @@
   </gazebo>
 
   <gazebo>
-    <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
+    <plugin name="p3d_base_footprint" filename="libgazebo_ros_p3d.so">
       <ros>
-        <namespace>$(arg prefix)</namespace>
-        <remapping>/tf:=tf</remapping>
+        <namespace>$(arg prefix)/base</namespace>
       </ros>
       <always_on>true</always_on>
       <update_rate>100.0</update_rate>
       <body_name>$(arg prefix)base_footprint</body_name>
       <!-- Frame is in Gazebo terms -->
       <frame_name>world</frame_name>
-      <topic_name>ground_truth/state</topic_name>
+      <topic_name>ground_truth/state_body</topic_name>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
+    </plugin>
+
+    <plugin name="p3d_mp_400_fixed_wheel_right" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)/right_wheel</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)mp_400_fixed_wheel_right_link</body_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
+      <topic_name>ground_truth/state_r_wheel</topic_name>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
+    </plugin>
+
+    <plugin name="p3d_mp_400_fixed_wheel_left" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)/left_wheel</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)mp_400_fixed_wheel_left_link</body_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
+      <topic_name>ground_truth/state_l_wheel</topic_name>
 
       <gaussian_noise>0.00</gaussian_noise>
       <xyz_offset>0 0 0</xyz_offset>
