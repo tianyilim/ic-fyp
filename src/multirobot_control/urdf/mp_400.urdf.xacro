@@ -66,8 +66,10 @@
       <update_rate>100</update_rate>
       <wheel_separation>0.529</wheel_separation>
       <wheel_diameter>0.15</wheel_diameter>
-      <publish_odom>true</publish_odom>
-      <publish_odom_tf>true</publish_odom_tf>
+      <!-- <publish_odom>true</publish_odom> -->
+      <!-- <publish_odom_tf>true</publish_odom_tf> -->
+      <publish_odom>false</publish_odom>
+      <publish_odom_tf>false</publish_odom_tf>
       <publish_wheel_tf>true</publish_wheel_tf>
       <command_topic>cmd_vel</command_topic>
       
@@ -127,21 +129,22 @@
     </sensor>
   </gazebo>
 
-  <!--
   <gazebo>
     <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
       <ros>
         <namespace>$(arg prefix)</namespace>
+        <remapping>/tf:=tf</remapping>
       </ros>
       <always_on>true</always_on>
       <update_rate>100.0</update_rate>
       <body_name>$(arg prefix)base_footprint</body_name>
+      <frame_name>$(arg prefix)odom</frame_name>
       <topic_name>ground_truth/state</topic_name>
-      <gaussianNoise>0.00</gaussianNoise>
-      <frameName>map</frameName>
-      <xyzOffsets>0 0 0</xyzOffsets>
-      <rpyOffsets>0 0 0</rpyOffsets>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
     </plugin>
-  </gazebo> -->
+  </gazebo>
 
 </robot>
