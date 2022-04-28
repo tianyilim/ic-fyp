@@ -121,6 +121,18 @@ def generate_launch_description():
         output='screen'
     )
 
+    start_static_transform_cmd = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name=PythonExpression(["'", namespace, "' + 'odom_to_map_tf_pub'"]),
+        namespace=namespace,
+        arguments=[ 
+            '0', '0', '0', '0', '0', '0', '1',
+            'map', PythonExpression(["'", namespace, "' + 'odom'"]),
+        ],  # Same frame
+        output='screen'
+    )
+
     ld = LaunchDescription()
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_namespace_cmd)
@@ -135,5 +147,6 @@ def generate_launch_description():
     
     # ld.add_action(start_localization_cmd)
     ld.add_action(start_gt_cmd)
+    ld.add_action(start_static_transform_cmd)
 
     return ld

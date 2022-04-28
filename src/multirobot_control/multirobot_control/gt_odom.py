@@ -30,10 +30,8 @@ class GazeboOdomGroundTruth(Node):
             self.get_logger().info('link_name:{}'.format(self.link_name))
 
         self.map_odom_transform = self.make_map_odom_transform()
-
         # define odom and map to be the same frame
         self.map_odom_br = TransformBroadcaster(self)
-        self.make_map_odom_transform()
 
         self.br = TransformBroadcaster(self)
 
@@ -75,7 +73,9 @@ class GazeboOdomGroundTruth(Node):
         
         # Send the transformations
         self.br.sendTransform(t)
-        self.map_odom_br.sendTransform(self.map_odom_transform)
+
+        # * don't do this here - do it in its own node instead
+        # self.map_odom_br.sendTransform(self.map_odom_transform)
 
     def make_map_odom_transform(self):
         st = TransformStamped()

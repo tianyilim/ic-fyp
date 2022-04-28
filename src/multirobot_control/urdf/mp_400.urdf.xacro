@@ -138,7 +138,8 @@
       <always_on>true</always_on>
       <update_rate>100.0</update_rate>
       <body_name>$(arg prefix)base_footprint</body_name>
-      <frame_name>$(arg prefix)odom</frame_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
       <topic_name>ground_truth/state</topic_name>
 
       <gaussian_noise>0.00</gaussian_noise>
