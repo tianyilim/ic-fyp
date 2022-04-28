@@ -31,9 +31,6 @@ def generate_launch_description():
     z_pose = LaunchConfiguration('z_pose')
     yaw_pose = LaunchConfiguration('yaw_pose')
     use_sim_time = LaunchConfiguration('use_sim_time')
-    slam = LaunchConfiguration('slam')
-    map_yaml_file = LaunchConfiguration('map')
-    params_file = LaunchConfiguration('params_file')
     urdf = LaunchConfiguration('urdf')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
@@ -76,21 +73,6 @@ def generate_launch_description():
         'use_sim_time',
         default_value='false',
         description='Use simulation (Gazebo) clock if true')
-
-    declare_slam_cmd = DeclareLaunchArgument(
-        'slam',
-        default_value='False',
-        description='Whether run a SLAM')
-
-    declare_map_yaml_cmd = DeclareLaunchArgument(
-        'map', default_value=os.path.join(
-            warehouse_dir, 'maps', '005', 'map.yaml' ),
-        description='Full path to map yaml file to load')
-
-    declare_params_file_cmd = DeclareLaunchArgument(
-        'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
-        description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_urdf_cmd = DeclareLaunchArgument(
         'urdf',
@@ -197,15 +179,8 @@ def generate_launch_description():
     ld.add_action(declare_z_pose_cmd)
     ld.add_action(declare_yaw_pose_cmd)
     ld.add_action(declare_use_sim_time_cmd)
-    ld.add_action(declare_slam_cmd)
-    ld.add_action(declare_map_yaml_cmd)
-    ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_urdf_cmd)
     
-    # ld.add_action(start_robot_state_publisher_cmd)
-    # ld.add_action(start_tf_relay_cmd)
-    # ld.add_action(start_tf_static_relay_cmd)
-    # ld.add_action(spawn_entity_cmd)
     ld.add_action(bringup_group_cmd)
     # ld.add_action(start_rviz_cmd)
 
