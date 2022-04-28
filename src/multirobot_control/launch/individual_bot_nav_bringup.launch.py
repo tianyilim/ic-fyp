@@ -115,7 +115,8 @@ def generate_launch_description():
         executable='gt_odom',
         namespace=namespace,
         arguments=[
-            '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"])
+            '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"]),
+            '--namespace', namespace
         ],
         output='screen'
     )
