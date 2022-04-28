@@ -26,4 +26,5 @@
   5. ![tf tree today](doc/tf_tree_270422.png)
 - Questions:
   - [ ] Robots behave poorly in the AWS warehouse environments but not the Neobotix workshops. Might try to figure out why, but probably better to just use the Neobotix workshop environment for now
-  - [ ] Is it bad if the wheel frames connect to `base_footprint` instead of `base_link`? Need to refer to reference `tf_tree`s from Neobotix or elsewhere.
+  - [x] Is it bad if the wheel frames connect to `base_footprint` instead of `base_link`? Need to refer to reference `tf_tree`s from Neobotix or elsewhere.
+    - This is the behaviour out-of-the-box from the Neobotix demo.
