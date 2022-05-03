@@ -38,7 +38,7 @@ def generate_launch_description():
 
     robots = [
         {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 3.14},
-        # {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 3.14}
+        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 1.4}
     ]
 
     # Create the launch configuration variables
@@ -47,6 +47,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
     world = LaunchConfiguration('world')
+    urdf = LaunchConfiguration('urdf')
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
@@ -78,6 +79,12 @@ def generate_launch_description():
         'params_file',
         default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
+
+    declare_urdf_cmd = DeclareLaunchArgument(
+        'urdf',
+        default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
+        description='Full path to robot URDF to load'
+    )
 
     # Launch commands
 
@@ -114,6 +121,7 @@ def generate_launch_description():
                     'y_pose': TextSubstitution(text=str(robot['y_pose'])),
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
+                    'urdf': urdf,
                 }.items()
             )
         )
@@ -152,6 +160,7 @@ def generate_launch_description():
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
+    ld.add_action(declare_urdf_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(gazebo_cmd),
@@ -159,7 +168,7 @@ def generate_launch_description():
     # ld.add_action(start_gazebo_client_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
-    for cmd in start_navigation_cmds:
-        ld.add_action(cmd)
+    # for cmd in start_navigation_cmds:
+    #     ld.add_action(cmd)
 
     return ld
