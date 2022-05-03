@@ -70,7 +70,7 @@
       <!-- <publish_odom_tf>true</publish_odom_tf> -->
       <publish_odom>false</publish_odom>
       <publish_odom_tf>false</publish_odom_tf>
-      <publish_wheel_tf>true</publish_wheel_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
       <command_topic>cmd_vel</command_topic>
       
       <odometry_topic>odom</odometry_topic>
@@ -91,6 +91,7 @@
     <sensor name="lidar_1_sensor" type="ray">
       <always_on>true</always_on>
       <pose>0 0 0 0 0 0</pose>
+      <!-- <visualize>false</visualize> -->
       <visualize>true</visualize>
       <update_rate>10</update_rate>
       <ray>

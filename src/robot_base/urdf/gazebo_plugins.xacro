@@ -6,20 +6,18 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <!--Gazebo Differential Drive Plugin-->
   <gazebo>
-    <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
+    <!-- ++++++++++++++++++++++++++++++ Diff Drive Plugin ++++++++++++++++++++++++++++ -->
+    <plugin name="$(arg prefix)_diff_drive" filename="libgazebo_ros_diff_drive.so">
       <!-- default namespace -->
       <ros>
-        <!-- Set namespace -->
-        <namespace>demo</namespace>
-        <!-- Remap default topics -->
-        <!-- <argument>cmd_vel:=cmd_demo</argument> -->
-        <!-- <argument>odom:=odom_demo</argument> -->
+        <remapping>/tf:=tf</remapping>
+        <namespace>$(arg prefix)</namespace>
       </ros>
 
-      <alwaysOn>true</alwaysOn>
-      <!-- <update_rate>50</update_rate> -->
-      <left_joint>left_wheel_joint</left_joint>
-      <right_joint>right_wheel_joint</right_joint>
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <left_joint>$(arg prefix)_left_wheel_joint</left_joint>
+      <right_joint>$(arg prefix)_right_wheel_joint</right_joint>
       <wheel_separation>${chassis_y+wheelwidth+2*wheelgap}</wheel_separation>
       <wheel_diameter>${wheeldiam}</wheel_diameter>
       <!-- Maximum torque which the wheels can produce, in Nm, defaults to 5 Nm -->
@@ -27,41 +25,95 @@
       <!-- Wheel acceleration, in rad/s^2, defaults to 0.0 rad/s^2 -->
       <max_wheel_acceleration>1.0</max_wheel_acceleration>
 
-      <odometry_frame>odom</odometry_frame>
-      <robotBaseFrame>base_link</robotBaseFrame>
+      <odometry_frame>$(arg prefix)odom</odometry_frame>
+      <robotBaseFrame>$(arg prefix)_base_link</robotBaseFrame>
       
-      <!-- Set to true to publish transforms for the odometry, defaults to true -->
-      <publish_odom>true</publish_odom>
-      <!-- Set to true to publish transforms for the wheel links, defaults to false -->
+      <publish_odom>false</publish_odom>
       <publish_odom_tf>false</publish_odom_tf>
-      <publish_wheel_tf>true</publish_wheel_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
 
     </plugin>
 
-      <!-- Use gazebo_ros_joint_state_publisher instead of publishWheelJointState -->
-    <plugin name="joint_states" filename="libgazebo_ros_joint_state_publisher.so">
-      <joint_name>right_wheel_joint</joint_name>
-      <joint_name>left_wheel_joint</joint_name>
-    </plugin>    
+    <!-- +++++++++++++++++++++++++++++ Joint State Plugin ++++++++++++++++++++++++++++ -->
+    <plugin name="$(arg prefix)_joint_states" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <namespace>$(arg prefix)</namespace>
+      </ros>
+      <joint_name>$(arg prefix)_right_wheel_joint</joint_name>
+      <joint_name>$(arg prefix)_left_wheel_joint</joint_name>
+      <update_rate>100</update_rate>
+    </plugin>
+
+    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
+    <plugin name="$(arg prefix)_p3d_base_footprint" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)/base</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)_base_footprint</body_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
+      <topic_name>ground_truth/state_body</topic_name>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
+    </plugin>
+
+    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
+    <plugin name="$(arg prefix)_p3d_right_wheel" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)/right_wheel</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)_right_wheel</body_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
+      <topic_name>ground_truth/state_r_wheel</topic_name>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
+    </plugin>
+
+    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
+    <plugin name="$(arg prefix)_p3d_left_wheel" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <namespace>$(arg prefix)/left_wheel</namespace>
+      </ros>
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <body_name>$(arg prefix)_left_wheel</body_name>
+      <!-- Frame is in Gazebo terms -->
+      <frame_name>world</frame_name>
+      <topic_name>ground_truth/state_l_wheel</topic_name>
+
+      <gaussian_noise>0.00</gaussian_noise>
+      <xyz_offset>0 0 0</xyz_offset>
+      <rpy_offset>0 0 0</rpy_offset>
+    </plugin>
   </gazebo>
 
-  <gazebo reference="imu_link">
+  <!-- ++++++++++++++++++++++++++++++++++ IMU Plugin +++++++++++++++++++++++++++++++++ -->
+  <!-- <gazebo reference="$(arg prefix)_imu_link">
     <gravity>true</gravity>
-    <sensor name="imu_sensor" type="imu">
+    <sensor name="$(arg prefix)_imu_sensor" type="imu">
       <always_on>true</always_on>
       <update_rate>100</update_rate>
       <visualize>true</visualize>
       <topic>__default_topic__</topic>
-      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="$(arg prefix)_imu_plugin">
         <ros>
-          <!-- Put namespace stuff here -->
-          <namespace>/demo</namespace>
+          Put namespace stuff here
+          <namespace>$(arg prefix)</namespace>
           <remapping>~/out:=imu</remapping>
         </ros>
         <gaussianNoise>0.0</gaussianNoise>
         <xyzOffset>0 0 0</xyzOffset>
         <rpyOffset>0 0 0</rpyOffset>
-        <frame_name>imu_link</frame_name>
+        <frame_name>$(arg prefix)_imu_link</frame_name>
         <initial_orientation_as_reference>false</initial_orientation_as_reference>
       </plugin>
       <pose>0 0 0 0 0 0</pose>
@@ -122,9 +174,10 @@
       </imu>
 
     </sensor>
-  </gazebo>
+  </gazebo> -->
   
-  <gazebo reference="lidar_link">
+  <!-- +++++++++++++++++++++++++++++++++ Lidar Plugin ++++++++++++++++++++++++++++++++ -->
+  <!-- <gazebo reference="$(arg prefix)_lidar_link">
     <sensor name="lidar" type="ray">
       <always_on>true</always_on>
       <visualize>true</visualize>
@@ -149,21 +202,23 @@
           <stddev>0.01</stddev>
         </noise>
       </ray>
-      <plugin name="scan" filename="libgazebo_ros_ray_sensor.so">
+      <plugin name="$(arg prefix)_scan" filename="libgazebo_ros_ray_sensor.so">
         <ros>
           <remapping>~/out:=scan</remapping>
+          <namespace>$(arg prefix)</namespace>
         </ros>
         <output_type>sensor_msgs/LaserScan</output_type>
-        <frame_name>lidar_link</frame_name>
+        <frame_name>$(arg prefix)_lidar_link</frame_name>
       </plugin>
     </sensor>
-  </gazebo>
+  </gazebo> -->
 
-  <gazebo reference="camera_link">
+  <!-- ++++++++++++++++++++++++++++++++ Camera Plugin ++++++++++++++++++++++++++++++++ -->
+  <!-- <gazebo reference="$(arg prefix)_camera_link">
     <sensor name="depth_camera" type="depth">
       <visualize>true</visualize>
       <update_rate>30.0</update_rate>
-      <camera name="camera">
+      <camera name="$(arg prefix)_camera">
         <horizontal_fov>1.047198</horizontal_fov>
         <image>
           <width>640</width>
@@ -175,11 +230,11 @@
           <far>3</far>
         </clip>
       </camera>
-      <plugin name="depth_camera_controller" filename="libgazebo_ros_camera.so">
+      <plugin name="$(arg prefix)_depth_camera_controller" filename="libgazebo_ros_camera.so">
         <baseline>0.2</baseline>
         <alwaysOn>true</alwaysOn>
         <updateRate>0.0</updateRate>
-        <frame_name>camera_depth_frame</frame_name>
+        <frame_name>$(arg prefix)_camera_depth_frame</frame_name>
         <pointCloudCutoff>0.5</pointCloudCutoff>
         <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
         <distortionK1>0</distortionK1>
@@ -194,6 +249,6 @@
         <hackBaseline>0</hackBaseline>
       </plugin>
     </sensor>
-  </gazebo>
+  </gazebo> -->
 
 </robot>
