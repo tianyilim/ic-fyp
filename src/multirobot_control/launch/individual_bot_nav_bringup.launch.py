@@ -163,9 +163,9 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
     
-    ld.add_action(start_gt_cmd)
     ld.add_action(start_static_transform_cmd)
-    ld.add_action(start_localization_cmd)
+    # ld.add_action(start_gt_cmd)
+    # ld.add_action(start_localization_cmd)
     # ld.add_action(start_navigation_cmd)
 
     return ld

@@ -1,5 +1,7 @@
 '''
 Delivers the ground truth transformation between `prefix`base_footprint <-> `prefix`odom and map.
+
+However, the timing of the transforms needs to be changed. 
 '''
 
 import rclpy
@@ -10,7 +12,7 @@ import argparse
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Pose, TransformStamped, PoseWithCovariance
-from std_msgs.msg import String
+from std_msgs.msg import String, Header
 
 from tf2_ros import TransformBroadcaster
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
@@ -39,6 +41,15 @@ class GazeboOdomGroundTruth(Node):
         self.states_sub = self.create_subscription(Odometry, '/'+self.namespace+'/odom', \
             self.handle_odom, qos_profile_sensor_data)
 
+        # Frames for left and right wheel TF transforms(?)
+        # self.states_sub_right_wheel = \
+        #     self.create_subscription(Odometry, '/'+self.namespace+'/right_wheel_odom', \
+        #     self.handle_odom, qos_profile_sensor_data)
+
+        # self.states_sub_left_wheel = \
+        #     self.create_subscription(Odometry, '/'+self.namespace+'/left_wheel_odom', \
+        #     self.handle_odom, qos_profile_sensor_data)
+
     '''
     Callback called when a message is recieved on the incoming odometry topic
     '''
@@ -49,9 +60,9 @@ class GazeboOdomGroundTruth(Node):
         frame_ori = msg.pose.pose.orientation
         frame_child_id = msg.child_frame_id
 
-        # Read message content and assign it to
-        # corresponding tf variables
-        t.header.stamp = self.get_clock().now().to_msg()
+        # Read message content and assign it to corresponding tf variables
+        t.header.stamp = msg.header.stamp   
+        # Use the correct timing to stamp the tf msg, if not timing errors ensue
         t.header.frame_id = self.odom_frame
         # t.child_frame_id = self.link_name
         t.child_frame_id = frame_child_id
