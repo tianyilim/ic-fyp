@@ -36,8 +36,8 @@
     <origin xyz="0 0 ${chassis_z/2+chassis_height}" rpy="0 0 0" />
     <!-- <parent link="base_footprint"/>
     <child link="base_link" /> -->
-    <parent link="$(arg prefix)_base_link" />
-    <child link="$(arg prefix)_base_footprint"/>
+    <parent link="$(arg prefix)_base_footprint"/>
+    <child link="$(arg prefix)_base_link" />
   </joint>
 
   <gazebo reference="$(arg prefix)_base_link">

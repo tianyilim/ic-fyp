@@ -26,11 +26,16 @@
       <max_wheel_acceleration>1.0</max_wheel_acceleration>
 
       <odometry_frame>$(arg prefix)odom</odometry_frame>
-      <robotBaseFrame>$(arg prefix)_base_link</robotBaseFrame>
+      <robot_base_frame>$(arg prefix)_base_footprint</robot_base_frame>
+
+      <!-- <odometry_topic>odom</odometry_topic> -->
       
-      <publish_odom>false</publish_odom>
-      <publish_odom_tf>false</publish_odom_tf>
-      <publish_wheel_tf>false</publish_wheel_tf>
+      <!-- 0 is encoder, 1 is world (ground truth) -->
+      <odometry_source>1</odometry_source>
+      
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
 
     </plugin>
 
@@ -44,56 +49,57 @@
       <update_rate>100</update_rate>
     </plugin>
 
-    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
-    <plugin name="$(arg prefix)_p3d_base_footprint" filename="libgazebo_ros_p3d.so">
+
+    <!-- Ground Truth plugins are not needed for now, 
+      as the Diff Drive Plugin offers a ground truth transform... -->
+
+    <!-- +++++++++++++++++++++ base_footprint Ground Truth Plugin ++++++++++++++++++++ -->
+    <!-- <plugin name="$(arg prefix)_p3d_base_footprint" filename="libgazebo_ros_p3d.so">
       <ros>
-        <namespace>$(arg prefix)/base</namespace>
+        <namespace>$(arg prefix)</namespace>
+        <remapping>odom:=$(arg prefix)_odom</remapping>
       </ros>
       <always_on>true</always_on>
-      <update_rate>100.0</update_rate>
+      <update_rate>100</update_rate>
       <body_name>$(arg prefix)_base_footprint</body_name>
-      <!-- Frame is in Gazebo terms -->
       <frame_name>world</frame_name>
-      <topic_name>ground_truth/state_body</topic_name>
 
       <gaussian_noise>0.00</gaussian_noise>
       <xyz_offset>0 0 0</xyz_offset>
       <rpy_offset>0 0 0</rpy_offset>
-    </plugin>
+    </plugin> -->
 
-    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
-    <plugin name="$(arg prefix)_p3d_right_wheel" filename="libgazebo_ros_p3d.so">
+    <!-- +++++++++++++++++++++++ right_wheel Ground Truth Plugin +++++++++++++++++++++ -->
+    <!-- <plugin name="$(arg prefix)_p3d_right_wheel" filename="libgazebo_ros_p3d.so">
       <ros>
-        <namespace>$(arg prefix)/right_wheel</namespace>
+        <namespace>$(arg prefix)</namespace>
+        <remapping>odom:=right_wheel_odom</remapping>
       </ros>
       <always_on>true</always_on>
-      <update_rate>100.0</update_rate>
+      <update_rate>100</update_rate>
       <body_name>$(arg prefix)_right_wheel</body_name>
-      <!-- Frame is in Gazebo terms -->
       <frame_name>world</frame_name>
-      <topic_name>ground_truth/state_r_wheel</topic_name>
 
       <gaussian_noise>0.00</gaussian_noise>
       <xyz_offset>0 0 0</xyz_offset>
       <rpy_offset>0 0 0</rpy_offset>
-    </plugin>
+    </plugin> -->
 
-    <!-- +++++++++++++++++++++++++++++ Ground Truth Plugin +++++++++++++++++++++++++++ -->
-    <plugin name="$(arg prefix)_p3d_left_wheel" filename="libgazebo_ros_p3d.so">
+    <!-- +++++++++++++++++++++++ left_wheel Ground Truth Plugin ++++++++++++++++++++++ -->
+    <!-- <plugin name="$(arg prefix)_p3d_left_wheel" filename="libgazebo_ros_p3d.so">
       <ros>
-        <namespace>$(arg prefix)/left_wheel</namespace>
+        <namespace>$(arg prefix)</namespace>
+        <remapping>odom:=left_wheel_odom</remapping>
       </ros>
       <always_on>true</always_on>
-      <update_rate>100.0</update_rate>
+      <update_rate>100</update_rate>
       <body_name>$(arg prefix)_left_wheel</body_name>
-      <!-- Frame is in Gazebo terms -->
       <frame_name>world</frame_name>
-      <topic_name>ground_truth/state_l_wheel</topic_name>
 
       <gaussian_noise>0.00</gaussian_noise>
       <xyz_offset>0 0 0</xyz_offset>
       <rpy_offset>0 0 0</rpy_offset>
-    </plugin>
+    </plugin> -->
   </gazebo>
 
   <!-- ++++++++++++++++++++++++++++++++++ IMU Plugin +++++++++++++++++++++++++++++++++ -->

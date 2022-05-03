@@ -168,7 +168,7 @@ def generate_launch_description():
     # ld.add_action(start_gazebo_client_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
-    # for cmd in start_navigation_cmds:
-    #     ld.add_action(cmd)
+    for cmd in start_navigation_cmds:
+        ld.add_action(cmd)
 
     return ld
