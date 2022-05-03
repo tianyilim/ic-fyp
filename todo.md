@@ -36,3 +36,11 @@
 
 ### Fri 29/04/22
 - Added in `navigation.launch.py` which is supposed to bring up navigation, but so far has been quite a pain.
+
+### Mon 02/05/22
+- Create a new URDF file that is similar to the original Neobotix robot in dimension but without any funky physics
+- Use a sample model world with 3 cylinders and attempt to implement a DWA node
+
+### Tue 03/05/22
+- Modernized original URDF in `robot_base` with what we learned from playing with the Neobotix robot. Now can have ground truth odometry by adding a (undocumented) feature from the `diff_drive` controller.
+- Realised that the timestamps being published by `gt_odom.py` are wrong. Just echo back the transform timings by accessing the same header as the odometry transform.
