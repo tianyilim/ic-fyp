@@ -139,7 +139,6 @@
       </link>
     </model>
 
-
     <model name='cylinder_3'>
       <static>true</static>
       <pose>-1 2 0.5 0 -0 0</pose>
@@ -196,7 +195,6 @@
         <kinematic>0</kinematic>
       </link>
     </model>
-
 
     <model name='SquareEnvironment'>
       <pose>0 0 0 0 -0 0</pose>
