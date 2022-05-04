@@ -1,0 +1,9 @@
+# Request
+geometry_msgs/Point goal_position
+---
+# Result
+std_msgs/Bool success
+geometry_msgs/Point final_position
+---
+# Feedback
+geometry_msgs/Pose current_pose
