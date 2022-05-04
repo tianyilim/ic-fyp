@@ -13,7 +13,8 @@
     <!-- Default camera angle -->
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>8.5 -8.5 17.0 0 0.95 2.35</pose>
+        <!-- <pose>8.5 -8.5 17.0 0 0.95 2.35</pose> -->
+        <pose>0.0 0.0 20.0 0 1.57 1.57</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
