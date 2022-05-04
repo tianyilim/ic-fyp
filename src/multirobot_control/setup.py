@@ -32,7 +32,9 @@ setup(
     entry_points={
         'console_scripts': [
             'spawn_single_bot = multirobot_control.spawn_single_bot:main',
-            'gt_odom = multirobot_control.gt_odom:main'
+            'gt_odom = multirobot_control.gt_odom:main',
+            'dwa_client = multirobot_control.dwa_client:main',
+            'dwa_server = multirobot_control.dwa_server:main',
         ],
     },
 )

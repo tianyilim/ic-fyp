@@ -38,7 +38,8 @@ def generate_launch_description():
 
     robots = [
         {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 3.14},
-        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 1.4}
+        # {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 1.4},
+        # {'name': 'robot3', 'x_pose': 4.0, 'y_pose': 4.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
     ]
 
     # Create the launch configuration variables

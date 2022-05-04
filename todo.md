@@ -52,3 +52,18 @@
   ```
 
 - [ ] Fix Xacro errors for the `test_world` xacro file: perhaps xacro needs to use "urdf"-esque tags?
+
+### Wed 04/05/22
+- Create a custom action package in `planner_action_interfaces`, relying on `geometry_msgs`.
+  - In addition to the tutorial on custom interfaces [here](https://roboticsbackend.com/ros2-create-custom-message/), we also need to remember to add dependencies to `rosidl` as per the forum post [here](https://answers.ros.org/question/326008/ros2-run-symbol-not-found-on-custom-msg/).
+- Implemented a (naive) DWA local planner / controller. To run, minimally `launch` the simulation (as above) and then run `python3 ~/fyp/ic-fyp/src/multirobot_control/multirobot_control/dwa_server.py` (the Action Server). Run `python3 ~/fyp/ic-fyp/src/multirobot_control/multirobot_control/dwa_client.py` (the Action Client) which can take in arbitrary x and y positions, which the DWA approach will then evaluate.
+- [ ] Implement tunable parameters as some sort of config file:
+  - [ ] Limits for linear and angular movement
+  - [ ] Safety thresholds for robot
+  - [ ] Forward simulation duration
+- [ ] Implement parameterized map (perhaps by parsing the world file?)
+- [ ] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
+- [ ] What happens when all DWA options are equally bad?
+- [ ] Check if simulated input using `cmd_vel` is sufficient
+- [ ] Namespaced nodes
+- [ ] CVA

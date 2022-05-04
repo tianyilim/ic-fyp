@@ -38,7 +38,7 @@ class DWAActionClient(Node):
     def get_result_callback(self, future):
         result = future.result().result
         self.get_logger().info('Success: {} Final_Position X:{} Y:{}'.format(
-            result.success, result.final_position.x, result.final_position.y))
+            result.success.data, result.final_position.x, result.final_position.y))
 
         # Shutdown ROS2 for clean exit
         rclpy.shutdown()
@@ -62,9 +62,11 @@ def main(args=None):
 
     action_client = DWAActionClient()
 
-    goal_pos_x = input("Enter Goal X:")
-    goal_pos_y = input("Enter Goal Y:")
-    goal_pos = Point(x=goal_pos_x, y=goal_pos_y, z=0)
+    goal_pos_x = float( input("Enter Goal X:") )
+    goal_pos_y = float( input("Enter Goal Y:") )
+    # goal_pos_x = -1.0
+    # goal_pos_y = -1.0
+    goal_pos = Point(x=goal_pos_x, y=goal_pos_y, z=0.0)
 
     action_client.send_goal(goal_pos)
 
