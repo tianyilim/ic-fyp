@@ -116,6 +116,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    start_dwa_cmd = Node(
+        package='multirobot_control',
+        executable='dwa_server',
+        namespace=namespace,
+        output='screen'
+    )
+
     # Launch localization to give map -> transform
     start_localization_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -164,6 +171,9 @@ def generate_launch_description():
     ld.add_action(declare_autostart_cmd)
     
     ld.add_action(start_static_transform_cmd)
+    #? Potentially start DWA server
+    # ld.add_action(start_dwa_cmd)
+
     # ld.add_action(start_gt_cmd)
     # ld.add_action(start_localization_cmd)
     # ld.add_action(start_navigation_cmd)
