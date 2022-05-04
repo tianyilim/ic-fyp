@@ -65,15 +65,12 @@ class DWAActionServer(Node):
         self.ub_y = 4.5
         self.lb_y = -4.5
 
-
-        #? TEMP - Namespace this
-
         # Subscribe to Odom (which has ground truth)
-        self.state_sub = self.create_subscription(Odometry, '/robot1/odom', \
+        self.state_sub = self.create_subscription(Odometry, 'odom', \
             self.handle_odom, qos_profile_sensor_data)
 
         # Publish to cmd_vel
-        self.cmd_vel_pub = self.create_publisher(Twist, '/robot1/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
 
     '''Handle incoming data on `odom` by updating private variables'''
     def handle_odom(self, msg):
