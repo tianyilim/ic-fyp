@@ -28,6 +28,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/LocalPlanner.action"
+  "msg/OtherRobotLocations.msg"
   DEPENDENCIES geometry_msgs
 )
 
