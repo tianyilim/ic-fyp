@@ -2,7 +2,6 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 
-from action_tutorials_interfaces.action import Fibonacci
 from planner_action_interfaces.action import LocalPlanner
 from geometry_msgs.msg import Point
 

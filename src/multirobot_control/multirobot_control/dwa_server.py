@@ -266,7 +266,6 @@ class DWAActionServer(Node):
 
     def parameter_callback(self, params):
         for param in params:
-            print(vars(param))  # Print out the parameters that attempt to be changed
             # TODO error handling/type check/bounds check
             self.params[param.name] = param.value
             self.get_logger().debug("Set parameter {} to value {}".format(

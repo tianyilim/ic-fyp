@@ -1,6 +1,8 @@
 # Todo, Changelog, Roadmap for FYP
 
 ## Todo
+- [ ] Get the multiple robots spawned to be visualised with different colours in Gazebo (eg. Robot1 is red, 2 is blue, etc...)
+- [ ] Show a visualization in Gazebo(?) of each robot's goal position
 - [ ] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
 - [ ] Programatically create Rviz files for visualising each robot (currently hardcoded)
 - [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
@@ -66,7 +68,12 @@
   - [x] Forward simulation duration
 - [ ] Implement parameterized map (perhaps by parsing the world file?)
 - [ ] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
+- [ ] Add cost/benefit to orientation wrt goal
 - [ ] What happens when all DWA options are equally bad?
 - [ ] Check if simulated input using `cmd_vel` is sufficient
 - [ ] Namespaced nodes
 - [ ] CVA
+
+### Thu 05/05/22
+- Made a new message `OtherRobotLocations` in `planner_action_interfaces` for a central node to broadcast the (absolute) positions of each robot to other robots.
+- Create Gazebo plugin to control individual wheels, while also publishing the TF and odom transforms of the robot.
