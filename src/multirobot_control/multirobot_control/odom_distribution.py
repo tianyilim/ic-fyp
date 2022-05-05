@@ -28,7 +28,7 @@ class OdomDistribution(Node):
             namespace='',
             parameters=[
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
-                ('pub_freq', 100.0),      # Frequency to publish at
+                ('pub_freq', 10.0),      # Frequency to publish at
                 ('dist_thresh', 2.0),   # Distance range robots can 'communicate'
             ]
         )
@@ -58,7 +58,7 @@ class OdomDistribution(Node):
                 self.create_publisher(OtherRobotLocations, robot+'/otherRobotLocations', 10)
             )
 
-        timer_period = self.get_parameter("pub_freq").value
+        timer_period = 1 / self.get_parameter("pub_freq").value
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 
@@ -71,9 +71,8 @@ class OdomDistribution(Node):
         distances = np.zeros(( num_robots, num_robots ))
 
         for curr_idx in range( num_robots ):
-            curr_pos = self.robot_locs[curr_idx][0]
-            curr_x = curr_pos.x
-            curr_y = curr_pos.y
+            curr_x = self.robot_locs[curr_idx][0].x
+            curr_y = self.robot_locs[curr_idx][0].y
 
             for other_idx in range( num_robots ):
                 if curr_idx == other_idx \
@@ -82,15 +81,21 @@ class OdomDistribution(Node):
                     # Or the distance between stuff that has already been calculated
                     continue
                 
-                other_pos = self.robot_locs[other_idx][0]
-                other_x = other_pos.x
-                other_y = other_pos.y
+                other_x = self.robot_locs[other_idx][0].x
+                other_y = self.robot_locs[other_idx][0].y
 
                 # print(curr_x, curr_y, other_x, other_y)
 
                 # Symmetric matrix. For some reason `hypot` needs to be indexed
-                distances[curr_idx, other_idx] = np.hypot((curr_x-other_x), (curr_y, other_y)[1])
+                
+                distances[curr_idx, other_idx] = np.hypot((curr_x-other_x), (curr_y-other_y))
                 distances[other_idx, curr_idx] = distances[curr_idx, other_idx]
+
+                # print("Dist between robot {} (x:{:.2f} y:{:.2f}) and {} (x:{:.2f} y:{:.2f}): {:.2f}".format(
+                #     curr_idx+1, curr_x, curr_y, 
+                #     other_idx+1, other_x, other_y,
+                #     distances[curr_idx, other_idx]
+                # ))
 
         # Filter for distances not on the diagonal
         np.fill_diagonal(distances, 1e9)    # large to avoid filter below
