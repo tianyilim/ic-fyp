@@ -37,9 +37,9 @@ def generate_launch_description():
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
 
     robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose':  0.5, 'z_pose': 0.15, 'yaw_pose': 3.14},
-        # {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.15, 'yaw_pose': 1.4},
-        # {'name': 'robot3', 'x_pose': 4.0, 'y_pose': 4.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 2.2, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 1.4},
+        {'name': 'robot3', 'x_pose': 0.0, 'y_pose': 4.5, 'z_pose': 0.15, 'yaw_pose': 0.0},
     ]
 
     # Create the launch configuration variables

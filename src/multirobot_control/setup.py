@@ -35,6 +35,7 @@ setup(
             'gt_odom = multirobot_control.gt_odom:main',
             'dwa_client = multirobot_control.dwa_client:main',
             'dwa_server = multirobot_control.dwa_server:main',
+            'odom_distribution = multirobot_control.odom_distribution:main'
         ],
     },
 )

@@ -76,4 +76,6 @@
 
 ### Thu 05/05/22
 - Made a new message `OtherRobotLocations` in `planner_action_interfaces` for a central node to broadcast the (absolute) positions of each robot to other robots.
-- Create Gazebo plugin to control individual wheels, while also publishing the TF and odom transforms of the robot.
+- Made a new node, `odom_distribution` which simulates communication distance between the set of robots.
+- Run by `ros2 run multirobot_control odom_distribution --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p pub_freq:=0.5`, can adjust `robot_list` as required for the number (and name) of robots in the simulation, and `pub_freq` as how often the terminal should be spammed; could be the same as the calculation frequency of the DWA planner.
+- [ ] Create Gazebo plugin to control individual wheels, while also publishing the TF and odom transforms of the robot.
