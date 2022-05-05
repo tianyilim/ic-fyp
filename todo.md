@@ -60,10 +60,10 @@
   - To run, minimally `launch` the simulation (as above) and then run `ros2 run multirobot_control dwa_server --ros-args -r odom:=robot1/odom -r cmd_vel:=robot1/cmd_vel` (the Action Server). 
   - Run `python3 ~/fyp/ic-fyp/src/multirobot_control/multirobot_control/dwa_client.py` (the Action Client) which can take in arbitrary x and y positions, which the DWA approach will then evaluate.
   - Alternatively, try `ros2 run multirobot_control dwa_client --ros-args -r /dwa/_action/feedback:=/robot1/dwa/_action/feedback -r /dwa/_action/status:=/robot1/dwa/_action/status`.
-- [ ] Implement tunable parameters as some sort of config file:
-  - [ ] Limits for linear and angular movement
-  - [ ] Safety thresholds for robot
-  - [ ] Forward simulation duration
+- [x] Implement tunable parameters as some sort of config file:
+  - [x] Limits for linear and angular movement
+  - [x] Safety thresholds for robot
+  - [x] Forward simulation duration
 - [ ] Implement parameterized map (perhaps by parsing the world file?)
 - [ ] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
 - [ ] What happens when all DWA options are equally bad?

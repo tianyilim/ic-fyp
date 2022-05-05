@@ -8,6 +8,8 @@ from geometry_msgs.msg import Point
 
 from tf_transformations import euler_from_quaternion
 
+import numpy as np
+
 class DWAActionClient(Node):
 
     def __init__(self):
@@ -37,7 +39,7 @@ class DWAActionClient(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info('Success: {} Final_Position X:{} Y:{}'.format(
+        self.get_logger().info('Success: {} Final_Position X:{:.2f} Y:{:.2f}'.format(
             result.success.data, result.final_position.x, result.final_position.y))
 
         # Shutdown ROS2 for clean exit
@@ -54,8 +56,8 @@ class DWAActionClient(Node):
             feedback.orientation.w
         ])[2]       # Only rotation about the z axis
         
-        self.get_logger().info('Current X:{} Y:{} Yaw:{}'.format(
-            curr_x, curr_y, curr_yaw ))
+        self.get_logger().info('Current X:{:.2f} Y:{:.2f} Yaw:{:.2f}'.format(
+            curr_x, curr_y, np.degrees(curr_yaw) ))
 
 def main(args=None):
     rclpy.init(args=args)

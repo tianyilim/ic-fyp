@@ -1,0 +1,12 @@
+dwa_action_server:
+  ros__parameters:
+    robot_radius : 0.3
+    safety_thresh : 0.5
+    simulate_duration : 1.0
+    action_duration : 0.1
+    linear_speed_limit : 0.5
+    angular_speed_limit : 0.5
+    linear_step : 0.1
+    angular_step : 0.1
+    dist_thresh : 0.1
+    dist_method : "L2"

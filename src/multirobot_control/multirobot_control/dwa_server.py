@@ -7,6 +7,7 @@ from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 
@@ -23,7 +24,7 @@ import numpy as np
 
 class DWAActionServer(Node):
 
-    def __init__(self, robot_radius=0.3, safety_thresh=0.5, simulate_duration=1.0, action_duration=0.1, map_path=""):
+    def __init__(self, map_path=""):
 
         super().__init__('dwa_action_server')
         self._action_server = ActionServer(
@@ -31,6 +32,23 @@ class DWAActionServer(Node):
             LocalPlanner,
             'dwa',
             self.execute_callback)
+        
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('robot_radius', 0.3),
+                ('safety_thresh', 0.5),
+                ('simulate_duration', 1.0),
+                ('action_duration', 0.1),
+                ('linear_speed_limit', 0.5),
+                ('angular_speed_limit', 0.5),
+                ('linear_step', 0.1),
+                ('angular_step', 0.1),
+                ('dist_thresh', 0.1),
+                ('dist_method', "L2"),
+            ])
+
+        self.add_on_set_parameters_callback(self.parameter_callback)
 
         # state variables
         self._x = 0.0
@@ -41,16 +59,19 @@ class DWAActionServer(Node):
         self._linear_twist = 0.0
         self._angular_twist = 0.0
 
-        # Config limits - perhaps break into a Service to set?
-        self._linear_limit = 0.5
-        self._angular_limit = 0.5
-        self._linear_step = 0.1
-        self._angular_step = 0.1
-
-        self._robot_radius = robot_radius
-        self._safety_thresh = safety_thresh
-        self._simulate_duration = simulate_duration
-        self._action_duration = action_duration
+        # Parameters
+        self.params = {
+            "robot_radius" :        self.get_parameter("robot_radius").value,
+            "safety_thresh" :       self.get_parameter("safety_thresh").value,
+            "simulate_duration" :   self.get_parameter("simulate_duration").value,
+            "action_duration" :     self.get_parameter("action_duration").value,
+            "linear_speed_limit" :  self.get_parameter("linear_speed_limit").value,
+            "angular_speed_limit" : self.get_parameter("angular_speed_limit").value,
+            "linear_step" :         self.get_parameter("linear_step").value,
+            "angular_step" :        self.get_parameter("angular_step").value,
+            "dist_thresh" :         self.get_parameter("dist_thresh").value,
+            "dist_method" :         self.get_parameter("dist_method").value,
+        }
 
         # Obstacles
         self.obstacles = [
@@ -94,21 +115,21 @@ class DWAActionServer(Node):
         self.goal_x = goal_handle.request.goal_position.x
         self.goal_y = goal_handle.request.goal_position.y
 
-        self.get_logger().info('Moving towards goal X:{} Y:{}'.format(self.goal_x, self.goal_y))
+        self.get_logger().info('Moving towards goal X:{:.2f} Y:{:.2f}'.format(self.goal_x, self.goal_y))
 
         while not self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
             # Enumerate possible actions, checking for bounds
             possible_linear = [ self._linear_twist ]
-            if (self._linear_twist + self._linear_step) < self._linear_limit: 
-                possible_linear.append(self._linear_twist + self._linear_step)
-            if (self._linear_twist - self._linear_step) > -self._linear_limit: 
-                possible_linear.append(self._linear_twist - self._linear_step)
+            if (self._linear_twist + self.params['linear_step']) < self.params['linear_speed_limit']: 
+                possible_linear.append(self._linear_twist + self.params['linear_step'])
+            if (self._linear_twist - self.params['linear_step']) > -self.params['linear_speed_limit']: 
+                possible_linear.append(self._linear_twist - self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
-            if (self._angular_twist + self._angular_step) < self._angular_limit: 
-                possible_angular.append(self._angular_twist + self._angular_step)
-            if (self._angular_twist - self._angular_step) > -self._angular_limit: 
-                possible_angular.append(self._angular_twist - self._angular_step)
+            if (self._angular_twist + self.params['angular_step']) < self.params['angular_speed_limit']: 
+                possible_angular.append(self._angular_twist + self.params['angular_step'])
+            if (self._angular_twist - self.params['angular_step']) > -self.params['angular_speed_limit']: 
+                possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
 
@@ -118,12 +139,12 @@ class DWAActionServer(Node):
                 for angular_twist in possible_angular:
                     
                     # Rotation matrix for current angle
-                    effective_yaw = self._yaw + angular_twist*self._simulate_duration
+                    effective_yaw = self._yaw + angular_twist*self.params['simulate_duration']
                     c, s = np.cos(effective_yaw), np.sin(effective_yaw)
                     R = np.array(((c, -s), (s, c)))
 
                     # displacement vector
-                    displacement = np.array([ linear_twist*self._simulate_duration, 0 ])
+                    displacement = np.array([ linear_twist*self.params['simulate_duration'], 0 ])
                     displacement = R @ displacement
 
                     # Eventual position
@@ -161,11 +182,11 @@ class DWAActionServer(Node):
             feedback_msg.current_pose.orientation.w = curr_quaternion[3]
             goal_handle.publish_feedback(feedback_msg)
             
-            self.get_logger().info('Current X:{} Y:{} Yaw:{} lin:{}, ang:{}'.format(
-                self._x, self._y, self._yaw, self._linear_twist, self._angular_twist ))
+            self.get_logger().info('Current X:{:.2f} Y:{:.2f} Yaw:{:.2f} lin:{:.2f}, ang:{:.2f}'.format(
+                self._x, self._y, np.degrees(self._yaw), self._linear_twist, self._angular_twist ))
 
             # Sleep for awhile before applying the next motion
-            time.sleep(self._action_duration)
+            time.sleep(self.params['action_duration'])
             # TODO publish feedback at regular intervals
 
         # Ensure robot is stopped
@@ -211,9 +232,9 @@ class DWAActionServer(Node):
             dist_to_cylinder = self.distToGoal(end_pose[0], end_pose[1], x, y)
             
             # Collision!
-            if dist_to_cylinder < (r+self._robot_radius):
+            if dist_to_cylinder < (r+self.params['robot_radius']):
                 score = 0
-            elif dist_to_cylinder < (r+self._robot_radius+self._safety_thresh):
+            elif dist_to_cylinder < (r+self.params['robot_radius']+self.params['safety_thresh']):
                 score -= safety_thresh_K / dist_to_cylinder
             else:
                 score -= non_thresh_K / dist_to_cylinder
@@ -221,24 +242,38 @@ class DWAActionServer(Node):
         # score cannot be negative
         return max(score, 0)
 
-    def distToGoal(self, curr_x, curr_y, goal_x, goal_y, method='L2'):
+    def distToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''
         Returns distance to goal based the `method`.
         `'L2'`: Calculates the L2 norm
         '''
+
+        method = self.params['dist_method']
+
         if method=='L2':
             dist = np.hypot( curr_x-goal_x, curr_y-goal_y )
             return dist
         else:
             raise NotImplementedError("distance function {} not implemented yet".format(method))
 
-    def closeToGoal(self, curr_x, curr_y, goal_x, goal_y, thresh=0.1):
+    def closeToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''Returns True if we are `thresh` away from the goal'''
         
-        if self.distToGoal(curr_x, curr_y, goal_x, goal_y, method='L2') < thresh:
+        if self.distToGoal(curr_x, curr_y, goal_x, goal_y, method='L2') < self.params['dist_thresh']:
             return True
         else:
             return False
+
+    def parameter_callback(self, params):
+        for param in params:
+            print(vars(param))  # Print out the parameters that attempt to be changed
+            # TODO error handling/type check/bounds check
+            self.params[param.name] = param.value
+            self.get_logger().debug("Set parameter {} to value {}".format(
+                param.name, self.params[param.name] ))
+
+        # Write parameter result change
+        return SetParametersResult(successful=True)
 
 def main(args=None):
     rclpy.init(args=args)
