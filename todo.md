@@ -85,3 +85,12 @@
 - Try remapping namespaces on the command line with 
 - `ros2 run multirobot_control dwa_server --ros-args -r __ns:=/robot1` 
 - `ros2 run multirobot_control dwa_client --ros-args -r __ns:=/robot1`
+
+- [ ] Scale up single robot DWA demo to the "warehouse" environment
+  - [ ] Simplify enivrionment to look like Amazon warehouse (manhattan-like)
+    - [ ] If global planner is needed perhaps use RRT?
+- [ ] Set up multi robot joint planner
+  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
+  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
+- [ ] 
+- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
