@@ -86,8 +86,11 @@
 - `ros2 run multirobot_control dwa_server --ros-args -r __ns:=/robot1` 
 - `ros2 run multirobot_control dwa_client --ros-args -r __ns:=/robot1`
 
+- `odom_distribution` has some skeleton code for robots to broadcast where they will be in the future. Currently doesn't work because of topic problems.
+- `dwa_server` sees the _future_ positions of other robts as a obstacle (subscribe to `OtherRobotLocations`)
+
 - [ ] Scale up single robot DWA demo to the "warehouse" environment
-  - [ ] Simplify enivrionment to look like Amazon warehouse (manhattan-like)
+  - [ ] Simplify environment to look like Amazon warehouse (manhattan-like)
     - [ ] If global planner is needed perhaps use RRT?
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.

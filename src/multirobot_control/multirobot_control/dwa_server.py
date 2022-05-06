@@ -10,6 +10,7 @@ from rclpy.qos import qos_profile_sensor_data
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
+from planner_action_interfaces.msg import OtherRobotLocations
 
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
@@ -80,6 +81,9 @@ class DWAActionServer(Node):
             (-1, 2, 0.5),
         ]
         
+        # other robots on the map
+        self.other_robots = []
+
         # Walls
         self.ub_x = 4.5
         self.lb_x = -4.5
@@ -90,11 +94,17 @@ class DWAActionServer(Node):
         self.state_sub = self.create_subscription(Odometry, 'odom', \
             self.handle_odom, qos_profile_sensor_data)
 
+        # Sub to messages about the pose of other robots (and their predicted positions)
+        self.other_robot_sub = self.create_subscription(OtherRobotLocations, 
+            'otherRobotLocations', self.handle_other_robot_state, 10)
+
         # Publish to cmd_vel
         self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        # Publish predicted movement
+        self.planned_pos_pub = self.create_publisher(Point, "planned_pos", 10)
 
-    '''Handle incoming data on `odom` by updating private variables'''
     def handle_odom(self, msg):
+        '''Handle incoming data on `odom` by updating private variables'''
         self._x = msg.pose.pose.position.x
         self._y = msg.pose.pose.position.y
         self._yaw = euler_from_quaternion([
@@ -106,6 +116,18 @@ class DWAActionServer(Node):
 
         # self.get_logger().debug("Current X:{} Y:{} Yaw:{}".format(
         #     self._x, self._y, self._yaw ))
+
+    def handle_other_robot_state(self, msg):
+        '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
+        
+        # print(msg)
+        self.other_robots = []
+        for pose in msg.positions:
+            print("[handle_other_robots] appending x:{:.2f} y:{:.2f}".format(pose.x, pose.y))
+            self.other_robots.append(
+                (pose.x, pose.y)
+            )
+
 
     ''' Executes the action. '''
     def execute_callback(self, goal_handle):
@@ -132,6 +154,7 @@ class DWAActionServer(Node):
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
+            planned_pose = None
 
             # Forward simulate actions based on dynamics model (?)
             # Assumes that robot can instantly achieve the commanded velocity (might not be the case)
@@ -156,6 +179,11 @@ class DWAActionServer(Node):
                         top_score = score
                         self._linear_twist = linear_twist
                         self._angular_twist = angular_twist
+                        
+                        planned_pose = end_pose
+
+            # TODO what if there is no goal sent?
+            self.planned_pos_pub.publish(Point(x=planned_pose[0], y=planned_pose[1], z=0.0))
 
             if top_score == 0:
                 # TODO handle 'deadlock'
@@ -239,6 +267,12 @@ class DWAActionServer(Node):
             else:
                 score -= non_thresh_K / dist_to_cylinder
 
+        for x, y in self.other_robots:
+            dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
+            # TODO hack, set this as a parameter
+            if dist_to_robot < (2.5*self.params['robot_radius']):
+                score -= safety_thresh_K / dist_to_robot
+
         # score cannot be negative
         return max(score, 0)
 
@@ -259,7 +293,7 @@ class DWAActionServer(Node):
     def closeToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''Returns True if we are `thresh` away from the goal'''
         
-        if self.distToGoal(curr_x, curr_y, goal_x, goal_y, method='L2') < self.params['dist_thresh']:
+        if self.distToGoal(curr_x, curr_y, goal_x, goal_y) < self.params['dist_thresh']:
             return True
         else:
             return False

@@ -12,9 +12,8 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
 
-
 from planner_action_interfaces.msg import OtherRobotLocations
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Pose, Twist, Point
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 
@@ -35,16 +34,17 @@ class OdomDistribution(Node):
 
         self.add_on_set_parameters_callback(self.parameter_callback)
 
-        self.robot_locs = {}            # Collection of robot poses
-        self.odom_subscriptions = []    # Collection of subscription objects
-        self.odom_publications = []     # Collection of publisher objects
+        self.robot_locs = {}                # Collection of robot poses
+        self.odom_subscriptions = []        # Collection of subscription objects
+        self.planned_pos_subscriptions = [] 
+        self.odom_publications = []         # Collection of publisher objects
         
         assert self.get_parameter("robot_list").value is not None
         assert len(self.get_parameter("robot_list").value) != 0
 
         for index, robot in enumerate(self.get_parameter("robot_list").value):
-            # Dummy position for now
-            dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot)
+            # robot_locs contains a tuple of (current_pos, name, future_pos)
+            dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot, None)
             self.robot_locs[robot] = dummyPoint
             self.robot_locs[index] = dummyPoint
             # We use a dict because otherwise subscribing to many robots' locations will become tough
@@ -54,6 +54,12 @@ class OdomDistribution(Node):
                 self.create_subscription(Odometry, robot+'/odom', \
                 self.handle_odom, qos_profile_sensor_data)
             )
+
+            self.planned_pos_subscriptions.append(
+                self.create_subscription(Point, robot+'/planned_pos', \
+                self.handle_planned_pos, 10)
+            )
+
             self.odom_publications.append(
                 self.create_publisher(OtherRobotLocations, robot+'/otherRobotLocations', 10)
             )
@@ -118,13 +124,18 @@ class OdomDistribution(Node):
                 j = j_index[idx]
                 if  i==robot_idx:
                     robot_names.append(String(data=self.robot_locs[j][1]))
+                    # THIS SHOULD BE PLANNED_POS, but needs fixing
                     robot_poses.append(self.robot_locs[j][0])
+                    # robot_poses.append(self.robot_locs[j][2])
+                    
                 elif j==robot_idx:
                     robot_names.append(String(data=self.robot_locs[i][1]))
                     robot_poses.append(self.robot_locs[i][0])
+                    # robot_poses.append(self.robot_locs[i][2])
+                    
 
-            message.name = robot_names
-            message.position = robot_poses
+            message.names = robot_names
+            message.positions = robot_poses
 
             self.get_logger().info("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
                 robot_idx, self.robot_locs[robot_idx][1],
@@ -149,6 +160,24 @@ class OdomDistribution(Node):
             robot_id, self.robot_locs[robot_id][0].x, 
             self.robot_locs[robot_id][0].y, self.robot_locs[robot_id][0].z
         ))
+
+    def handle_planned_pos(self, msg):
+        pass
+        '''
+        # update the predicted location of each robot as a class variable
+        # ? Same hack as handle_odom
+        # TODO broken, no child_frame_id on Point objects, might have to use a custom message?
+        robot_id = msg.child_frame_id.split('_')[0]
+
+        self.robot_locs[robot_id][2].x = msg.x
+        self.robot_locs[robot_id][2].y = msg.y
+        self.robot_locs[robot_id][2].z = msg.z
+
+        self.get_logger().debug("Updated robot name {} with predicted pos x:{:.2f} y:{:.2f} z:{:.2f}".format(
+            robot_id, self.robot_locs[robot_id][2].x, 
+            self.robot_locs[robot_id][2].y, self.robot_locs[robot_id][2].z
+        ))
+        '''
 
     def parameter_callback(self, params):
         # type/bounds check on pub_freq (don't modify robot_list)
