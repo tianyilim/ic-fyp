@@ -97,3 +97,7 @@
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
 - [ ] 
 - [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
+
+### Mon 09/05/22
+- Do **not** update Python and Apt packages often - spent a lot of time fixing some dependency with `gazebo_msgs` deciding to break, had to uninstall and reinstall `ros-galactic`.
+- Added in programatically changing the colour of robots in Gazebo so they can be distinguished from one another.

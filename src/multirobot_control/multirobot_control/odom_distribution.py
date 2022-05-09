@@ -4,8 +4,6 @@ This node loops through all robots in the simulation and gets a distance between
 If robots are mutually close by, then we send velocity information to both robots.
 '''
 
-import enum
-from re import M
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
