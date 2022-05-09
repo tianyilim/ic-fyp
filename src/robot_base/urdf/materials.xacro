@@ -7,4 +7,23 @@
   <material name="green"><color rgba="${10/255} ${255/255} ${10/255} 1.0"/></material>
   <material name="blue"><color rgba="${10/255} ${10/255} ${255/255} 1.0"/></material>
   <material name="white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material>
+
+  <!-- 16 colour palette -->
+  <material name="00black"><color rgba="${0/255} ${0/255} ${0/255} 1.0"/></material>
+  <material name="01maroon"><color rgba="${132/255} ${2/255} ${6/255} 1.0"/></material>
+  <material name="02green"><color rgba="${0/255} ${128/255} ${23/255} 1.0"/></material>
+  <material name="03olive"><color rgba="${128/255} ${128/255} ${26/255} 1.0"/></material>
+  <material name="04navy"><color rgba="${0/255} ${2/255} ${125/255} 1.0"/></material>
+  <material name="05purple"><color rgba="${131/255} ${4/255} ${126/255} 1.0"/></material>
+  <material name="06teal"><color rgba="${0/255} ${128/255} ${127/255} 1.0"/></material>
+  <material name="07silver"><color rgba="${192/255} ${192/255} ${192/255} 1.0"/></material>
+  <material name="08gray"><color rgba="${128/255} ${128/255} ${128/255} 1.0"/></material>
+  <material name="09red"><color rgba="${255/255} ${10/255} ${23/255} 1.0"/></material>
+  <material name="10lime"><color rgba="${0/255} ${254/255} ${57/255} 1.0"/></material>
+  <material name="11yellow"><color rgba="${255/255} ${255/255} ${63/255} 1.0"/></material>
+  <material name="12blue"><color rgba="${0/255} ${8/255} ${249/255} 1.0"/></material>
+  <material name="13fuchsia"><color rgba="${255/255} ${17/255} ${250/255} 1.0"/></material>
+  <material name="14aqua"><color rgba="${0/255} ${255/255} ${254/255} 1.0"/></material>
+  <material name="15white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material>
+
 </robot>

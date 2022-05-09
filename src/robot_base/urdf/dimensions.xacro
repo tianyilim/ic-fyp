@@ -5,7 +5,7 @@
   <xacro:property name="wheelwidth" value="0.05" />
   <xacro:property name="wheelgap" value="0.005"/>
   
-  <xacro:property name="chassis_x" value="0.7" />
+  <xacro:property name="chassis_x" value="0.5" />
   <xacro:property name="chassis_y" value="0.5" />
   <xacro:property name="chassis_z" value="0.2" />
   
