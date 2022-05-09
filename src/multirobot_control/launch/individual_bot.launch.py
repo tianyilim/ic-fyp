@@ -25,13 +25,13 @@ def generate_launch_description():
     
     # Arguments for namespacing
     namespace = LaunchConfiguration('namespace')
-    use_namespace = LaunchConfiguration('use_namespace')
     x_pose = LaunchConfiguration('x_pose')
     y_pose = LaunchConfiguration('y_pose')
     z_pose = LaunchConfiguration('z_pose')
     yaw_pose = LaunchConfiguration('yaw_pose')
     use_sim_time = LaunchConfiguration('use_sim_time')
     urdf = LaunchConfiguration('urdf')
+    robot_num = LaunchConfiguration('robot_num')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -42,11 +42,6 @@ def generate_launch_description():
         'namespace',
         default_value='',
         description='Top-level namespace')
-
-    declare_use_namespace_cmd = DeclareLaunchArgument(
-        'use_namespace',
-        default_value='false',
-        description='Whether to apply a namespace to the navigation stack')
 
     declare_x_pose_cmd = DeclareLaunchArgument(
         'x_pose',
@@ -80,6 +75,12 @@ def generate_launch_description():
         description='Full path to robot URDF to load'
     )
 
+    declare_robot_num_cmd = DeclareLaunchArgument(
+        'robot_num',
+        default_value='15',
+        description='The number of the robot, used to assign colours to distinguish robots'
+    )
+
     # os.environ["GAZEBO_MODEL_PATH"] = os.environ.get("GAZEBO_MODEL_PATH") + ':' \
     #     + os.path.join(robot_model_dir, 'components') + ':' \
     #     + os.path.join(robot_model_dir, 'robots')
@@ -96,7 +97,8 @@ def generate_launch_description():
             '-x', x_pose,
             '-y', y_pose,
             '-z', z_pose,
-            '-Y', yaw_pose
+            '-Y', yaw_pose,
+            '--robot_num', robot_num
         ],
         output='screen'
     )
@@ -173,13 +175,13 @@ def generate_launch_description():
 
     ld = LaunchDescription()
     ld.add_action(declare_namespace_cmd)
-    ld.add_action(declare_use_namespace_cmd)
     ld.add_action(declare_x_pose_cmd)
     ld.add_action(declare_y_pose_cmd)
     ld.add_action(declare_z_pose_cmd)
     ld.add_action(declare_yaw_pose_cmd)
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_urdf_cmd)
+    ld.add_action(declare_robot_num_cmd)
     
     ld.add_action(bringup_group_cmd)
     # ld.add_action(start_rviz_cmd)

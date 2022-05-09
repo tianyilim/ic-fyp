@@ -32,9 +32,10 @@ from launch_ros.actions import PushRosNamespace
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('multirobot_control')
-    nav2_bringup_dir = get_package_share_directory('nav2_bringup')
+    # nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     robot_model_dir = get_package_share_directory('neo_simulation2')
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
+    robot_base_dir = get_package_share_directory('robot_base')
 
     robots = [
         {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 2.2, 'z_pose': 0.15, 'yaw_pose': 0.0},
@@ -83,7 +84,8 @@ def generate_launch_description():
 
     declare_urdf_cmd = DeclareLaunchArgument(
         'urdf',
-        default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
+        # default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
+        default_value=os.path.join(robot_base_dir, 'urdf', 'robot_base.xacro'),
         description='Full path to robot URDF to load'
     )
 
@@ -108,7 +110,7 @@ def generate_launch_description():
     #     cwd=[warehouse_dir], output='screen')
 
     spawn_robot_cmds = []
-    for robot in robots:
+    for i, robot in enumerate(robots):
         spawn_robot_cmds.append(
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -123,6 +125,7 @@ def generate_launch_description():
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
                     'urdf': urdf,
+                    'robot_num': str(i)  # To tag robots' colours
                 }.items()
             )
         )

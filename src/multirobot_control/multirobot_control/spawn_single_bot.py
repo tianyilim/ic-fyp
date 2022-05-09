@@ -30,6 +30,27 @@ from tf_transformations import quaternion_from_euler
 
 def main():
     bringup_dir = get_package_share_directory('multirobot_control')
+    urdf_dir = get_package_share_directory('robot_base')
+
+    # Colours in the Materials section
+    colour_palette = {
+        0: "Gazebo/Red",
+        1: "Gazebo/Green",	
+        2: "Gazebo/Blue",	
+        3: "Gazebo/Yellow",	
+        4: "Gazebo/Purple",	
+        5: "Gazebo/Turquoise",	
+        6: "Gazebo/Orange",	
+        7: "Gazebo/Indigo",	
+        8: "Gazebo/DarkYellow",
+        9: "Gazebo/SkyBlue",
+        10: "Gazebo/ZincYellow",
+        11: "Gazebo/RedBright",
+        12: "Gazebo/BlueLaser",
+        13: "Gazebo/Grey",
+        14: "Gazebo/Black",
+        15: "Gazebo/White"
+    }
 
     # Get input arguments from user
     parser = argparse.ArgumentParser(description='Spawn Robot into Gazebo with Nav2')
@@ -48,15 +69,29 @@ def main():
     parser.add_argument('-k', '--timeout', type=float, default=10.0,
                         help="Seconds to wait. Block until the future is complete if negative. \
                             Don't wait if 0.")
-    parser.add_argument('-u', '--urdf', type=str, default=os.path.join(
-                            bringup_dir, 'urdf', 'mp_400.urdf' ),
+    parser.add_argument('-u', '--urdf', type=str, 
+                        # default=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf' ),
+                        default=os.path.join(urdf_dir, 'urdf', 'robot_base.xacro' ),
                        help="the path to the robot's model file (URDF)")
+    parser.add_argument('--robot_num', type=int, default=15,
+                        help="Robot's number to help with identification")
 
     args, unknown = parser.parse_known_args()
 
     # Start node
     rclpy.init()
     node = rclpy.create_node('entity_spawner')
+
+    node.get_logger().info('spawning `{}` on namespace `{}` at x:{}, y:{}, z:{}, Yaw:{}'.format(
+        args.robot_name, args.robot_namespace, args.x, args.y, args.z, args.yaw))
+
+    node.get_logger().info('Taking URDF from {}'.format(args.urdf))
+
+    if args.robot_num in colour_palette:
+        color = colour_palette[args.robot_num]
+    else:
+        color = 'gray'
+    node.get_logger().info("Setting colour to {}".format(color))
 
     node.get_logger().info(
         'Creating Service client to connect to `/spawn_entity`')
@@ -66,11 +101,6 @@ def main():
     if not client.service_is_ready():
         client.wait_for_service()
         node.get_logger().info('...connected!')
-
-    node.get_logger().info('spawning `{}` on namespace `{}` at x:{}, y:{}, z:{}, Yaw:{}'.format(
-        args.robot_name, args.robot_namespace, args.x, args.y, args.z, args.yaw))
-
-    node.get_logger().info('Taking URDF from {}'.format(args.urdf))
 
     # We need to remap the transform (/tf) topic so each robot has its own.
     # We do this by adding `ROS argument entries` to the sdf file for
@@ -102,8 +132,16 @@ def main():
                 ns.text = '/' + args.robot_namespace
                 ns.text = args.robot_namespace
 
+        # Change robot colour as well
+        links = root.findall('gazebo')
+        for elem in links:
+            # Use short-circuit eval to only get things with 'reference' attrib
+            if 'reference' in elem.attrib and 'base_link' in elem.attrib['reference']:
+                # print(elem.find('material').text)
+                elem.find('material').text = color
+
     # Save file for reference
-    # with open('out.xml', 'wb') as f:
+    # with open('out_{}.xml'.format(args.robot_name), 'wb') as f:
     #     ET.ElementTree(root).write(f)
 
     # Set data for request
