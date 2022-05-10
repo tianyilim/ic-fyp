@@ -1,15 +1,14 @@
 <?xml version="1.0"?>
 <sdf version="1.6">
 <model name="marker">
-    <static>false</static>
+    <static>true</static>
     <link name="marker">
-
-    <visual name="marker">
-        <pose>0 0 0.001 0 0 0</pose>
-        <geometry>
-            <cylinder>
-                <radius>1</radius>
-                <length>0.001</length>
+        <visual name="marker">
+            <pose>0 0 0.001 0 0 0</pose>
+            <geometry>
+                <cylinder>
+                    <radius>0.25</radius>
+                    <length>0.001</length>
                 </cylinder>
             </geometry>
             <material>
@@ -19,7 +18,6 @@
                 </script>
             </material>
         </visual>
-
     </link>
     </model>
 </sdf>

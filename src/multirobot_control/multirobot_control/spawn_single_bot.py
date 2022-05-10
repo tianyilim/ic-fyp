@@ -18,7 +18,6 @@ Spawns a single robot in Gazebo with its own namespace.
 
 import argparse
 import os
-from re import A
 import xml.etree.ElementTree as ET
 import xacro
 
@@ -28,29 +27,13 @@ import rclpy
 
 from tf_transformations import quaternion_from_euler
 
+# The dictionary containing the palette of robots--> gazebo colors
+from multirobot_control.colour_palette import colour_palette
+
 def main():
     bringup_dir = get_package_share_directory('multirobot_control')
     urdf_dir = get_package_share_directory('robot_base')
 
-    # Colours in the Materials section
-    colour_palette = {
-        0: "Gazebo/Red",
-        1: "Gazebo/Green",	
-        2: "Gazebo/Blue",	
-        3: "Gazebo/Yellow",	
-        4: "Gazebo/Purple",	
-        5: "Gazebo/Turquoise",	
-        6: "Gazebo/Orange",	
-        7: "Gazebo/Indigo",	
-        8: "Gazebo/DarkYellow",
-        9: "Gazebo/SkyBlue",
-        10: "Gazebo/ZincYellow",
-        11: "Gazebo/RedBright",
-        12: "Gazebo/BlueLaser",
-        13: "Gazebo/Grey",
-        14: "Gazebo/Black",
-        15: "Gazebo/White"
-    }
 
     # Get input arguments from user
     parser = argparse.ArgumentParser(description='Spawn Robot into Gazebo with Nav2')
