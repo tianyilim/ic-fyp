@@ -21,8 +21,6 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 import time
 import numpy as np
 
-# TODO add a config file to adjust parameters such as closeToGoal Threshold
-
 class DWAActionServer(Node):
 
     def __init__(self, map_path=""):
