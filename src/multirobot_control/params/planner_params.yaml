@@ -11,6 +11,10 @@ dwa_action_server:
     dist_thresh : 0.1
     dist_method : "L2"
 
-odom_distribution:
+/**:
   ros__parameters:
-    pub_freq: 0.05  # Match action duration
+    pub_freq: 20.0  # Match action duration
+    robot_list: ["robot1", "robot2", "robot3"]
+    robot_starting_x: [0.0, 0.0, 0.0]
+    robot_starting_y: [2.2, 0.0, 4.5]
+    robot_starting_theta: []

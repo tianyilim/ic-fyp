@@ -135,7 +135,7 @@ class OdomDistribution(Node):
             message.names = robot_names
             message.positions = robot_poses
 
-            self.get_logger().info("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
+            self.get_logger().debug("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
                 robot_idx, self.robot_locs[robot_idx][1],
                 robot_names, robot_poses
             ))

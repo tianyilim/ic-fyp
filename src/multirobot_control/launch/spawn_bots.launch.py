@@ -81,7 +81,7 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
+        default_value=os.path.join(bringup_dir, 'params', 'planner_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_urdf_cmd = DeclareLaunchArgument(
@@ -159,7 +159,7 @@ def generate_launch_description():
         executable="odom_distribution",
         # No need for namespace
         output='screen',
-        # TODO add in params
+        parameters=[params_file]
     )
 
     # Create the launch description and populate
@@ -184,5 +184,7 @@ def generate_launch_description():
         ld.add_action(cmd)
     for cmd in start_navigation_cmds:
         ld.add_action(cmd)
+
+    ld.add_action(start_odom_distr_cmd)
 
     return ld
