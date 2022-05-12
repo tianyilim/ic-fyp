@@ -65,9 +65,11 @@ def generate_launch_description():
 
     declare_world_cmd = DeclareLaunchArgument(
         'world', default_value=os.path.join(
-            # warehouse_dir, 'worlds', 'no_roof_small_warehouse', 'no_roof_small_warehouse.world' ),
-            # robot_model_dir, 'worlds', 'aws.world' ),
-            robot_model_dir, 'worlds', 'neo_workshop.world' ),
+            # warehouse_dir, 'worlds', 'no_roof_small_warehouse', 'no_roof_small_warehouse.world'
+            # robot_model_dir, 'worlds', 'aws.world'
+            # robot_model_dir, 'worlds', 'neo_workshop.world'
+            bringup_dir, 'worlds', 'test_world.world'
+        ),
         description="Full path to world file"
     )
 

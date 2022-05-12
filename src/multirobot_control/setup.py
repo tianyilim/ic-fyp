@@ -21,6 +21,9 @@ setup(
         (os.path.join('share', package_name, 'maps'), glob(os.path.join('maps/*'))),
         # Include URDF and RVIZ config files
         (os.path.join('share', package_name, 'urdf'), glob('urdf/*')),
+        # Include worlds
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*.world')),
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
