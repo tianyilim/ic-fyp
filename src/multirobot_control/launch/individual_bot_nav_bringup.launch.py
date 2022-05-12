@@ -116,6 +116,7 @@ def generate_launch_description():
         output='screen'
     )
 
+    # TODO add in params
     start_dwa_cmd = Node(
         package='multirobot_control',
         executable='dwa_server',

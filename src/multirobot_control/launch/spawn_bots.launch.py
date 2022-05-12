@@ -26,7 +26,7 @@ from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDesc
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
-from launch_ros.actions import PushRosNamespace
+from launch_ros.actions import PushRosNamespace, Node
 
 
 def generate_launch_description():
@@ -153,6 +153,14 @@ def generate_launch_description():
                 }.items()
             )
         )
+
+    start_odom_distr_cmd = Node(
+        package="multirobot_control",
+        executable="odom_distribution",
+        # No need for namespace
+        output='screen',
+        # TODO add in params
+    )
 
     # Create the launch description and populate
     ld = LaunchDescription()
