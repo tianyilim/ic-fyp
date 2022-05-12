@@ -275,7 +275,7 @@ class DWAActionServer(Node):
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             # TODO hack, set this as a parameter
-            if dist_to_robot < (2.5*self.params['robot_radius']):
+            if dist_to_robot < (3.0*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
         # score cannot be negative
