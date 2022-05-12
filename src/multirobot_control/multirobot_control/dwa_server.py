@@ -12,7 +12,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, Quaternion, Vector3
 
@@ -197,6 +197,7 @@ class DWAActionServer(Node):
             self.cmd_vel_pub.publish(cmd_vel)
 
             # Publish feedback
+            feedback_msg.robot_name = String(data=self.get_namespace())
             feedback_msg.current_pose.position.x = self._x
             feedback_msg.current_pose.position.y = self._y
             feedback_msg.current_pose.position.z = 0.0
@@ -210,8 +211,10 @@ class DWAActionServer(Node):
             feedback_msg.current_pose.orientation.w = curr_quaternion[3]
             goal_handle.publish_feedback(feedback_msg)
             
-            self.get_logger().info('Current X:{:.2f} Y:{:.2f} Yaw:{:.2f} lin:{:.2f}, ang:{:.2f}'.format(
-                self._x, self._y, np.degrees(self._yaw), self._linear_twist, self._angular_twist ))
+            self.get_logger().debug('Robot {} Current X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
+                self.get_namespace(),
+                self._x, self._y, np.degrees(self._yaw), 
+                self._linear_twist, self._angular_twist ))
 
             # Sleep for awhile before applying the next motion
             time.sleep(self.params['action_duration'])

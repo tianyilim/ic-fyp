@@ -6,4 +6,5 @@ std_msgs/Bool success
 geometry_msgs/Point final_position
 ---
 # Feedback
+std_msgs/String robot_name
 geometry_msgs/Pose current_pose
