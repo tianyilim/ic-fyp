@@ -231,12 +231,16 @@ class DWAActionServer(Node):
 
         # After DWA reaches goal
         goal_handle.succeed()
+        self.get_logger().info("Robot {} reached goal at X: {} Y: {}".format(
+            self.get_namespace(), self.goal_x, self.goal_y
+        ))
         
         result = LocalPlanner.Result()
         result.success = Bool(data=True)
         result.final_position.x = self._x
         result.final_position.y = self._y
         result.final_position.z = 0.0
+        result.robot_name = String(data=self.get_namespace())
         return result
 
     # Helper functions
