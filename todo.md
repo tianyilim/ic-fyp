@@ -95,7 +95,6 @@
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-- [ ] 
 - [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
 
 ### Mon 09/05/22
@@ -104,3 +103,11 @@
 
 ### Tue 10/05/22
 - Added in `goal_creation`, a node that spawns goals and visualises them in Gazebo.
+- Similar to `odom_distribution` run `ros2 run multirobot_control goal_creation --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]'`
+
+### Thur 12/05/22
+- Refined `goal_creation` node, using a timer callback to check if robots are ready for their next goal. This prevents nested callbacks and allows the simulation to run smoothly.
+- [x] Robots to move to their original posiitons (guaranteed collision-free) after finishing goals to ensure goals do not end with colliding robots.
+  - This is implemented as a parameter. Perhaps it can also be set in the launch file, eventually. But for now, we run 
+  - `ros2 run multirobot_control goal_creation --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p 'robot_starting_x:=[0.0, 0.0, 0.0]' -p 'robot_starting_y:=[2.2, 0.0, 4.5]'`
+- [ ] Use the params file with the DWA server as well as the `odom_distribution` nodes, and in the future the `goal_creation` node as well.

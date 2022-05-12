@@ -36,17 +36,18 @@ from enum import Enum, auto
 # for x_goal in np.arange(-4, 4.1, 0.5):
 #     for y_goal in np.arange(-4, 4.1, 0.5):
 #         GOAL_ARRAY.append((x_goal, y_goal))
-GOAL_ARRAY = [(-2.5, 4.0), (-3.0, 1.0), (2.0, 3.0), (-3.5, -3.5)]
+GOAL_ARRAY = [(3.0, 3.0), (-3.0, 3.0), (3.0, -3.0), (-3.0, -3.0)]
 
 # Number of goals each robot has to finish
-TOTAL_GOALS = 5
+TOTAL_GOALS = 2
 
 GOAL_SDF_PATH = os.path.join(get_package_share_directory('multirobot_control'),
     'urdf', 'goal.sdf')
 
 class RobotGoalStatus(Enum):
-    GOAL_STATUS_READY = auto()
-    GOAL_STATUS_DOING = auto()
+    GOAL_STATUS_READY = auto()      # Ready to accept a new goal
+    GOAL_STATUS_DOING = auto()      # Done with the goal
+    GOAL_STATUS_PENDING = auto()    # Processing a goal
 
 
 class GoalCreation(Node):
@@ -57,6 +58,8 @@ class GoalCreation(Node):
             namespace='',
             parameters=[
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
+                ('robot_starting_x', Parameter.Type.DOUBLE_ARRAY),
+                ('robot_starting_y', Parameter.Type.DOUBLE_ARRAY),
             ]
         )
 
@@ -64,6 +67,10 @@ class GoalCreation(Node):
         
         assert self.get_parameter("robot_list").value is not None
         assert len(self.get_parameter("robot_list").value) != 0
+        assert len(self.get_parameter("robot_starting_x").value) == len(self.get_parameter("robot_list").value), \
+            "Ensure all robot starting x are specified!"
+        assert len(self.get_parameter("robot_starting_y").value) == len(self.get_parameter("robot_list").value), \
+            "Ensure all robot starting y are specified!"
 
         # ? Better to use a dataclass?
         self.robot_remaining_goals = {}     # Collection of goals each robot still has to finish
@@ -92,7 +99,7 @@ class GoalCreation(Node):
                 ActionClient(self, LocalPlanner, robot+'/dwa')
 
             self.robot_name_to_idx[robot] = index
-            self.robot_remaining_goals[robot] = TOTAL_GOALS
+            self.robot_remaining_goals[robot] = TOTAL_GOALS + 1
 
             # Send initial first goal (random generated)
             goal_idx = np.random.randint(len(GOAL_ARRAY))
@@ -114,24 +121,13 @@ class GoalCreation(Node):
         goal_timer_period = 1.0
         self.goal_assignment_timer = self.create_timer( goal_timer_period, self.goal_assignment_timer_callback )
 
-    # TODO parameterize generating a new goal
-    # def generate_goal(self):
-    #     goal_idx = np.random.randint(len(GOAL_ARRAY))
-    #     initial_goal =  GOAL_ARRAY[goal_idx]
-    #     uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
-    #     uuid_arr[-1] = index
-    #     curr_uuid = UUID(uuid=uuid_arr)
-    #     self.robot_uuids[robot] = index # Just take the last element as the UUID
-    #     pass
-
     def send_goal(self, robot_name, goal_position: Point, goal_uuid):
         '''Sends a Point goal to the robot (specified by robot name)'''
         goal_msg = LocalPlanner.Goal()
         goal_msg.goal_position = goal_position
 
-        # ~ Spawn Gazebo object here (Shifting it if necessary)
+        # Delete existing object, if it exists
         if robot_name in self.gazebo_goals.keys():
-            # Delete existing object
             self.get_logger().info(f"Attempting to delete goal for {robot_name}")
             self.delete_goal(robot_name)
         
@@ -161,7 +157,7 @@ class GoalCreation(Node):
                 break
 
         if not goal_handle.accepted:
-            # Todo: Respond to goal rejected by attempting to send another goal.
+            # TODO: Respond to goal rejected by attempting to send another goal.
             # If goal cannot be completed in ~TIMEOUT seconds, reject goal too?
             self.get_logger().info('Goal rejected by robot {}'.format(robot_name))
             return
@@ -190,45 +186,6 @@ class GoalCreation(Node):
 
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_READY
 
-        # TODO Need to create a new flag (perhaps timer callback) to assign new goals. This is not working
-        '''
-        # Check if the current robot has finished all goals
-        if self.robot_remaining_goals[robot_name] == 0:
-            self.get_logger().info(f"Bye from {robot_name} UUID {result.goal_id.uuid}")
-
-            self.get_logger().info('Robot {} has finished all goals. Not sending any more.'\
-                .format(robot_name))
-            
-            # check if all goals are complete, if so we shutdown this node.
-            for remaining_goals in self.robot_remaining_goals.values():
-                if remaining_goals != 0:
-                    return  # We still have work to do
-                else:
-                    self.get_logger().info("All robots have finished goals. Shutting down.")
-                    rclpy.shutdown()    # All nodes have reached all goals.
-
-        else:
-
-        self.get_logger().info(f"Hi from {robot_name} UUID {result.goal_id.uuid}")
-        
-        # Generate a new goal
-        goal_idx = np.random.randint(len(GOAL_ARRAY))
-        goal_coords =  GOAL_ARRAY[goal_idx]
-
-        uuid_num = result.goal_id.uuid[-1]
-        uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
-        uuid_arr[-1] = uuid_num + len(self.robot_remaining_goals)
-        curr_uuid = UUID(uuid=uuid_arr)
-        self.robot_uuids[robot_name] = uuid_arr[-1]
-
-        self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
-            robot_name, goal_coords[0], goal_coords[1], uuid_arr[-1]
-        ))
-
-        self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0), 
-            goal_uuid=curr_uuid)
-        '''
-
     def goal_assignment_timer_callback(self):
         # Check if all robots are done
         if all( remaining_goals == 0 for remaining_goals in self.robot_remaining_goals.values() ):
@@ -242,8 +199,7 @@ class GoalCreation(Node):
             self.get_logger().debug(f"Robot {robot_name} status {self.robot_goal_status[robot_name]} " + \
             f"Remaining Goals {self.robot_remaining_goals[robot_name]}")
 
-            if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY \
-            and self.robot_remaining_goals[robot_name] > 0:
+            if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY:
                 # assign a new goal
                 goal_idx = np.random.randint(len(GOAL_ARRAY))
                 goal_coords =  GOAL_ARRAY[goal_idx]
@@ -253,13 +209,28 @@ class GoalCreation(Node):
                 uuid_arr[-1] = uuid_num + len(self.robot_remaining_goals)
                 curr_uuid = UUID(uuid=uuid_arr)
                 self.robot_uuids[robot_name] = uuid_arr[-1]
+                self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_PENDING
 
-                self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
-                    robot_name, goal_coords[0], goal_coords[1], uuid_arr[-1]
-                ))
+                if self.robot_remaining_goals[robot_name] > 1:
+                    self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
+                        robot_name, goal_coords[0], goal_coords[1], uuid_arr[-1]
+                    ))
 
-                self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0), 
-                    goal_uuid=curr_uuid)
+                    self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0), 
+                        goal_uuid=curr_uuid)
+
+                elif self.robot_remaining_goals[robot_name] == 1:
+                    # assign goal back to start
+                    robot_index = self.robot_name_to_idx[robot_name]
+                    start_x = self.get_parameter('robot_starting_x').value[robot_index]
+                    start_y = self.get_parameter('robot_starting_y').value[robot_index]
+                    self.get_logger().info("Sending {} back to starting position X:{:.2f} Y:{:.2f} with UUID {}".format(
+                        robot_name, start_x, start_y, uuid_arr[-1]
+                    ))
+
+                    self.send_goal(robot_name, Point(x=start_x, y=start_y, z=0.0), 
+                        goal_uuid=curr_uuid)
+                    
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback.current_pose
@@ -281,6 +252,7 @@ class GoalCreation(Node):
         self.get_logger().info("No parameters are able to be set for this node.")
         return SetParametersResult(successful=False)
 
+    # TODO pass goal/uuid number into the spawn_delete arguments so that goals are deleted spawned appropriately.
     def spawn_goal(self, robot_name: str, goal_x: float, goal_y: float):
         '''
         Spawns a goal model in Gazebo for visualization.
@@ -298,24 +270,13 @@ class GoalCreation(Node):
         request.initial_pose.position.y = goal_y
         request.initial_pose.position.z = 0.0
 
-        self.get_logger().info(f"Spawning {request.name}")
+        self.get_logger().info(f"Spawning goal {TOTAL_GOALS-self.robot_remaining_goals[robot_name]+1} for {robot_name}.")
         # Send request
         self.spawn_future = self.spawn_client.call_async(request)
         self.spawn_future.add_done_callback(self.spawn_done)
     
     def spawn_done(self, response):
-        self.get_logger().info("Spawn Service done!")
-        # print(dir(response.result))
-        '''
-        ['__await__', '__class__', '__del__', '__delattr__', '__dict__', '__dir__', 
-        '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', 
-        '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', 
-        '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', 
-        '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_callbacks', 
-        '_cancelled', '_done', '_exception', '_exception_fetched', '_executor', '_lock', 
-        '_result', '_schedule_or_invoke_done_callbacks', '_set_executor', 'add_done_callback', 
-        'cancel', 'cancelled', 'done', 'exception', 'result', 'set_exception', 'set_result']
-        '''
+        self.get_logger().debug("Spawn Service done!")
 
     def delete_goal(self, robot_name: str):
         '''
@@ -324,14 +285,13 @@ class GoalCreation(Node):
         request = DeleteEntity.Request()
         request.name = robot_name + "_goal" # match that in spawn_goal
 
-        self.get_logger().info(f"Deleting {request.name}")
+        self.get_logger().info(f"Deleting goal {TOTAL_GOALS-self.robot_remaining_goals[robot_name]} for {robot_name}.")
         # Send request
         self.delete_future = self.delete_client.call_async(request)
         self.delete_future.add_done_callback(self.delete_done)
     
     def delete_done(self, response):
-        self.get_logger().info("Delete Service done!")
-        # print(dir(response))
+        self.get_logger().debug("Delete Service done!")
 
 def main(args=None):
     rclpy.init(args=args)
