@@ -2,6 +2,7 @@
 geometry_msgs/Point goal_position
 ---
 # Result
+std_msgs/String robot_name
 std_msgs/Bool success
 geometry_msgs/Point final_position
 ---
