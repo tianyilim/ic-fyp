@@ -7,6 +7,7 @@
 - [ ] Programatically create Rviz files for visualising each robot (currently hardcoded)
 - [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
 
+---
 ## Changelog
 ### Tue 19/04/22
 - Create package
@@ -91,14 +92,6 @@
 - `odom_distribution` has some skeleton code for robots to broadcast where they will be in the future. Currently doesn't work because of topic problems.
 - `dwa_server` sees the _future_ positions of other robts as a obstacle (subscribe to `OtherRobotLocations`)
 
-- [ ] Scale up single robot DWA demo to the "warehouse" environment
-  - [ ] Simplify environment to look like Amazon warehouse (manhattan-like)
-    - [ ] If global planner is needed perhaps use RRT?
-- [ ] Set up multi robot joint planner
-  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
-  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
-
 ### Mon 09/05/22
 - Do **not** update Python and Apt packages often - spent a lot of time fixing some dependency with `gazebo_msgs` deciding to break, had to uninstall and reinstall `ros-galactic`.
 - Added in programatically changing the colour of robots in Gazebo so they can be distinguished from one another.
@@ -121,3 +114,14 @@
 - Fixed xacro not working on world files. It turns out that somewhere, `cylinder` is a reserved keyword or something. Therefore, renamed the macro we used to be `cylinder_element`.
 - Added `factory_world.world` in `worlds`. Remember to regenerate the xacro file whenever it is updated. 
 - [ ] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.
+- [ ] Scale up single robot DWA demo to the "warehouse" environment
+  - [ ] Simplify environment to look like Amazon warehouse (manhattan-like)
+    - If global planner is needed perhaps use RRT.
+- [ ] Set up multi robot joint planner
+  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
+  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
+- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
+  - Dump a results file containing the params file as well as certain metrics, such as:
+    - Average time per goal completion
+    - Average goals per minute
+    - Average robot speed
