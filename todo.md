@@ -79,7 +79,7 @@
 - Made a new node, `odom_distribution` which simulates communication distance between the set of robots.
 - Run by `ros2 run multirobot_control odom_distribution --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p pub_freq:=0.5`, can adjust `robot_list` as required for the number (and name) of robots in the simulation, and `pub_freq` as how often the terminal should be spammed; could be the same as the calculation frequency of the DWA planner.
 - [x] `OtherRobotLocations` should contain a `geometry_msgs/Twist` in the World frame as well - so that each individual DWA planner can use that to plan their eventual paths.
-  - Not implemented as a `Twist`, see eventual implementation on [Fri 13/05/22](#fri-13/05/22)
+  - Not implemented as a `Twist`, see eventual implementation on [Fri 13/05/22](#fri-130522)
 - [ ] Create Gazebo plugin to control individual wheels, while also publishing the TF and odom transforms of the robot.
 
 ### Fri 06/05/22
