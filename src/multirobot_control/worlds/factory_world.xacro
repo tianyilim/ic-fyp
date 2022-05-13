@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+<world name="test_world" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- A global light source -->
+  <include>
+    <uri>model://sun</uri>
+  </include>
+  <!-- A ground plane -->
+  <include>
+    <uri>model://ground_plane</uri>
+  </include>
+
+  <!-- Default camera angle -->
+  <gui fullscreen='0'>
+    <camera name='user_camera'>
+      <pose>0.0 0.0 19.5 0 1.57 1.57</pose>
+      <view_controller>orbit</view_controller>
+      <projection_type>perspective</projection_type>
+    </camera>
+
+    <grid>
+      <cell_count>10</cell_count>
+      <cell_size>1.0</cell_size>
+    </grid>
+  </gui>
+
+  <xacro:property name="wall_h" value="2"/>
+  <xacro:property name="wall_d" value="0.2"/>
+  <!-- Extent of bounding walls -->
+  <xacro:property name="wall_x" value="5"/>
+  <xacro:property name="wall_y" value="5"/>
+
+  <xacro:include filename="elements/elements_cylinder.xacro" />
+  <xacro:include filename="elements/elements_wall.xacro" />
+
+  <!-- Define walls for the simulation -->
+  <xacro:wall_element num="1" w="${wall_d}" h="${wall_h}" d="${wall_y*2}" x="${wall_x+wall_d/2}" y="0"/>
+  <xacro:wall_element num="2" w="${wall_d}" h="${wall_h}" d="${wall_y*2}" x="-${wall_x+wall_d/2}" y="0"/>
+  <xacro:wall_element num="3" w="${wall_x*2}" h="${wall_h}" d="${wall_d}" x="0" y="${wall_y+wall_d/2}"/>
+  <xacro:wall_element num="4" w="${wall_x*2}" h="${wall_h}" d="${wall_d}" x="0" y="-${wall_y+wall_d/2}"/>
+
+  <xacro:cylinder_element num="1" r="0.5" h="${wall_h}" x="2" y="2" />
+  <xacro:cylinder_element num="2" r="0.5" h="${wall_h}" x="2" y="-2" />
+  <xacro:cylinder_element num="3" r="0.5" h="${wall_h}" x="-2" y="2" />
+  <xacro:cylinder_element num="4" r="0.5" h="${wall_h}" x="-2" y="-2" />
+
+</world>
+</sdf>

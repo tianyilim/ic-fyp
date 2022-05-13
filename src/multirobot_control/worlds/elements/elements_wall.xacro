@@ -1,35 +1,34 @@
 <?xml version="1.0"?>
-<robot name="elements_cylinder" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="elements_wall" xmlns:xacro="http://www.ros.org/wiki/xacro">
   
-<xacro:macro name="cylinder_inertia" params="m r h">
+<xacro:macro name="box_inertia" params="m w h d">
   <inertial>
-    <!-- <mass value="${m}"/> -->
-    <!-- <inertia ixx="${m*(3*r*r+h*h)/12}" ixy = "0" ixz = "0" iyy="${m*(3*r*r+h*h)/12}" iyz = "0" izz="${m*r*r/2}"/>  -->
+    <!-- <mass value="${m}"/>
+    <inertia ixx="${m / 12.0 * (d*d + h*h)}" ixy="0.0" ixz="0.0" iyy="${m / 12.0 * (w*w + h*h)}" iyz="0.0" izz="${m / 12.0 * (w*w + d*d)}"/> -->
     <mass>${m}</mass>
     <inertia>
-      <ixx>${m*(3*r*r+h*h)/12}</ixx>
+      <ixx>${m / 12.0 * (d*d + h*h)}</ixx>
       <ixy>0</ixy>
       <ixz>0</ixz>
-      <iyy>${m*(3*r*r+h*h)/12}</iyy>
+      <iyy>${m / 12.0 * (w*w + h*h)}</iyy>
       <iyz>0</iyz>
-      <izz>${m*r*r/2}</izz>
+      <izz>${m / 12.0 * (w*w + d*d)}</izz>
     </inertia>
   </inertial>
 </xacro:macro>
 
-<xacro:macro name="cylinder_element" params="num r h x y">
-  <model name="cylinder_${num}">
+<xacro:macro name="wall_element" params="num w h d x y">
+  <model name="wall_${num}">
     <static>true</static>
     <pose>${x} ${y} ${h/2} 0 0 0</pose>
       <link name='link'>
-        <xacro:cylinder_inertia m="1000" r="${r}" h="${h}"/>
+        <xacro:box_inertia m="1000" w="${w}" h="${h}" d="${d}"/>
         
         <collision name='collision'>
           <geometry>
-            <cylinder>
-              <radius>${r}</radius>
-              <length>${h}</length>
-            </cylinder>
+            <box>
+              <size>${w} ${d} ${h}</size>
+            </box>
           </geometry>
           <max_contacts>10</max_contacts>
           <surface>
@@ -48,14 +47,13 @@
         
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>${r}</radius>
-              <length>${h}</length>
-            </cylinder>
+            <box>
+              <size>${w} ${d} ${h}</size>
+            </box>
           </geometry>
           <material>
             <script>
-              <name>Gazebo/Black</name>
+              <name>Gazebo/BlackTransparent</name>
               <uri>file://media/materials/scripts/gazebo.material</uri>
             </script>
           </material>
