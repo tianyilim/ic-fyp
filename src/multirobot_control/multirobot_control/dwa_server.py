@@ -7,19 +7,26 @@ from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, String, Header
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist, Point, Quaternion, Vector3
+from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 import time
 import numpy as np
+from enum import Enum, auto
+
+class DWAServerStatus(Enum):
+    STATUS_BUSY = auto()
+    STATUS_FREE = auto()
+
 
 class DWAActionServer(Node):
 
@@ -45,6 +52,7 @@ class DWAActionServer(Node):
                 ('angular_step', 0.1),
                 ('dist_thresh', 0.1),
                 ('dist_method', "L2"),
+                ('pub_freq', 20.0)
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -58,6 +66,9 @@ class DWAActionServer(Node):
         self._linear_twist = 0.0
         self._angular_twist = 0.0
 
+        self._planned_pose = None
+        self._planner_state = DWAServerStatus.STATUS_FREE
+
         # Parameters
         self.params = {
             "robot_radius" :        self.get_parameter("robot_radius").value,
@@ -70,6 +81,7 @@ class DWAActionServer(Node):
             "angular_step" :        self.get_parameter("angular_step").value,
             "dist_thresh" :         self.get_parameter("dist_thresh").value,
             "dist_method" :         self.get_parameter("dist_method").value,
+            "pub_freq" :            self.get_parameter("pub_freq").value,
         }
 
         # Obstacles
@@ -99,7 +111,11 @@ class DWAActionServer(Node):
         # Publish to cmd_vel
         self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         # Publish predicted movement
-        self.planned_pos_pub = self.create_publisher(Point, "planned_pos", 10)
+        self.planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
+
+        # Timer callback
+        timer_period = 1 / self.params['pub_freq']
+        self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
@@ -121,14 +137,36 @@ class DWAActionServer(Node):
         # print(msg)
         self.other_robots = []
         for pose in msg.positions:
-            print("[handle_other_robots] appending x:{:.2f} y:{:.2f}".format(pose.x, pose.y))
+            self.get_logger().debug("[handle_other_robots] appending x:{:.2f} y:{:.2f}".format(pose.x, pose.y))
             self.other_robots.append(
                 (pose.x, pose.y)
             )
+    
+    def timer_callback(self):
+        ''' Sends out planned position if DWA server is BUSY (a action is currently executing).
+            Else, sends the current position.
+        '''
+        if self._planner_state == DWAServerStatus.STATUS_BUSY:
+            # If an action is currently being executed=
+            self.planned_pos_pub.publish(PointStamped(
+                header=Header(frame_id=self.get_namespace()),
+                point=Point(
+                    x=self._planned_pose[0], y=self._planned_pose[1], z=0.0
+                )))
+        else:
+            # No action executed, send current x and y values
+            self.planned_pos_pub.publish(PointStamped(
+                header=Header(frame_id=self.get_namespace()),
+                point=Point(
+                    x=self._x, y=self._y, z=0.0
+                )))
 
 
     ''' Executes the action. '''
     def execute_callback(self, goal_handle):
+
+        self._planner_state = DWAServerStatus.STATUS_BUSY
+
         feedback_msg = LocalPlanner.Feedback()
 
         # Actual DWA algorithm here
@@ -152,7 +190,7 @@ class DWAActionServer(Node):
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
-            planned_pose = None
+            top_pose = None
 
             # Forward simulate actions based on dynamics model (?)
             # Assumes that robot can instantly achieve the commanded velocity (might not be the case)
@@ -178,10 +216,10 @@ class DWAActionServer(Node):
                         self._linear_twist = linear_twist
                         self._angular_twist = angular_twist
                         
-                        planned_pose = end_pose
-
-            # TODO what if there is no goal sent?
-            self.planned_pos_pub.publish(Point(x=planned_pose[0], y=planned_pose[1], z=0.0))
+                        top_pose = end_pose
+            
+            # only write this here because we don't want the value of the class var to be corrupted
+            self._planned_pose = top_pose
 
             if top_score == 0:
                 # TODO handle 'deadlock'
@@ -216,7 +254,7 @@ class DWAActionServer(Node):
 
             # Sleep for awhile before applying the next motion
             time.sleep(self.params['action_duration'])
-            # TODO publish feedback at regular intervals
+            
 
         # Ensure robot is stopped
         self._linear_twist = 0.0
@@ -227,12 +265,15 @@ class DWAActionServer(Node):
         )
         self.cmd_vel_pub.publish(cmd_vel)
 
+        # Set planner status back to free so that corret planned messages are recieved
+        self._planner_state = DWAServerStatus.STATUS_FREE
+
         # After DWA reaches goal
         goal_handle.succeed()
         self.get_logger().info("Robot {} reached goal at X: {} Y: {}".format(
             self.get_namespace(), self.goal_x, self.goal_y
         ))
-        
+
         result = LocalPlanner.Result()
         result.success = Bool(data=True)
         result.final_position.x = self._x
@@ -305,10 +346,27 @@ class DWAActionServer(Node):
 
     def parameter_callback(self, params):
         for param in params:
-            # TODO error handling/type check/bounds check
-            self.params[param.name] = param.value
-            self.get_logger().debug("Set parameter {} to value {}".format(
-                param.name, self.params[param.name] ))
+            if param.name == 'pub_freq':
+                if param.type_==Parameter.Type.DOUBLE or param.type_==Parameter.Type.INTEGER:
+                    freq = param.value
+                    period_ns = 1e9/freq
+                    self.timer.timer_period_ns = period_ns
+                    
+                    # Sanity check
+                    freq_check = 1/self.timer.timer_period_ns
+                    freq_check /= 1e9
+
+                    self.get_logger().debug("Set pub_freq {} to value {:.3f}".format(
+                        param.name, freq_check ))
+
+                    return SetParametersResult(successful=True)
+            else:
+                # TODO error handling/type check/bounds check
+                self.params[param.name] = param.value
+                self.get_logger().debug("Set parameter {} to value {}".format(
+                    param.name, self.params[param.name] ))
+
+
 
         # Write parameter result change
         return SetParametersResult(successful=True)

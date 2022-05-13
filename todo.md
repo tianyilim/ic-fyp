@@ -1,8 +1,8 @@
 # Todo, Changelog, Roadmap for FYP
 
 ## Todo
-- [ ] Get the multiple robots spawned to be visualised with different colours in Gazebo (eg. Robot1 is red, 2 is blue, etc...)
-- [ ] Show a visualization in Gazebo(?) of each robot's goal position
+- [x] Get the multiple robots spawned to be visualised with different colours in Gazebo (eg. Robot1 is red, 2 is blue, etc...)
+- [x] Show a visualization in Gazebo(?) of each robot's goal position
 - [ ] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
 - [ ] Programatically create Rviz files for visualising each robot (currently hardcoded)
 - [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
@@ -71,14 +71,15 @@
 - [ ] Add cost/benefit to orientation wrt goal
 - [ ] What happens when all DWA options are equally bad?
 - [ ] Check if simulated input using `cmd_vel` is sufficient
-- [ ] Namespaced nodes
+- [x] Namespaced nodes
 - [ ] CVA
 
 ### Thu 05/05/22
 - Made a new message `OtherRobotLocations` in `planner_action_interfaces` for a central node to broadcast the (absolute) positions of each robot to other robots.
 - Made a new node, `odom_distribution` which simulates communication distance between the set of robots.
 - Run by `ros2 run multirobot_control odom_distribution --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p pub_freq:=0.5`, can adjust `robot_list` as required for the number (and name) of robots in the simulation, and `pub_freq` as how often the terminal should be spammed; could be the same as the calculation frequency of the DWA planner.
-- [ ] `OtherRobotLocations` should contain a `geometry_msgs/Twist` in the World frame as well - so that each individual DWA planner can use that to plan their eventual paths.
+- [x] `OtherRobotLocations` should contain a `geometry_msgs/Twist` in the World frame as well - so that each individual DWA planner can use that to plan their eventual paths.
+  - Not implemented as a `Twist`, see eventual implementation on [Fri 13/05/22](#fri-13/05/22)
 - [ ] Create Gazebo plugin to control individual wheels, while also publishing the TF and odom transforms of the robot.
 
 ### Fri 06/05/22
@@ -110,4 +111,10 @@
 - [x] Robots to move to their original posiitons (guaranteed collision-free) after finishing goals to ensure goals do not end with colliding robots.
   - This is implemented as a parameter. Perhaps it can also be set in the launch file, eventually. But for now, we run 
   - `ros2 run multirobot_control goal_creation --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p 'robot_starting_x:=[0.0, 0.0, 0.0]' -p 'robot_starting_y:=[2.2, 0.0, 4.5]'`
-- [ ] Use the params file with the DWA server as well as the `odom_distribution` nodes, and in the future the `goal_creation` node as well.
+- [x] Use the params file with the DWA server as well as the `odom_distribution` nodes, and in the future the `goal_creation` node as well.
+- [ ] Use the params file as the source of truth for robot spawning also (using PyYaml)
+- Now we can perhaps run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
+
+### Fri 13/05/22
+- Use `PointStamped` instead of `Point` for robots to publish their planned positions through `dwa_server`. To this effect, added a `DWAServerStatus` `Enum` to `dwa_server`. If there is a current goal being moved towards, we publish the planned position. If there is no current goal, we publish the current position. `PointStamped` allows us to send the namespace (and thus name) of each robot, allowing for centralised association.
+- 

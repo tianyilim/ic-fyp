@@ -11,7 +11,7 @@ from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.msg import OtherRobotLocations
-from geometry_msgs.msg import Pose, Twist, Point
+from geometry_msgs.msg import Pose, Twist, Point, PointStamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 
@@ -42,7 +42,8 @@ class OdomDistribution(Node):
 
         for index, robot in enumerate(self.get_parameter("robot_list").value):
             # robot_locs contains a tuple of (current_pos, name, future_pos)
-            dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot, None)
+            # Can use a Dataclass in the futures
+            dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot, Point(x=0.0, y=0.0, z=0.0))
             self.robot_locs[robot] = dummyPoint
             self.robot_locs[index] = dummyPoint
             # We use a dict because otherwise subscribing to many robots' locations will become tough
@@ -54,7 +55,7 @@ class OdomDistribution(Node):
             )
 
             self.planned_pos_subscriptions.append(
-                self.create_subscription(Point, robot+'/planned_pos', \
+                self.create_subscription(PointStamped, robot+'/planned_pos', \
                 self.handle_planned_pos, 10)
             )
 
@@ -123,13 +124,13 @@ class OdomDistribution(Node):
                 if  i==robot_idx:
                     robot_names.append(String(data=self.robot_locs[j][1]))
                     # THIS SHOULD BE PLANNED_POS, but needs fixing
-                    robot_poses.append(self.robot_locs[j][0])
-                    # robot_poses.append(self.robot_locs[j][2])
+                    # robot_poses.append(self.robot_locs[j][0])
+                    robot_poses.append(self.robot_locs[j][2])
                     
                 elif j==robot_idx:
                     robot_names.append(String(data=self.robot_locs[i][1]))
-                    robot_poses.append(self.robot_locs[i][0])
-                    # robot_poses.append(self.robot_locs[i][2])
+                    # robot_poses.append(self.robot_locs[i][0])
+                    robot_poses.append(self.robot_locs[i][2])
                     
 
             message.names = robot_names
@@ -150,39 +151,38 @@ class OdomDistribution(Node):
         # ? Currently it's always set as (eg.) robot1_{LINK}, so it's all good for now...
         robot_id = msg.child_frame_id.split('_')[0]
 
+        # This is handled in `handle_planned_pos`
         self.robot_locs[robot_id][0].x = msg.pose.pose.position.x
         self.robot_locs[robot_id][0].y = msg.pose.pose.position.y
         self.robot_locs[robot_id][0].z = msg.pose.pose.position.z
 
-        self.get_logger().debug("Updated robot name {} with pose x:{:.2f} y:{:.2f} z:{:.2f}".format(
-            robot_id, self.robot_locs[robot_id][0].x, 
-            self.robot_locs[robot_id][0].y, self.robot_locs[robot_id][0].z
+        self.get_logger().debug("Updated robot {} with pose x:{:.2f} y:{:.2f} z:{:.2f}".format(
+            robot_id, 
+            self.robot_locs[robot_id][0].x, 
+            self.robot_locs[robot_id][0].y,
+            self.robot_locs[robot_id][0].z,
         ))
 
     def handle_planned_pos(self, msg):
         pass
-        '''
         # update the predicted location of each robot as a class variable
-        # ? Same hack as handle_odom
-        # TODO broken, no child_frame_id on Point objects, might have to use a custom message?
-        robot_id = msg.child_frame_id.split('_')[0]
+        # Sending message as a PointStamped means we can also encode the robot id inside
+        robot_id = msg.header.frame_id.strip('/')
 
-        self.robot_locs[robot_id][2].x = msg.x
-        self.robot_locs[robot_id][2].y = msg.y
-        self.robot_locs[robot_id][2].z = msg.z
+        self.robot_locs[robot_id][2].x = msg.point.x
+        self.robot_locs[robot_id][2].y = msg.point.y
+        self.robot_locs[robot_id][2].z = msg.point.z
 
-        self.get_logger().debug("Updated robot name {} with predicted pos x:{:.2f} y:{:.2f} z:{:.2f}".format(
+        self.get_logger().debug("Updated robot {} with predicted pos x:{:.2f} y:{:.2f} z:{:.2f}".format(
             robot_id, self.robot_locs[robot_id][2].x, 
             self.robot_locs[robot_id][2].y, self.robot_locs[robot_id][2].z
         ))
-        '''
 
     def parameter_callback(self, params):
         # type/bounds check on pub_freq (don't modify robot_list)
         for param in params:
             if param.name == 'pub_freq':
                 if param.type_==Parameter.Type.DOUBLE or param.type_==Parameter.Type.INTEGER:
-                    
                     freq = param.value
                     period_ns = 1e9/freq
                     self.timer.timer_period_ns = period_ns
