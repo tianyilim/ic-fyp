@@ -85,7 +85,7 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
+        default_value=os.path.join(bringup_dir, 'params', 'planner_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_autostart_cmd = DeclareLaunchArgument(
@@ -116,13 +116,13 @@ def generate_launch_description():
         output='screen'
     )
 
-    # TODO add in params
     start_dwa_cmd = Node(
         package='multirobot_control',
         executable='dwa_server',
         name=PythonExpression(["'dwa_server_' + '", namespace, "'"]),
         namespace=namespace,
-        output='screen'
+        output='screen',
+        parameters=[params_file]
     )
 
     # Launch localization to give map -> transform
