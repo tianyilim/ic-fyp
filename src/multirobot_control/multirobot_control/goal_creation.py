@@ -190,6 +190,7 @@ class GoalCreation(Node):
         # Check if all robots are done
         if all( remaining_goals == 0 for remaining_goals in self.robot_remaining_goals.values() ):
             self.get_logger().info("All robots are done with their goals. Shutting down node.")
+            self.destroy_node()
             rclpy.shutdown()
 
         # Iterate over all robots

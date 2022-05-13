@@ -117,4 +117,4 @@
 
 ### Fri 13/05/22
 - Use `PointStamped` instead of `Point` for robots to publish their planned positions through `dwa_server`. To this effect, added a `DWAServerStatus` `Enum` to `dwa_server`. If there is a current goal being moved towards, we publish the planned position. If there is no current goal, we publish the current position. `PointStamped` allows us to send the namespace (and thus name) of each robot, allowing for centralised association.
-- 
+- [ ] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.

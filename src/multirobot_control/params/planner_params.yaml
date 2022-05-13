@@ -5,7 +5,7 @@ dwa_action_server:
     simulate_duration : 0.5
     action_duration : 0.05
     linear_speed_limit : 0.5
-    angular_speed_limit : 0.5
+    angular_speed_limit : 1.0
     linear_step : 0.1
     angular_step : 0.1
     dist_thresh : 0.1
