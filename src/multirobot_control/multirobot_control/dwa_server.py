@@ -84,17 +84,18 @@ class DWAActionServer(Node):
             "pub_freq" :            self.get_parameter("pub_freq").value,
         }
 
-        # Obstacles
+        # Obstacles (on factory_world)
         self.obstacles = [
-            (0, -2, 0.5),
-            (2, 1, 0.5),
-            (-1, 2, 0.5),
+            (2, -2, 0.5),
+            (2, 2, 0.5),
+            (-2, -2, 0.5),
+            (-2, 2, 0.5),
         ]
         
         # other robots on the map
         self.other_robots = []
 
-        # Walls
+        # Walls (on factory_world)
         self.ub_x = 4.5
         self.lb_x = -4.5
         self.ub_y = 4.5

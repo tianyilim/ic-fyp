@@ -15,6 +15,6 @@ dwa_action_server:
   ros__parameters:
     pub_freq: 20.0  # Match action duration
     robot_list: ["robot1", "robot2", "robot3"]
-    robot_starting_x: [0.0, 0.0, 0.0]
-    robot_starting_y: [2.2, 0.0, 4.5]
+    robot_starting_x: [0.0, 3.5, 0.0]
+    robot_starting_y: [0.0, 0.0, 3.5]
     robot_starting_theta: []

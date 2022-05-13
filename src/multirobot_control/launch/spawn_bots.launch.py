@@ -38,9 +38,9 @@ def generate_launch_description():
     robot_base_dir = get_package_share_directory('robot_base')
 
     robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 2.2, 'z_pose': 0.15, 'yaw_pose': 0.0},
-        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 1.4},
-        {'name': 'robot3', 'x_pose': 0.0, 'y_pose': 4.5, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot2', 'x_pose': 3.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
+        {'name': 'robot3', 'x_pose': 0.0, 'y_pose': 3.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
     ]
 
     # Create the launch configuration variables
@@ -68,7 +68,8 @@ def generate_launch_description():
             # warehouse_dir, 'worlds', 'no_roof_small_warehouse', 'no_roof_small_warehouse.world'
             # robot_model_dir, 'worlds', 'aws.world'
             # robot_model_dir, 'worlds', 'neo_workshop.world'
-            bringup_dir, 'worlds', 'test_world.world'
+            # bringup_dir, 'worlds', 'test_world.world'
+            bringup_dir, 'worlds', 'factory_world.world'
         ),
         description="Full path to world file"
     )

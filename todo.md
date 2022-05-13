@@ -53,7 +53,8 @@
   urdf:="/home/tianyilim/fyp/ic-fyp/src/robot_base/urdf/robot_base.xacro"
   ```
 
-- [ ] Fix Xacro errors for the `test_world` xacro file: perhaps xacro needs to use "urdf"-esque tags?
+- [x] Fix Xacro errors for the `test_world` xacro file: perhaps xacro needs to use "urdf"-esque tags?
+  - See solution on [Fri 13/05/22](#fri-130522) - essentially ran into a reserved keyword and there was not much of a warning
 
 ### Wed 04/05/22
 - Create a custom action package in `planner_action_interfaces`, relying on `geometry_msgs`.
@@ -117,4 +118,6 @@
 
 ### Fri 13/05/22
 - Use `PointStamped` instead of `Point` for robots to publish their planned positions through `dwa_server`. To this effect, added a `DWAServerStatus` `Enum` to `dwa_server`. If there is a current goal being moved towards, we publish the planned position. If there is no current goal, we publish the current position. `PointStamped` allows us to send the namespace (and thus name) of each robot, allowing for centralised association.
+- Fixed xacro not working on world files. It turns out that somewhere, `cylinder` is a reserved keyword or something. Therefore, renamed the macro we used to be `cylinder_element`.
+- Added `factory_world.world` in `worlds`. Remember to regenerate the xacro file whenever it is updated. 
 - [ ] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.
