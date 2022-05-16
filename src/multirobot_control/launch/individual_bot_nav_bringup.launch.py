@@ -119,7 +119,7 @@ def generate_launch_description():
     start_dwa_cmd = Node(
         package='multirobot_control',
         executable='dwa_server',
-        name=PythonExpression(["'dwa_server_' + '", namespace, "'"]),
+        # name=PythonExpression(["'dwa_server_' + '", namespace, "'"]),
         namespace=namespace,
         output='screen',
         parameters=[params_file]
