@@ -114,8 +114,8 @@
 - Fixed xacro not working on world files. It turns out that somewhere, `cylinder` is a reserved keyword or something. Therefore, renamed the macro we used to be `cylinder_element`.
 - Added `factory_world.world` in `worlds`. Remember to regenerate the xacro file whenever it is updated. 
 - [ ] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.
-- [ ] Scale up single robot DWA demo to the "warehouse" environment
-  - [ ] Simplify environment to look like Amazon warehouse (manhattan-like)
+- [x] Scale up single robot DWA demo to the "warehouse" environment
+  - [x] Simplify environment to look like Amazon warehouse (manhattan-like)
     - If global planner is needed perhaps use RRT.
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
@@ -130,3 +130,7 @@
 - Put in shelf model from AWS warehouse repo into the `models` folder. Need to add `{repo-path}/src/multirobot_control/models` to the `GAZEBO_MODEL_PATH`, which should be handled in the `spawn_bots.launch.py` launch file.
 - Fixed a bug in AWS shelves SDF files. Previously in their collision/geometry add tags, their `uri` was set to be `file://models/...` when it should be `model://...`. This meant that Gazebo could not find the DAE files.
 - All files read from `params/planner_params.yaml` to decide how many robots to spawn.
+- Added in collision detection with Axis-Aligned Bounding Boxes to model the shelves, as they are always aligned to the _x_ and _y_ axes of the world. The robot is modelled as a circle (as it is roughly one.) This algorithm is implemented in `dwa_server.py -> dist_to_aabb`.
+- Added in `map_params`, a place to keep the AABB representation of the shelves and walls.
+- However, the DWA node is insufficient to reach the goal by itself. The robot is unable to find a path around the rectangular boxes and settles to a local minima.
+- [ ] To fix: if robots are unable to find _any_ good trajectories, then they continue with their past trajectory, which often means they actually hit something.

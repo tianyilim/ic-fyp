@@ -26,17 +26,12 @@ from tf_transformations import euler_from_quaternion
 
 # The dictionary containing the palette of robots--> gazebo colors
 from multirobot_control.colour_palette import colour_palette
+# Gloabl Goal array
+from multirobot_control.map_params import GOAL_ARRAY
 
 import numpy as np
 
 from enum import Enum, auto
-
-# Global goal matrix (for now specific to the demo map)
-# GOAL_ARRAY = []
-# for x_goal in np.arange(-4, 4.1, 0.5):
-#     for y_goal in np.arange(-4, 4.1, 0.5):
-#         GOAL_ARRAY.append((x_goal, y_goal))
-GOAL_ARRAY = [(3.0, 3.0), (-3.0, 3.0), (3.0, -3.0), (-3.0, -3.0)]
 
 # Number of goals each robot has to finish
 TOTAL_GOALS = 2
@@ -60,6 +55,7 @@ class GoalCreation(Node):
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
                 ('robot_starting_x', Parameter.Type.DOUBLE_ARRAY),
                 ('robot_starting_y', Parameter.Type.DOUBLE_ARRAY),
+                ('robot_starting_theta', Parameter.Type.DOUBLE_ARRAY)
             ]
         )
 

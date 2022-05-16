@@ -19,9 +19,12 @@ from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
+from multirobot_control.map_params import OBSTACLE_ARRAY
+
 import time
 import numpy as np
 from enum import Enum, auto
+from typing import List, Tuple
 
 class DWAServerStatus(Enum):
     STATUS_BUSY = auto()
@@ -30,7 +33,7 @@ class DWAServerStatus(Enum):
 
 class DWAActionServer(Node):
 
-    def __init__(self, map_path=""):
+    def __init__(self):
 
         super().__init__('dwa_action_server')
         self._action_server = ActionServer(
@@ -42,7 +45,7 @@ class DWAActionServer(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('robot_radius', 0.3),
+                ('robot_radius', 0.7),
                 ('safety_thresh', 0.5),
                 ('simulate_duration', 1.0),
                 ('action_duration', 0.1),
@@ -52,7 +55,8 @@ class DWAActionServer(Node):
                 ('angular_step', 0.1),
                 ('dist_thresh', 0.1),
                 ('dist_method', "L2"),
-                ('pub_freq', 20.0)
+                ('pub_freq', 20.0),
+                ('inter_robot_dist', 3.0)
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -82,24 +86,11 @@ class DWAActionServer(Node):
             "dist_thresh" :         self.get_parameter("dist_thresh").value,
             "dist_method" :         self.get_parameter("dist_method").value,
             "pub_freq" :            self.get_parameter("pub_freq").value,
+            "inter_robot_dist" :    self.get_parameter("inter_robot_dist").value,
         }
-
-        # Obstacles (on factory_world)
-        self.obstacles = [
-            (2, -2, 0.5),
-            (2, 2, 0.5),
-            (-2, -2, 0.5),
-            (-2, 2, 0.5),
-        ]
         
         # other robots on the map
         self.other_robots = []
-
-        # Walls (on factory_world)
-        self.ub_x = 4.5
-        self.lb_x = -4.5
-        self.ub_y = 4.5
-        self.lb_y = -4.5
 
         # Subscribe to Odom (which has ground truth)
         self.state_sub = self.create_subscription(Odometry, 'odom', \
@@ -129,8 +120,8 @@ class DWAActionServer(Node):
             msg.pose.pose.orientation.w
         ])[2]
 
-        # self.get_logger().debug("Current X:{} Y:{} Yaw:{}".format(
-        #     self._x, self._y, self._yaw ))
+        self.get_logger().debug("Current X:{} Y:{} Yaw:{}".format(
+            self._x, self._y, self._yaw ))
 
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
@@ -222,9 +213,9 @@ class DWAActionServer(Node):
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose
 
-            if top_score == 0:
+            if top_score < 0:
                 # TODO handle 'deadlock'
-                self.get_logger().warn('No satisfactory velocities found')
+                self.get_logger().warn(f"Top score was {top_score}")
 
             # Apply proposed velocity for a specified time
             cmd_vel = Twist(
@@ -255,6 +246,8 @@ class DWAActionServer(Node):
 
             # Sleep for awhile before applying the next motion
             time.sleep(self.params['action_duration'])
+
+            # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             
 
         # Ensure robot is stopped
@@ -287,41 +280,52 @@ class DWAActionServer(Node):
     def rankPose(self, end_pose):
         score = 0
 
-        goal_K = 10
+        goal_K = 20
         safety_thresh_K = 2
         non_thresh_K = 1
         
-        if end_pose[0] > self.ub_x or \
-            end_pose[0] < self.lb_x or \
-            end_pose[1] > self.ub_y or \
-            end_pose[1] < self.lb_y:
+        # Check for collisions or close shaves
+        # OBSTACLE_ARRAY also handles the walls
+        for obstacle in OBSTACLE_ARRAY:
+            dist_to_obstacle = self.dist_to_aabb(end_pose[0], end_pose[1], obstacle)
             
-            return 0    # Out of bounds
+            # print(f"Dist to obstacle for end_pose x:{end_pose[0]:.2f} y:{end_pose[1]:.2f}" + \
+            #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
 
-        # Else, see how close it gets to the goal
+            if dist_to_obstacle < self.params['robot_radius']:
+                score = -np.inf # Collision
+            elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
+                score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
+
+        # Else, see how close it gets to the goal. This is badly affected by local minima
         score += \
             goal_K / self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
 
-        for x, y, r in self.obstacles:
-            # Use distToGoal to get a simple distance
-            dist_to_cylinder = self.distToGoal(end_pose[0], end_pose[1], x, y)
-            
-            # Collision!
-            if dist_to_cylinder < (r+self.params['robot_radius']):
-                score = 0
-            elif dist_to_cylinder < (r+self.params['robot_radius']+self.params['safety_thresh']):
-                score -= safety_thresh_K / dist_to_cylinder
-            else:
-                score -= non_thresh_K / dist_to_cylinder
+        # if end_pose[0] > self.ub_x or \
+        #     end_pose[0] < self.lb_x or \
+        #     end_pose[1] > self.ub_y or \
+        #     end_pose[1] < self.lb_y:
+        #     return -np.inf    # Out of bounds
+
+        # for x, y, r in self.obstacles:
+        #     # Use distToGoal to get a simple distance
+        #     dist_to_cylinder = self.distToGoal(end_pose[0], end_pose[1], x, y)
+        #     # Collision!
+        #     if dist_to_cylinder < (r+self.params['robot_radius']):
+        #         score = 0
+        #     elif dist_to_cylinder < (r+self.params['robot_radius']+self.params['safety_thresh']):
+        #         score -= safety_thresh_K / dist_to_cylinder
+        #     else:
+        #         score -= non_thresh_K / dist_to_cylinder
 
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
-            # TODO hack, set this as a parameter
-            if dist_to_robot < (3.0*self.params['robot_radius']):
+            if dist_to_robot < self.params['robot_radius']:
+                score = -np.inf # Collision
+            elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
-        # score cannot be negative
-        return max(score, 0)
+        return score
 
     def distToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''
@@ -371,6 +375,43 @@ class DWAActionServer(Node):
 
         # Write parameter result change
         return SetParametersResult(successful=True)
+
+    def dist_to_aabb(self, curr_x: float, curr_y: float, aabb: List[Tuple[float, float, float, float]]):
+        '''
+        Calculates the distance from the robot base (modelled as a circle) and any Axis-Aligned Bounding Box.
+        AABBs are useful here because the shelf obstacles in the world are axis-aligned rectangles.
+        
+        Algorithm taken from https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection
+        '''
+        # First calculate the closest point to the circle on the AABB.
+        # AABB coords are always (x1, y1, x2, y2) with x1<x2, y1<y2
+        aabb_ctr_x = (aabb[0] + aabb[2]) / 2
+        aabb_ctr_y = (aabb[1] + aabb[3]) / 2
+
+        diff_vect_x = curr_x-aabb_ctr_x
+        diff_vect_y = curr_y-aabb_ctr_y
+
+        w = abs(aabb[0]-aabb[1])/2  # half-width of AABB
+        h = abs(aabb[1]-aabb[3])/2  # half-height of AABB
+
+        # Clamp diff_vect between +-w/h
+        # This gives us the closest point from the AABB to the circle.
+        diff_vect_x_clamped = max(min(diff_vect_x, w), -w)
+        diff_vect_y_clamped = max(min(diff_vect_y, h), -h)
+
+        # If both values are not w/h, it means that the center of the circle is within the AABB.
+        # In our context this is very bad, (distance is too close!)
+        if abs(diff_vect_x_clamped) != w and abs(diff_vect_y_clamped) != h:
+            internal_dist = -np.hypot((diff_vect_x_clamped-curr_x),(diff_vect_y_clamped-curr_y))
+            self.get_logger().warn(f"Planned position is within an obstacle centered at X:{aabb_ctr_x:.2f}, Y:{aabb_ctr_y:.2f}")
+            return internal_dist
+
+        diff_vect_x_prime = curr_x-diff_vect_x_clamped
+        diff_vect_y_prime = curr_y-diff_vect_y_clamped
+
+        dist_to_bot = np.hypot(diff_vect_x_prime, diff_vect_y_prime)
+
+        return dist_to_bot
 
 def main(args=None):
     rclpy.init(args=args)
