@@ -1,5 +1,5 @@
 '''
-Simple demo to load up the aws world and spawn in one or more neobotix robots. 
+Simple demo to load up the aws world and spawn in one or more robots. 
 '''
 
 # Copyright (c) 2018 Intel Corporation
@@ -17,6 +17,7 @@ Simple demo to load up the aws world and spawn in one or more neobotix robots.
 # limitations under the License.
 
 import os
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -32,16 +33,29 @@ from launch_ros.actions import PushRosNamespace, Node
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('multirobot_control')
+    bringup_src = bringup_dir + "../../../../src/multirobot_control"
     # nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     robot_model_dir = get_package_share_directory('neo_simulation2')
     warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
     robot_base_dir = get_package_share_directory('robot_base')
 
-    robots = [
-        {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
-        {'name': 'robot2', 'x_pose': 3.0, 'y_pose': 0.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
-        {'name': 'robot3', 'x_pose': 0.0, 'y_pose': 3.0, 'z_pose': 0.15, 'yaw_pose': 0.0},
-    ]
+    # Load in GAZEBO_MODEL_PATH (use src) directory
+    os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
+
+    params_file_dir = os.path.join(bringup_dir, 'params', 'planner_params.yaml')
+
+    with open(params_file_dir, 'r') as pf:
+        configs = yaml.safe_load(pf)
+
+    robots = []
+    for idx in range(len(configs['/**']['ros__parameters']['robot_list'])):
+        robots.append({
+            'name': configs['/**']['ros__parameters']['robot_list'][idx],
+            'x_pose': configs['/**']['ros__parameters']['robot_starting_x'][idx],
+            'y_pose': configs['/**']['ros__parameters']['robot_starting_y'][idx],
+            'z_pose': 0.10,
+            'yaw_pose': configs['/**']['ros__parameters']['robot_starting_theta'][idx]
+        })
 
     # Create the launch configuration variables
     map_yaml_file = LaunchConfiguration('map')
@@ -69,7 +83,7 @@ def generate_launch_description():
             # robot_model_dir, 'worlds', 'aws.world'
             # robot_model_dir, 'worlds', 'neo_workshop.world'
             # bringup_dir, 'worlds', 'test_world.world'
-            bringup_dir, 'worlds', 'factory_world.world'
+            bringup_dir, 'worlds', 'factory_world2.world'
         ),
         description="Full path to world file"
     )
@@ -82,7 +96,7 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'planner_params.yaml'),
+        default_value=params_file_dir,
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_urdf_cmd = DeclareLaunchArgument(
@@ -93,7 +107,6 @@ def generate_launch_description():
     )
 
     # Launch commands
-
     gazebo_cmd = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py')
