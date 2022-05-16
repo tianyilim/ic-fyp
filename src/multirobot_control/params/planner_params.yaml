@@ -1,17 +1,5 @@
-dwa_action_server:
-  ros__parameters:
-    robot_radius : 0.7
-    safety_thresh : 0.5
-    simulate_duration : 0.25
-    action_duration : 0.05
-    linear_speed_limit : 0.5
-    angular_speed_limit : 1.0
-    linear_step : 0.1
-    angular_step : 0.1
-    dist_thresh : 0.1
-    dist_method : "L2"
-    inter_robot_dist : 3.0
-
+# /**/dwa_action_server:
+#   ros__parameters:
 /**:
   ros__parameters:
     pub_freq: 20.0  # Match action duration
@@ -23,3 +11,16 @@ dwa_action_server:
     robot_starting_x: [0.0]
     robot_starting_y: [1.15]
     robot_starting_theta: [0.0]
+
+    # Typically for the DWA Action Server
+    robot_radius : 0.7
+    safety_thresh : 0.25
+    simulate_duration : 0.25
+    action_duration : 0.05
+    linear_speed_limit : 0.5
+    angular_speed_limit : 1.0
+    linear_step : 0.1
+    angular_step : 0.1
+    dist_thresh : 0.1
+    dist_method : "L2"
+    inter_robot_dist : 3.0
