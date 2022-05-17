@@ -148,24 +148,6 @@ def generate_launch_description():
         }]
     )
 
-    # start_rviz_cmd = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(nav2_bringup_dir, 'launch', 'rviz_launch.py')),
-    #     launch_arguments={'namespace': namespace,
-    #                       'use_namespace': 'True',
-    #                       'use_sim_time': use_sim_time,
-    #                       'rviz_config': os.path.join(
-    #                             nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz')
-    #                       }.items()
-    # )
-
-    start_rviz_cmd = Node(
-        package='rviz2',
-        executable='rviz2',
-        namespace=namespace,
-        output='screen'
-    )
-
     bringup_group_cmd = GroupAction([
         start_robot_state_publisher_cmd,
         start_tf_relay_cmd,

@@ -176,6 +176,19 @@ def generate_launch_description():
         parameters=[params_file]
     )
 
+    start_map_viz_cmd = Node(
+        package="multirobot_control",
+        executable="map_visualisation",
+        output="screen"
+    )
+
+    start_rviz_cmd = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')],
+        output='screen'
+    )
+
     # Create the launch description and populate
     ld = LaunchDescription()
 
@@ -200,5 +213,7 @@ def generate_launch_description():
         ld.add_action(cmd)
 
     ld.add_action(start_odom_distr_cmd)
+    ld.add_action(start_map_viz_cmd)
+    ld.add_action(start_rviz_cmd)
 
     return ld

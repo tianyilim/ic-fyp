@@ -21,6 +21,7 @@ setup(
         (os.path.join('share', package_name, 'maps'), glob(os.path.join('maps/*'))),
         # Include URDF and RVIZ config files
         (os.path.join('share', package_name, 'urdf'), glob('urdf/*')),
+        (os.path.join('share', package_name, 'rviz'), glob('rviz/*.rviz')),
         # Include worlds
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.world')),
 
@@ -40,6 +41,7 @@ setup(
             'dwa_server = multirobot_control.dwa_server:main',
             'odom_distribution = multirobot_control.odom_distribution:main',
             'goal_creation = multirobot_control.goal_creation:main',
+            'map_visualisation = multirobot_control.map_visualisation:main'
         ],
     },
 )

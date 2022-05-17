@@ -70,11 +70,11 @@
   - [x] Forward simulation duration
 - [ ] Implement parameterized map (perhaps by parsing the world file?)
 - [ ] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
-- [ ] Add cost/benefit to orientation wrt goal
-- [ ] What happens when all DWA options are equally bad?
-- [ ] Check if simulated input using `cmd_vel` is sufficient
+- [x] Add cost/benefit to orientation wrt goal
+- [x] What happens when all DWA options are equally bad?
+- [x] Check if simulated input using `cmd_vel` is sufficient
 - [x] Namespaced nodes
-- [ ] CVA
+- [x] CVA
 
 ### Thu 05/05/22
 - Made a new message `OtherRobotLocations` in `planner_action_interfaces` for a central node to broadcast the (absolute) positions of each robot to other robots.
@@ -106,14 +106,14 @@
   - This is implemented as a parameter. Perhaps it can also be set in the launch file, eventually. But for now, we run 
   - `ros2 run multirobot_control goal_creation --ros-args -p 'robot_list:=["robot1", "robot2", "robot3"]' -p 'robot_starting_x:=[0.0, 0.0, 0.0]' -p 'robot_starting_y:=[2.2, 0.0, 4.5]'`
 - [x] Use the params file with the DWA server as well as the `odom_distribution` nodes, and in the future the `goal_creation` node as well.
-- [ ] Use the params file as the source of truth for robot spawning also (using PyYaml)
+- [x] Use the params file as the source of truth for robot spawning also (using PyYaml)
 - Now we can perhaps run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
 
 ### Fri 13/05/22
 - Use `PointStamped` instead of `Point` for robots to publish their planned positions through `dwa_server`. To this effect, added a `DWAServerStatus` `Enum` to `dwa_server`. If there is a current goal being moved towards, we publish the planned position. If there is no current goal, we publish the current position. `PointStamped` allows us to send the namespace (and thus name) of each robot, allowing for centralised association.
 - Fixed xacro not working on world files. It turns out that somewhere, `cylinder` is a reserved keyword or something. Therefore, renamed the macro we used to be `cylinder_element`.
 - Added `factory_world.world` in `worlds`. Remember to regenerate the xacro file whenever it is updated. 
-- [ ] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.
+- [x] Further tune DWA node parameters, they do poorly when trying to rotate the robot on the spot.
 - [x] Scale up single robot DWA demo to the "warehouse" environment
   - [x] Simplify environment to look like Amazon warehouse (manhattan-like)
     - If global planner is needed perhaps use RRT.
@@ -133,4 +133,15 @@
 - Added in collision detection with Axis-Aligned Bounding Boxes to model the shelves, as they are always aligned to the _x_ and _y_ axes of the world. The robot is modelled as a circle (as it is roughly one.) This algorithm is implemented in `dwa_server.py -> dist_to_aabb`.
 - Added in `map_params`, a place to keep the AABB representation of the shelves and walls.
 - However, the DWA node is insufficient to reach the goal by itself. The robot is unable to find a path around the rectangular boxes and settles to a local minima.
-- [ ] To fix: if robots are unable to find _any_ good trajectories, then they continue with their past trajectory, which often means they actually hit something.
+- [x] To fix: if robots are unable to find _any_ good trajectories, then they continue with their past trajectory, which often means they actually hit something.
+
+### Tue 17/05/22
+- Fixed a bug in the AABB distance finding code.
+- Added in a heading weight to the code which allows the robots to orient themselves to face approximately the next goal (~+-70deg, specified in params->`angular_thresh`). However, it still fails if we use the rectangular obstacles as in our sample world.
+- Solution:
+  - [ ] Implement RRT* to obtain waypoints for each robot.
+- [ ] Visualizations in RViz need to be figured out.
+  - [x] Visualise obstacles from `OBSTACLE_LIST` in RViz using a new node, `map_visualisation.py`. This uses `Marker` messages in RViz to more cleanly display the static obstacles.
+  - [ ] Visualise goals from `goal_creation`
+  - [ ] Visualise sample trajectories from `dwa_server`
+  - [ ] Visualise waypoints from RRT node
