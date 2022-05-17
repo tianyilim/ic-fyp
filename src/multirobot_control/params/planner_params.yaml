@@ -13,14 +13,15 @@
     robot_starting_theta: [0.0]
 
     # Typically for the DWA Action Server
-    robot_radius : 0.7
-    safety_thresh : 0.25
+    robot_radius : 0.35
+    safety_thresh : 0.4
     simulate_duration : 0.25
-    action_duration : 0.05
+    action_duration : 0.03
     linear_speed_limit : 0.5
-    angular_speed_limit : 1.0
+    angular_speed_limit : 0.5
     linear_step : 0.1
     angular_step : 0.1
-    dist_thresh : 0.1
+    dist_thresh : 0.05
     dist_method : "L2"
     inter_robot_dist : 3.0
+    angular_thresh : 70.0
