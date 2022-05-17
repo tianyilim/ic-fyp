@@ -113,12 +113,13 @@ class DWAActionServer(Node):
         '''Handle incoming data on `odom` by updating private variables'''
         self._x = msg.pose.pose.position.x
         self._y = msg.pose.pose.position.y
-        self._yaw = euler_from_quaternion([
+        self._rpy = euler_from_quaternion([
             msg.pose.pose.orientation.x,
             msg.pose.pose.orientation.y,
             msg.pose.pose.orientation.z,
             msg.pose.pose.orientation.w
-        ])[2]
+        ])
+        self._yaw = self._rpy[2]
 
         self.get_logger().debug("Current X:{} Y:{} Yaw:{}".format(
             self._x, self._y, self._yaw ))
@@ -170,15 +171,17 @@ class DWAActionServer(Node):
         while not self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
             # Enumerate possible actions, checking for bounds
             possible_linear = [ self._linear_twist ]
-            if (self._linear_twist + self.params['linear_step']) < self.params['linear_speed_limit']: 
+            if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']: 
                 possible_linear.append(self._linear_twist + self.params['linear_step'])
-            if (self._linear_twist - self.params['linear_step']) > -self.params['linear_speed_limit']: 
+            # ? Temporary
+            # if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']: 
+            if (self._linear_twist - self.params['linear_step']) >= 0: 
                 possible_linear.append(self._linear_twist - self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
-            if (self._angular_twist + self.params['angular_step']) < self.params['angular_speed_limit']: 
+            if (self._angular_twist + self.params['angular_step']) <= self.params['angular_speed_limit']: 
                 possible_angular.append(self._angular_twist + self.params['angular_step'])
-            if (self._angular_twist - self.params['angular_step']) > -self.params['angular_speed_limit']: 
+            if (self._angular_twist - self.params['angular_step']) >= -self.params['angular_speed_limit']: 
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
@@ -198,11 +201,15 @@ class DWAActionServer(Node):
                     displacement = np.array([ linear_twist*self.params['simulate_duration'], 0 ])
                     displacement = R @ displacement
 
-                    # Eventual position
+                    # Eventual position and orientation
                     end_pose = displacement + np.array([self._x, self._y])
+                    end_pose = [end_pose[0], end_pose[1], effective_yaw]
 
                     # Rank score
                     score = self.rankPose(end_pose)
+
+                    self.get_logger().info(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f} end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f} | score: {score:.2f}")
+
                     if score > top_score:
                         top_score = score
                         self._linear_twist = linear_twist
@@ -213,9 +220,11 @@ class DWAActionServer(Node):
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose
 
-            if top_score < 0:
-                # TODO handle 'deadlock'
-                self.get_logger().warn(f"Top score was {top_score}")
+            if top_score <= -np.inf:
+                # Currently deadlock is handled by stopping the robot.
+                self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.")
+                self._linear_twist = 0.0
+                self._angular_twist = 0.0
 
             # Apply proposed velocity for a specified time
             cmd_vel = Twist(
@@ -239,7 +248,7 @@ class DWAActionServer(Node):
             feedback_msg.current_pose.orientation.w = curr_quaternion[3]
             goal_handle.publish_feedback(feedback_msg)
             
-            self.get_logger().debug('Robot {} Current X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
+            self.get_logger().info('{} Curr X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
                 self.get_namespace(),
                 self._x, self._y, np.degrees(self._yaw), 
                 self._linear_twist, self._angular_twist ))
@@ -249,7 +258,6 @@ class DWAActionServer(Node):
 
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             
-
         # Ensure robot is stopped
         self._linear_twist = 0.0
         self._angular_twist = 0.0
@@ -280,8 +288,8 @@ class DWAActionServer(Node):
     def rankPose(self, end_pose):
         score = 0
 
-        goal_K = 20
-        safety_thresh_K = 2
+        goal_K = 10
+        safety_thresh_K = 1
         non_thresh_K = 1
         
         # Check for collisions or close shaves
@@ -293,13 +301,22 @@ class DWAActionServer(Node):
             #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
 
             if dist_to_obstacle < self.params['robot_radius']:
-                score = -np.inf # Collision
+                self.get_logger().info(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
+                score = -np.inf # Collision, don't process further
+                return score
             elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
                 score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
 
-        # Else, see how close it gets to the goal. This is badly affected by local minima
-        score += \
-            goal_K / self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
+        # Else, see how close it gets to the goal.
+        # Cap the score to the maximum cutoff value.
+        score += min(
+            goal_K / self.params['dist_thresh'], # Max value it will get to
+            goal_K / self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y) )
+
+        # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
+        goal_hdg = np.arctan2(self.goal_y-end_pose[1], self.goal_x-end_pose[0])
+        self.get_logger().info(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
+        score += min(5, 5 / abs( np.degrees(goal_hdg - end_pose[2])) )
 
         # if end_pose[0] > self.ub_x or \
         #     end_pose[0] < self.lb_x or \
@@ -321,7 +338,9 @@ class DWAActionServer(Node):
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             if dist_to_robot < self.params['robot_radius']:
-                score = -np.inf # Collision
+                self.get_logger().info(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
+                score = -np.inf # Collision, don't process further
+                return score
             elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
@@ -382,6 +401,13 @@ class DWAActionServer(Node):
         AABBs are useful here because the shelf obstacles in the world are axis-aligned rectangles.
         
         Algorithm taken from https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection
+        
+        ---
+
+        Args:
+        curr_x
+        curr_y
+        aabb: [x0, y0, x1, y1]
         '''
         # First calculate the closest point to the circle on the AABB.
         # AABB coords are always (x1, y1, x2, y2) with x1<x2, y1<y2
@@ -391,8 +417,8 @@ class DWAActionServer(Node):
         diff_vect_x = curr_x-aabb_ctr_x
         diff_vect_y = curr_y-aabb_ctr_y
 
-        w = abs(aabb[0]-aabb[1])/2  # half-width of AABB
-        h = abs(aabb[1]-aabb[3])/2  # half-height of AABB
+        w = abs(aabb[2]-aabb[0])/2  # half-width of AABB
+        h = abs(aabb[3]-aabb[1])/2  # half-height of AABB
 
         # Clamp diff_vect between +-w/h
         # This gives us the closest point from the AABB to the circle.
@@ -403,11 +429,12 @@ class DWAActionServer(Node):
         # In our context this is very bad, (distance is too close!)
         if abs(diff_vect_x_clamped) != w and abs(diff_vect_y_clamped) != h:
             internal_dist = -np.hypot((diff_vect_x_clamped-curr_x),(diff_vect_y_clamped-curr_y))
-            self.get_logger().warn(f"Planned position is within an obstacle centered at X:{aabb_ctr_x:.2f}, Y:{aabb_ctr_y:.2f}")
+            self.get_logger().warn(f"Position is in obstacle at X:{aabb_ctr_x:.2f}, Y:{aabb_ctr_y:.2f}; dist:{internal_dist:.2f}")
             return internal_dist
 
-        diff_vect_x_prime = curr_x-diff_vect_x_clamped
-        diff_vect_y_prime = curr_y-diff_vect_y_clamped
+        # Find the distance away from the closest point on the AABB to (curr_x, curr_y)
+        diff_vect_x_prime = curr_x-(aabb_ctr_x+diff_vect_x_clamped)
+        diff_vect_y_prime = curr_y-(aabb_ctr_y+diff_vect_y_clamped)
 
         dist_to_bot = np.hypot(diff_vect_x_prime, diff_vect_y_prime)
 
@@ -420,7 +447,7 @@ def main(args=None):
         dwa_action_server = DWAActionServer()
         # MultiThreadedExecutor lets us listen to the current location while also doing 
         # Action Server stuff
-        executor = MultiThreadedExecutor(num_threads=2)
+        executor = MultiThreadedExecutor()
         executor.add_node(dwa_action_server)
 
         try:
