@@ -45,7 +45,7 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
 
         return dist_to_bot
 
-def get_intersection(a0, a1, b0, b1):
+def get_intersection(a0: np.ndarray, a1: np.ndarray, b0: np.ndarray, b1: np.ndarray):
     '''
     Formula from: https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
 

@@ -194,11 +194,12 @@ def generate_launch_description():
         output="screen"
     )
 
+    # Rviz does not need debug hooks
     start_rviz_cmd = Node(
         package='rviz2',
         executable='rviz2',
         arguments=['-d', os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')],
-        output='screen'
+        # output='screen'
     )
 
     # Create the launch description and populate
