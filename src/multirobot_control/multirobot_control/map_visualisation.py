@@ -53,8 +53,8 @@ class MapVisualisation(Node):
 
             # Set the color -- be sure to set alpha to something non-zero!
             marker.color.r = idx/len(OBSTACLE_ARRAY) * 1.0
-            marker.color.g = 1.0
-            marker.color.b = 0.0
+            marker.color.g = 0.7
+            marker.color.b = 0.7
             marker.color.a = 0.8
 
             # Duration of marker, set to be infinite
