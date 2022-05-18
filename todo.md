@@ -149,3 +149,5 @@
 ### Wed 18/05/22
 - Added in arrow visualisation for the robot, now it is easier to see what trajectory the DWA controller chooses.
 - Reinstated reversing for the controller. This now lets the robot get out of sticky situations where it would otherwise previously be stuck.
+- Started implementation of a RRT* global planner to get robots around the obstacles
+- Perhaps rename `planner_action_interfaces.action.LocalPlanner` to something like `MotionPlanRequest` as these messages are useful for both Global and Local cases.

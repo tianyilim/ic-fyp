@@ -22,7 +22,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from multirobot_control.map_params import OBSTACLE_ARRAY
-from multirobot_control.dist_to_aabb import dist_to_aabb
+from multirobot_control.math_utils import dist_to_aabb
 
 import time
 import numpy as np
