@@ -2,12 +2,14 @@
 Create a DWA node.
 '''
 
+from email.errors import MessageParseError
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.parameter import Parameter
+from rclpy.time import Duration
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
@@ -16,6 +18,7 @@ from planner_action_interfaces.msg import OtherRobotLocations
 from std_msgs.msg import Bool, String, Header
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
+from visualization_msgs.msg import MarkerArray, Marker
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -107,6 +110,7 @@ class DWAActionServer(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         # Publish predicted movement
         self.planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
+        self.vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
 
         # Timer callback
         timer_period = 1 / self.params['pub_freq']
@@ -177,8 +181,8 @@ class DWAActionServer(Node):
             if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']: 
                 possible_linear.append(self._linear_twist + self.params['linear_step'])
             # ? Temporary
-            # if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']: 
-            if (self._linear_twist - self.params['linear_step']) >= 0: 
+            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']: 
+            # if (self._linear_twist - self.params['linear_step']) >= 0: 
                 possible_linear.append(self._linear_twist - self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
@@ -189,6 +193,11 @@ class DWAActionServer(Node):
 
             top_score = -np.inf
             top_pose = None
+
+            # Variables for visualising trajectories in RViz
+            vis_msg_array = []
+            vis_idx = 0
+            top_idx = 0
 
             # Forward simulate actions based on dynamics model (?)
             # Assumes that robot can instantly achieve the commanded velocity (might not be the case)
@@ -209,17 +218,30 @@ class DWAActionServer(Node):
                     end_pose = [end_pose[0], end_pose[1], effective_yaw]
 
                     # Rank score
-                    self.get_logger().info(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
+                    self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
                     score = self.rankPose(end_pose)
+
+                    marker_vis = self.marker_from_traj(vis_idx, score, end_pose)
+                    vis_msg_array.append(marker_vis)
 
                     if score > top_score:
                         top_score = score
+                        top_idx = vis_idx
                         self._linear_twist = linear_twist
                         self._angular_twist = angular_twist
                         
                         top_pose = end_pose
+
+                    vis_idx += 1
             
-            self.get_logger().info(f"------ Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} ------")
+            self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----")
+
+            # Label top score with color. Invalid -> red, Not top score -> yellow, Top score -> Green
+            vis_msg_array[top_idx].color.r = 0.0
+            vis_msg_array[top_idx].color.g = 1.0
+
+            # Visualise trajectories in RViz
+            self.vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
 
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose
@@ -308,7 +330,7 @@ class DWAActionServer(Node):
             #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
 
             if dist_to_obstacle < self.params['robot_radius']:
-                self.get_logger().info(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
+                self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
                 score = -np.inf # Collision, don't process further
                 return score
             elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
@@ -336,14 +358,14 @@ class DWAActionServer(Node):
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             if dist_to_robot < self.params['robot_radius']:
-                self.get_logger().info(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
+                self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
                 score = -np.inf # Collision, don't process further
                 return score
             elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
         # Score breakdown
-        self.get_logger().info(
+        self.get_logger().debug(
             f"end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
             f" | dist+: {dist_plus:.2f} | hdg+: {hdg_plus:.2f}" + \
             f" | score: {score:.2f}"
@@ -444,6 +466,61 @@ class DWAActionServer(Node):
         dist_to_bot = np.hypot(diff_vect_x_prime, diff_vect_y_prime)
 
         return dist_to_bot
+
+    def marker_from_traj(self, idx: int, score: float, end_pose: Tuple[float, float, float]) -> Marker :
+        marker = Marker()
+        # header stamp
+        marker.header.frame_id = "/map"             # Set relative to global frame
+        marker.header.stamp = self.get_clock().now().to_msg()
+
+        # namespace and id
+        marker.ns = self.get_namespace() + '/trajectories'
+        marker.id = idx
+
+        # Type of marker
+        marker.type = Marker.ARROW
+        marker.action = Marker.ADD
+
+        # Position of marker
+        marker.pose.position.x = self._x
+        marker.pose.position.y = self._y
+        marker.pose.position.z = 0.25
+        # Orientation is diff between current pose and future pose
+        yaw = np.arctan2((end_pose[1]-self._y), (end_pose[0]-self._x))
+        quat = quaternion_from_euler(0, 0, yaw)
+        marker.pose.orientation.x = quat[0]
+        marker.pose.orientation.y = quat[1]
+        marker.pose.orientation.z = quat[2]
+        marker.pose.orientation.w = quat[3]
+
+        # Set the scale of the marker
+        # x: Arrow length
+        marker.scale.x = np.hypot((end_pose[1]-self._y), (end_pose[0]-self._x)) 
+        # y: Arrow width
+        marker.scale.y = 0.05
+        # z: Head length
+        marker.scale.z = np.hypot((end_pose[1]-self._y), (end_pose[0]-self._x)) * 0.2
+
+        # Set the color -- be sure to set alpha to something non-zero!
+        if score==-np.inf:
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+        else:
+            marker.color.r = 1.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+        
+        marker.color.a = 0.8
+
+        # Duration of marker, set to be the update rate of the 
+        # controller so we don't have to delete objects
+        period = self.params['action_duration']*1.1
+        period_sec = int( np.round(period) )
+        period_nanosec = int( (period-period_sec)*1e9 )
+        marker.lifetime = Duration(seconds=period_sec, nanoseconds=period_nanosec).to_msg()
+
+        return marker
 
 def main(args=None):
     rclpy.init(args=args)

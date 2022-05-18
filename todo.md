@@ -143,5 +143,9 @@
 - [ ] Visualizations in RViz need to be figured out.
   - [x] Visualise obstacles from `OBSTACLE_LIST` in RViz using a new node, `map_visualisation.py`. This uses `Marker` messages in RViz to more cleanly display the static obstacles.
   - [ ] Visualise goals from `goal_creation`
-  - [ ] Visualise sample trajectories from `dwa_server`
+  - [x] Visualise sample trajectories from `dwa_server`
   - [ ] Visualise waypoints from RRT node
+
+### Wed 18/05/22
+- Added in arrow visualisation for the robot, now it is easier to see what trajectory the DWA controller chooses.
+- Reinstated reversing for the controller. This now lets the robot get out of sticky situations where it would otherwise previously be stuck.
