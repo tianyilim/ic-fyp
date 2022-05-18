@@ -2,7 +2,6 @@
 Create a DWA node.
 '''
 
-from email.errors import MessageParseError
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -23,6 +22,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from multirobot_control.map_params import OBSTACLE_ARRAY
+from multirobot_control.dist_to_aabb import dist_to_aabb
 
 import time
 import numpy as np
@@ -162,8 +162,8 @@ class DWAActionServer(Node):
                 )))
 
 
-    ''' Executes the action. '''
     def execute_callback(self, goal_handle):
+        ''' Executes the DWA action. '''
 
         self._planner_state = DWAServerStatus.STATUS_BUSY
 
@@ -324,7 +324,7 @@ class DWAActionServer(Node):
         # Check for collisions or close shaves
         # OBSTACLE_ARRAY also handles the walls
         for obstacle in OBSTACLE_ARRAY:
-            dist_to_obstacle = self.dist_to_aabb(end_pose[0], end_pose[1], obstacle)
+            dist_to_obstacle = dist_to_aabb(end_pose[0], end_pose[1], obstacle)
             
             # print(f"Dist to obstacle for end_pose x:{end_pose[0]:.2f} y:{end_pose[1]:.2f}" + \
             #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
@@ -421,51 +421,6 @@ class DWAActionServer(Node):
 
         # Write parameter result change
         return SetParametersResult(successful=True)
-
-    def dist_to_aabb(self, curr_x: float, curr_y: float, aabb: List[Tuple[float, float, float, float]]):
-        '''
-        Calculates the distance from the robot base (modelled as a circle) and any Axis-Aligned Bounding Box.
-        AABBs are useful here because the shelf obstacles in the world are axis-aligned rectangles.
-        
-        Algorithm taken from https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection
-        
-        ---
-
-        Args:
-        curr_x
-        curr_y
-        aabb: [x0, y0, x1, y1]
-        '''
-        # First calculate the closest point to the circle on the AABB.
-        # AABB coords are always (x1, y1, x2, y2) with x1<x2, y1<y2
-        aabb_ctr_x = (aabb[0] + aabb[2]) / 2
-        aabb_ctr_y = (aabb[1] + aabb[3]) / 2
-
-        diff_vect_x = curr_x-aabb_ctr_x
-        diff_vect_y = curr_y-aabb_ctr_y
-
-        w = abs(aabb[2]-aabb[0])/2  # half-width of AABB
-        h = abs(aabb[3]-aabb[1])/2  # half-height of AABB
-
-        # Clamp diff_vect between +-w/h
-        # This gives us the closest point from the AABB to the circle.
-        diff_vect_x_clamped = max(min(diff_vect_x, w), -w)
-        diff_vect_y_clamped = max(min(diff_vect_y, h), -h)
-
-        # If both values are not w/h, it means that the center of the circle is within the AABB.
-        # In our context this is very bad, (distance is too close!)
-        if abs(diff_vect_x_clamped) != w and abs(diff_vect_y_clamped) != h:
-            internal_dist = -np.hypot((diff_vect_x_clamped-curr_x),(diff_vect_y_clamped-curr_y))
-            self.get_logger().warn(f"Position is in obstacle at X:{aabb_ctr_x:.2f}, Y:{aabb_ctr_y:.2f}; dist:{internal_dist:.2f}")
-            return internal_dist
-
-        # Find the distance away from the closest point on the AABB to (curr_x, curr_y)
-        diff_vect_x_prime = curr_x-(aabb_ctr_x+diff_vect_x_clamped)
-        diff_vect_y_prime = curr_y-(aabb_ctr_y+diff_vect_y_clamped)
-
-        dist_to_bot = np.hypot(diff_vect_x_prime, diff_vect_y_prime)
-
-        return dist_to_bot
 
     def marker_from_traj(self, idx: int, score: float, end_pose: Tuple[float, float, float]) -> Marker :
         marker = Marker()
