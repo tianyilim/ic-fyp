@@ -16,6 +16,7 @@ Simple demo to load up the aws world and spawn in one or more robots.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from multiprocessing import Condition
 import os
 import yaml
 
@@ -24,7 +25,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, \
                             SetEnvironmentVariable, ExecuteProcess
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
 from launch_ros.actions import PushRosNamespace, Node
@@ -64,6 +65,7 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
     world = LaunchConfiguration('world')
     urdf = LaunchConfiguration('urdf')
+    headless_config = LaunchConfiguration('headless')
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
@@ -106,6 +108,12 @@ def generate_launch_description():
         description='Full path to robot URDF to load'
     )
 
+    declare_headless_cmd = DeclareLaunchArgument(
+        'headless',
+        default_value='true',
+        description="Whether or not to launch full Gazebo GUI. If false, just launch RViz."
+    )
+
     # Launch commands
     gazebo_cmd = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -114,16 +122,20 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
-            }.items()
+            }.items(),
+            condition=UnlessCondition(headless_config)
         )
 
-    # start_gazebo_server_cmd = ExecuteProcess(
-    #     cmd=['gzserver', '-s', 'libgazebo_ros_factory.so', '-s', 'libgazebo_ros_init.so', world, '--verbose'],
-    #     cwd=[warehouse_dir], output='screen' )
-
-    # start_gazebo_client_cmd = ExecuteProcess(
-    #     cmd=['gzclient'],
-    #     cwd=[warehouse_dir], output='screen')
+    gazebo_server_cmd = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory('gazebo_ros'), 'launch', 'gzserver.launch.py')
+            ),
+            launch_arguments={
+                'world': world,
+                'verbose': 'true',
+            }.items(),
+            condition=IfCondition(headless_config)
+        )
 
     spawn_robot_cmds = []
     for i, robot in enumerate(robots):
@@ -202,11 +214,11 @@ def generate_launch_description():
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_urdf_cmd)
+    ld.add_action(declare_headless_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(gazebo_cmd),
-    # ld.add_action(start_gazebo_server_cmd)
-    # ld.add_action(start_gazebo_client_cmd)
+    ld.add_action(gazebo_server_cmd)
     for cmd in spawn_robot_cmds:
         ld.add_action(cmd)
     for cmd in start_navigation_cmds:
