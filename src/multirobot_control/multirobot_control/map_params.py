@@ -51,6 +51,8 @@ OBSTACLE_ARRAY.append( (-wall_x-0.1, -wall_y, -wall_x+0.1, wall_y) )
 OBSTACLE_ARRAY.append( (-wall_x,  wall_y-0.1, wall_x,  wall_y+0.1) )
 OBSTACLE_ARRAY.append( (-wall_x, -wall_y-0.1, wall_x, -wall_y+0.1) )
 
+OBSTACLE_BOUND = (-9.1, -6.6, 9.1, 6.6)
+
 # Debugging
 # for aabb in OBSTACLE_ARRAY:
 #     print(f"x0:{aabb[0]:.2f} y0:{aabb[1]:.2f} x1:{aabb[2]:.2f} y1:{aabb[3]:.2f} ")

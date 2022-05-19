@@ -23,7 +23,7 @@ class RRT:
     def __init__(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float], 
         obstacle_list: Tuple[float, float, float, float], 
         bounds:Tuple[float, float, float, float],
-        path_bias:float=0.2, it_lim:int=2000, node_lim:int=10000,
+        path_bias:float=0.2, it_lim:int=2000,
         max_extend_length:float=0.5, safety_radius:float=0.2, robot_radius:float=0.35,
         connect_circle_dist:float=1.0, debug_plot:bool=False
     ) -> None:
@@ -41,7 +41,6 @@ class RRT:
         - Config args
             - path_bias: % chance of exploring straight towards the goal instead of randomly
             - it_lim: iteration limit before giving up
-            - node_lim: maximum num nodes in the system
             - max_extend_length: how far to extend the path across waypoints
             - safety_radius: how far away from an obstacle to plan 
             - robot_radius: 'size' of robot
@@ -63,7 +62,6 @@ class RRT:
 
         self.path_bias = path_bias
         self.it_lim = it_lim
-        self.node_lim = node_lim
         self.max_extend_length = max_extend_length
         self.safety_radius = safety_radius
         self.robot_radius = robot_radius
@@ -164,10 +162,12 @@ class RRT:
         assert new_node is not None, "[rrt_explore] new_node must not be None!"
         self.node_list.append( new_node )
 
-    def explore(self):
+    def explore(self) -> List[Tuple[float, float]]:
         '''
         Plans the path from start to goal while avoiding obstacles. Repeatedly calls 
         `explore_one_step` till goal is found, or max iterations are reached.
+
+        A Path is a list of (x,y) waypoints from start to goal.
         '''
         for i in range(self.it_lim):
             self.explore_one_step()
@@ -182,7 +182,7 @@ class RRT:
                     return self.get_path()
 
         print(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
-        return None    # Cannot find a path
+        return []    # Cannot find a path
 
     def get_near_idxs(self, new_pos: np.ndarray):
         '''
@@ -334,7 +334,7 @@ class RRT:
 
         return False
 
-    def get_path(self):
+    def get_path(self) -> List[Tuple[float, float]] :
         '''
         Traverse node_list to get path from first node to last node.
         Only call this when exploration is complete, otherwise will throw errors.
@@ -348,7 +348,9 @@ class RRT:
         assert np.all(path[0]._pos == self.start), f"Start position was {self.start[0]:.2f}, {self.start[1]:.2f} but start of path was {path[0]._pos[0]:.2f}, {path[0]._pos[1]:.2f}"
         assert np.all(path[-1]._pos == self.goal), f"Goal position was {self.goal[0]:.2f}, {self.goal[1]:.2f} but end of path was {path[-1]._pos[0]:.2f}, {path[-1]._pos[1]:.2f}"
 
-        return path
+        path_coords = [(n._pos[0], n._pos[1]) for n in path]
+
+        return path_coords
 
     def propagate_cost_to_leaves(self, parent_node):
         """Recursively update the cost of the nodes"""
