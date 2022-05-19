@@ -92,7 +92,8 @@ class GoalCreation(Node):
 
         for index, robot in enumerate(self.get_parameter("robot_list").value):
             self.action_clients[robot] = \
-                ActionClient(self, LocalPlanner, robot+'/dwa')
+                ActionClient(self, LocalPlanner, robot+'/rrt_star')
+                # ActionClient(self, LocalPlanner, robot+'/dwa')
 
             self.robot_name_to_idx[robot] = index
             self.robot_remaining_goals[robot] = TOTAL_GOALS + 1
