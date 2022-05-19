@@ -23,8 +23,8 @@ class RRT:
     def __init__(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float], 
         obstacle_list: Tuple[float, float, float, float], 
         bounds:Tuple[float, float, float, float],
-        path_bias:float=0.3, it_lim:int=2000, node_lim:int=10000,
-        max_extend_length:float=0.2, safety_radius:float=0.2, robot_radius:float=0.35,
+        path_bias:float=0.2, it_lim:int=2000, node_lim:int=10000,
+        max_extend_length:float=0.5, safety_radius:float=0.2, robot_radius:float=0.35,
         connect_circle_dist:float=1.0,
     ) -> None:
         '''
@@ -45,7 +45,7 @@ class RRT:
             - max_extend_length: how far to extend the path across waypoints
             - safety_radius: how far away from an obstacle to plan 
             - robot_radius: 'size' of robot
-            - connect_circle_dist: area to search around new node for graph rewiring
+            - connect_circle_dist: area to search around new node for graph rewiring.
         '''
 
         self.start = np.array(start_pos)
@@ -120,11 +120,11 @@ class RRT:
                     if self.check_collision( prop_coords ):
                         break
 
-            print(f"Proposed new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
+            # ~ print(f"Proposed new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
 
             # Find NN in node list
             nearest_node = self.get_nearest_node(self.node_list, prop_coords)
-            print(f"Nearest node is at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
+            # ~ print(f"Nearest node is at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
 
             # Draw a line towards nearest node
             vect_to_nearest = prop_coords - nearest_node._pos
@@ -133,12 +133,14 @@ class RRT:
             # Else scale the vector to be the distance
             vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
             prop_coords = nearest_node._pos + vect_to_nearest
-            print(f"Step towards new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
+            
+            # ~ print(f"Step towards new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
             
             # Check if there are any obstacles along this new line.
             # If there are no obstacles, then we have found a valid new point!
             if self.check_line_intersection(nearest_node._pos, prop_coords) == False:
-                print("New node added.\n")
+                # ~ print("New node added.\n")
+
                 # If path between new_node and nearest_node is not in collision:
                 # Connect node to best parent in near_inds
                 near_idxs = self.get_near_idxs(prop_coords) # find close nodes
@@ -153,7 +155,7 @@ class RRT:
                 if goal_valid and np.all(prop_coords==self.goal):
                     goal_valid = False
             
-                print("")
+                # ~ print("")
 
         # append new node
         assert new_node is not None, "[rrt_explore] new_node must not be None!"
@@ -183,10 +185,20 @@ class RRT:
         '''
         Find nodes close to the new node's pos.
         '''
-        nnode = len(self.node_list) + 1
-        r = self.connect_circle_dist * np.sqrt((np.log(nnode) / nnode))
-        dlist = [np.sum(np.square((node._pos - new_pos))) for node in self.node_list]
-        near_inds = [dlist.index(i) for i in dlist if i <= r ** 2]
+        
+        near_inds = []
+        while len(near_inds) < 1:
+            nnode = len(self.node_list) + 1
+            r = self.connect_circle_dist * np.sqrt((np.log(nnode) / nnode))
+            dlist = [np.sum(np.square((node._pos - new_pos))) for node in self.node_list]
+            near_inds = [dlist.index(i) for i in dlist if i <= r ** 2]
+
+            # Make sure we can always find nearby nodes
+            if len(near_inds) < 1:
+                self.connect_circle_dist *= 1.1
+                # ~ print(f"connect circle dist is now {self.connect_circle_dist}")
+
+        assert len(near_inds) != 0, '[rrt_get_near_idxs] no near nodes'
         return near_inds
 
     def choose_parent(self, near_idxs, prop_coords):
@@ -213,15 +225,14 @@ class RRT:
                 min_cost = cost
                 best_near_node = prop_parent
 
-        assert prop_parent is not None, "[rrt_explore] parent node must not be None!"
+        assert best_near_node is not None, "[rrt_chooose_parent] parent node must not be None!"
         # pick the parent resulting in the lowest cost, and return a corresponding node
 
         # DEBUG
-        print(f"new node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
+        # ~ print(f"new node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
         plt.plot( prop_coords[0], prop_coords[1], 'ro' )
-        # plt.plot( (prop_coords[0], prop_coords[1]), (best_near_node._pos[0], best_near_node._pos[1]), '-r' )
         plt.draw()
-        plt.pause(0.001)
+        plt.pause(0.0001)
 
         return self.Node( prop_coords, best_near_node, min_cost )
 
@@ -280,7 +291,14 @@ class RRT:
         '''
 
         for (x0, y0, x1, y1) in self.obstacle_list:
-            # Inflate obstacles by safety radius + robot_radius
+            # Inflate obstacles by safety radius + robot_radius.
+            # The AABBs are 'inflated' like this:
+            #   __________
+            #  /.        .\ where the dots are the orignal coordinates
+            # |           | of the AABB.
+            # \.________./
+            # This allows the robots to navigate around the narrow corridors of shelves.
+
             inflate_dist = self.safety_radius + self.robot_radius
             x0_ = x0-inflate_dist
             y0_ = y0-inflate_dist
@@ -308,7 +326,7 @@ class RRT:
 
             if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
             or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
-                print(f"Intersection with obstacle @ {x0_:.2f}, {y0_:.2f}, {x1_:.2f}, {y1_:.2f}")
+                # print(f"Intersection with obstacle @ {x0_:.2f}, {y0_:.2f}, {x1_:.2f}, {y1_:.2f}")
                 return True
 
         return False
@@ -321,7 +339,6 @@ class RRT:
         path = [ self.node_list[-1] ]   # This should be the goal node
         while np.any(path[-1]._pos != self.start):
             path.append( path[-1]._parent )
-            print("Appended point at", path[-1]._pos)
 
         path.reverse()
 
