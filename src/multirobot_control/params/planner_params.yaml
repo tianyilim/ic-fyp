@@ -14,14 +14,14 @@
 
     # Typically for the DWA Action Server
     robot_radius : 0.35
-    safety_thresh : 0.3
+    safety_thresh : 0.15
     simulate_duration : 0.25
     action_duration : 0.03
     linear_speed_limit : 0.5
     angular_speed_limit : 0.5
     linear_step : 0.1
     angular_step : 0.1
-    dist_thresh : 0.05
+    dist_thresh : 0.1
     dist_method : "L2"
     inter_robot_dist : 3.0
     angular_thresh : 70.0
@@ -29,6 +29,6 @@
     # Typically for the RRT Action Server
     rrt_path_bias: 0.1
     rrt_it_lim : 2000
-    rrt_max_extend_length : 0.5
+    rrt_max_extend_length : 1.0
     rrt_connect_circle_dist : 1.0
-    rrt_debug_plot : false
+    rrt_debug_plot : true

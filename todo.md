@@ -160,3 +160,5 @@
 - For instance, to run `robot1`:
 - `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='rrt_star'`
 - `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='dwa'`
+
+- [ ] Fix bug where RRT is not terminating

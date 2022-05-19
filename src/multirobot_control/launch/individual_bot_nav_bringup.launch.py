@@ -116,10 +116,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    start_rrt_cmd = Node(
+        package='multirobot_control',
+        executable='rrt_server',
+        namespace=namespace,
+        output='screen',
+        parameters=[params_file]
+    )
+
     start_dwa_cmd = Node(
         package='multirobot_control',
         executable='dwa_server',
-        # name=PythonExpression(["'dwa_server_' + '", namespace, "'"]),
         namespace=namespace,
         output='screen',
         parameters=[params_file]
@@ -173,7 +180,7 @@ def generate_launch_description():
     ld.add_action(declare_autostart_cmd)
     
     ld.add_action(start_static_transform_cmd)
-    #? Potentially start DWA server
+    ld.add_action(start_rrt_cmd)
     ld.add_action(start_dwa_cmd)
 
     # ld.add_action(start_gt_cmd)

@@ -70,6 +70,25 @@ class RRT:
         self.debug_plot = debug_plot
 
         if self.debug_plot:
+            # TODO print statements not showing
+            print(self.start)
+            print(self.goal)
+            print(self.node_list)
+            print(self.goal_node)
+            print(self.obstacle_list)
+            print(self.bounds)
+            print(self.x_width)
+            print(self.y_width)
+            print(self.x_ctr)
+            print(self.y_ctr)
+            print(self.path_bias)
+            print(self.it_lim)
+            print(self.max_extend_length)
+            print(self.safety_radius)
+            print(self.robot_radius)
+            print(self.connect_circle_dist)
+            print(self.debug_plot)
+
             self.fig = plt.figure()
             plt.ion()
             plt.show()

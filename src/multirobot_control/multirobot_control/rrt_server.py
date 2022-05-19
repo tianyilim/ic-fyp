@@ -33,8 +33,9 @@ import numpy as np
 from typing import List, Tuple
 from enum import Enum, auto
 
-class GlobalPlannerStatus(Enum):
+class PlannerStatus(Enum):
     PLANNER_EXEC = auto()
+    PLANNER_PLAN = auto()
     PLANNER_READY = auto()
 
 class RRTStarActionServer(Node):
@@ -72,7 +73,8 @@ class RRTStarActionServer(Node):
         self._RRT = None
         # Path from start to goal
         self.path = []
-        self.status = GlobalPlannerStatus.PLANNER_READY
+        self.global_planner_status = PlannerStatus.PLANNER_READY
+        self.local_planner_status = PlannerStatus.PLANNER_READY
 
         self.goal_marker_topic = self.get_namespace() + '/goals'
         self.path_marker_topic = self.get_namespace() + '/waypoints'
@@ -101,8 +103,13 @@ class RRTStarActionServer(Node):
         self.vis_goal_pub = self.create_publisher(Marker, "goal_markers", 10)
         self.vis_waypoint_pub = self.create_publisher(Marker, "waypoint_markers", 10)
 
+        # Periodically poll if a new task is ready
+        self.create_timer(0.1, self.spin_callback)
+
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
+        self.global_planner_status = PlannerStatus.PLANNER_PLAN
+
         self.remove_goal_marker()
         self.remove_path_marker()
 
@@ -111,7 +118,6 @@ class RRTStarActionServer(Node):
 
         self.display_goal_marker()
 
-        self.status = GlobalPlannerStatus.PLANNER_EXEC
 
         # Find a suitable path through the workspace (and save it for future use).
         rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.goal_y),
@@ -125,11 +131,16 @@ class RRTStarActionServer(Node):
                                   debug_plot=self.params['rrt_debug_plot']
         )
 
+        self.get_logger().info("Finding path to goal")
+        # TODO handle when path is not found - no error handling here
         self.path = rrt_planner.explore()
+        self.get_logger().info("Path found")
         self.display_path_marker()
 
+        self.global_planner_status = PlannerStatus.PLANNER_EXEC
+
         # We need to wait until the other threads finish
-        while self.status == GlobalPlannerStatus.PLANNER_READY:
+        while self.global_planner_status != PlannerStatus.PLANNER_READY:
             pass
         
         goal_handle.succeed()
@@ -147,23 +158,35 @@ class RRTStarActionServer(Node):
 
     def spin_callback(self):
         # Call the local planner action repeatedly for each waypoint until goal reached.
-        if len(self.path) > 0 and self.status==GlobalPlannerStatus.PLANNER_READY:
+        # Only send a new goal when the local planner is done with its previous goal
+
+        # TODO do this as a callback and not by polling...
+        if len(self.path) > 0 and self.local_planner_status==PlannerStatus.PLANNER_READY:
+            # TODO check if it is the last waypoint (goal) and tighten up the distance threshold
+
             self.get_logger().info(f"Going to waypoint. {len(self.path)} segments left.")
+            
             local_goal = LocalPlanner.Goal()
             local_goal.goal_position = Point(x=self.path[0][0], y=self.path[0][1], z=0.0)
 
             self.goal_future = self._action_client.send_goal_async(local_goal)
             self.goal_future.add_done_callback(self.local_planner_done_callback)
+        
+        # send ready only when we are done executing
+        if len(self.path) == 0 and self.global_planner_status == PlannerStatus.PLANNER_EXEC:
+            self.get_logger().info("Readying global planner again")
+            self.global_planner_status = PlannerStatus.PLANNER_READY
 
     def local_planner_done_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
             # TODO: Respond to goal rejected by attempting to send another goal.
             # If goal cannot be completed in ~TIMEOUT seconds, reject goal too?
-            self.get_logger().info('Goal rejected')
+            self.get_logger().info('Local Planner goal rejected')
             return
 
-        self.get_logger().info('Goal accepted')
+        self.local_planner_status = PlannerStatus.PLANNER_EXEC
+        self.get_logger().info('Local Planner goal accepted')
         self.result_future = goal_handle.get_result_async()
         self.result_future.add_done_callback(self.local_planner_get_result_callback)
 
@@ -180,9 +203,8 @@ class RRTStarActionServer(Node):
         
         # Remove goal from current robot.
         self.path.pop(0)
+        self.local_planner_status = PlannerStatus.PLANNER_READY
         self.get_logger().info(f"Robot {robot_name} has {len(self.path)} waypoints left.")
-
-        self.status = GlobalPlannerStatus.PLANNER_READY
 
     def action_feedback_cb(self, feedback):
         '''
@@ -281,9 +303,9 @@ class RRTStarActionServer(Node):
 
         points = []
 
-        for x, y in enumerate(self.path):
+        for x, y in self.path:
             # Position of marker
-            points.append(Point(x=x, y=y, z=-0.05))
+            points.append(Point(x=float(x), y=float(y), z=-0.05))
 
         marker.points = points
 

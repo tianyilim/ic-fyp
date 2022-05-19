@@ -7,6 +7,8 @@ Panels:
         - /TF1/Frames1
         - /Robot1Odometry1/Topic1
         - /ObstacleShelves1/Topic1
+        - /Robot1 Goals1/Topic1
+        - /Robot1 Waypoints1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz_common/Selection
@@ -159,12 +161,12 @@ Visualization Manager:
               robot1_base_link:
                 robot1_front_caster:
                   {}
+                robot1_left_wheel:
+                  {}
                 robot1_rear_caster:
                   {}
-              robot1_left_wheel:
-                {}
-              robot1_right_wheel:
-                {}
+                robot1_right_wheel:
+                  {}
       Update Interval: 0
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -223,13 +225,39 @@ Visualization Manager:
       Enabled: true
       Name: Robot1DWA
       Namespaces:
-        /robot1/trajectories: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /robot1/planned_pos_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot1 Goals
+      Namespaces:
+        /robot1/goals: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot1/goal_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot1 Waypoints
+      Namespaces:
+        /robot1/waypoints: true
+      Topic:
+        Depth: 20
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot1/waypoint_markers
       Value: true
   Enabled: true
   Global Options:
