@@ -1,10 +1,13 @@
 '''
 This class defines a Rapidly-exploring Random Tree (RRT).
-'''
 
-from math import dist
-from operator import ge
+Lots of stuff referenced from 
+https://colab.research.google.com/github/RussTedrake/underactuated/blob/master/exercises/planning/rrt_planning/rrt_planning.ipynb#scrollTo=YeJOgoXh-QJd
+'''
 import numpy as np
+
+# Testing only
+import matplotlib.pyplot as plt
 
 from typing import Tuple, List
 
@@ -20,9 +23,9 @@ class RRT:
     def __init__(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float], 
         obstacle_list: Tuple[float, float, float, float], 
         bounds:Tuple[float, float, float, float],
-        path_bias:float=0.0, it_lim:int=2000, node_lim:int=10000,
-        max_extend_length:float=0.5, safety_radius:float=0.2, robot_radius:float=0.35,
-        connect_circle_dist:float=3.0,
+        path_bias:float=0.3, it_lim:int=2000, node_lim:int=10000,
+        max_extend_length:float=0.2, safety_radius:float=0.2, robot_radius:float=0.35,
+        connect_circle_dist:float=1.0,
     ) -> None:
         '''
         Initializes a RRT* graph.
@@ -65,6 +68,27 @@ class RRT:
         self.robot_radius = robot_radius
         self.connect_circle_dist = connect_circle_dist
 
+        # DEBUG ONLY
+        self.fig = plt.figure()
+        plt.ion()
+        plt.show()
+        
+        plt.axes()
+        plt.axis([self.bounds[0]-0.25, self.bounds[2]+0.25, self.bounds[1]-0.25, self.bounds[3]+0.25])
+
+        # Plot start
+        plt.plot( self.start[0], self.start[1], 'ro' )
+        plt.draw()
+        plt.plot( self.goal[0], self.goal[1], 'go' )
+        plt.draw()
+        plt.pause(0.001)
+
+        for (x0, y0, x1, y1) in self.obstacle_list:
+            rect = plt.Rectangle( (x0,y0), (x1-x0), (y1-y0), fc='gray' )
+            plt.gca().add_patch(rect)
+            plt.draw()
+            plt.pause(0.001)
+
     def explore_one_step(self):
         '''
         Performs one instance of exploration.
@@ -83,7 +107,7 @@ class RRT:
         # Look for a new x,y coordinate that is correct
         while True:
             # See if we should step in the direction of the goal
-            if goal_valid and self.path_bias > np.random():
+            if goal_valid and (self.path_bias > np.random.random()):
                 prop_coords = self.goal
             else:
                 # Randomly sample in the configuration space and check for collision-free point
@@ -96,19 +120,25 @@ class RRT:
                     if self.check_collision( prop_coords ):
                         break
 
+            print(f"Proposed new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
+
             # Find NN in node list
             nearest_node = self.get_nearest_node(self.node_list, prop_coords)
+            print(f"Nearest node is at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
 
             # Draw a line towards nearest node
-            vect_to_nearest = nearest_node._pos - prop_coords
+            vect_to_nearest = prop_coords - nearest_node._pos
             dist_to_nearest = np.linalg.norm(vect_to_nearest)
             # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
             # Else scale the vector to be the distance
             vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
+            prop_coords = nearest_node._pos + vect_to_nearest
+            print(f"Step towards new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
             
             # Check if there are any obstacles along this new line.
             # If there are no obstacles, then we have found a valid new point!
             if self.check_line_intersection(nearest_node._pos, prop_coords) == False:
+                print("New node added.\n")
                 # If path between new_node and nearest_node is not in collision:
                 # Connect node to best parent in near_inds
                 near_idxs = self.get_near_idxs(prop_coords) # find close nodes
@@ -120,9 +150,11 @@ class RRT:
 
             else:
                 # If a step towards the goal results in a collision, dont do it again
-                if goal_valid and prop_coords == self.goal:
+                if goal_valid and np.all(prop_coords==self.goal):
                     goal_valid = False
-        
+            
+                print("")
+
         # append new node
         assert new_node is not None, "[rrt_explore] new_node must not be None!"
         self.node_list.append( new_node )
@@ -182,7 +214,15 @@ class RRT:
                 best_near_node = prop_parent
 
         assert prop_parent is not None, "[rrt_explore] parent node must not be None!"
-        # pick the parent resulting in the lowest cost, and return a corresponding node        
+        # pick the parent resulting in the lowest cost, and return a corresponding node
+
+        # DEBUG
+        print(f"new node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
+        plt.plot( prop_coords[0], prop_coords[1], 'ro' )
+        # plt.plot( (prop_coords[0], prop_coords[1]), (best_near_node._pos[0], best_near_node._pos[1]), '-r' )
+        plt.draw()
+        plt.pause(0.001)
+
         return self.Node( prop_coords, best_near_node, min_cost )
 
     def rewire(self, new_node, near_idxs):
@@ -246,17 +286,29 @@ class RRT:
             y0_ = y0-inflate_dist
             x1_ = x1+inflate_dist
             y1_ = y1+inflate_dist
-            # 4 corners of AABB
-            c1 = np.array((x0_, y0_))
-            c2 = np.array((x0_, y1_))
-            c3 = np.array((x1_, y0_))
-            c4 = np.array((x1_, y1_))
+            # 8 corners of inflated AABB
+            c1 = np.array((x0, y0_))
+            c2 = np.array((x0_, y0))
+            c3 = np.array((x0_, y1))
+            c4 = np.array((x0, y1_))
+            c5 = np.array((x1, y1_))
+            c6 = np.array((x1_, y1))
+            c7 = np.array((x1_, y0))
+            c8 = np.array((x1, y0_))
             
             # If all are False -> no intersection, valid line extension
-            if  get_intersection( c1, c2, line_start, line_end ) == False \
-            and get_intersection( c2, c3, line_start, line_end ) == False \
-            and get_intersection( c3, c4, line_start, line_end ) == False \
-            and get_intersection( c4, c1, line_start, line_end ) == False:
+            i1 = get_intersection( line_start, line_end, c1, c2 )
+            i2 = get_intersection( line_start, line_end, c2, c3 )
+            i3 = get_intersection( line_start, line_end, c3, c4 )
+            i4 = get_intersection( line_start, line_end, c4, c5 )
+            i5 = get_intersection( line_start, line_end, c5, c6 )
+            i6 = get_intersection( line_start, line_end, c6, c7 )
+            i7 = get_intersection( line_start, line_end, c7, c8 )
+            i8 = get_intersection( line_start, line_end, c8, c1 )
+
+            if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
+            or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
+                print(f"Intersection with obstacle @ {x0_:.2f}, {y0_:.2f}, {x1_:.2f}, {y1_:.2f}")
                 return True
 
         return False
@@ -266,14 +318,15 @@ class RRT:
         Traverse node_list to get path from first node to last node.
         Only call this when exploration is complete, otherwise will throw errors.
         '''
-        path = [ self.goal_node ]
-        while path[-1]._pos != self.start:
+        path = [ self.node_list[-1] ]   # This should be the goal node
+        while np.any(path[-1]._pos != self.start):
             path.append( path[-1]._parent )
+            print("Appended point at", path[-1]._pos)
 
         path.reverse()
 
-        assert path[0]._pos == self.start, f"Start position was {self.start[0]:.2f}, {self.start[1]:.2f} but start of path was {path[0]._pos[0]:.2f}, {path[0]._pos[1]:.2f}"
-        assert path[-1]._pos == self.goal, f"Goal position was {self.goal[0]:.2f}, {self.goal[1]:.2f} but end of path was {path[-1]._pos[0]:.2f}, {path[-1]._pos[1]:.2f}"
+        assert np.all(path[0]._pos == self.start), f"Start position was {self.start[0]:.2f}, {self.start[1]:.2f} but start of path was {path[0]._pos[0]:.2f}, {path[0]._pos[1]:.2f}"
+        assert np.all(path[-1]._pos == self.goal), f"Goal position was {self.goal[0]:.2f}, {self.goal[1]:.2f} but end of path was {path[-1]._pos[0]:.2f}, {path[-1]._pos[1]:.2f}"
 
         return path
 

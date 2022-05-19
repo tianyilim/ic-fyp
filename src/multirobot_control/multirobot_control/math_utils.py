@@ -50,24 +50,33 @@ def get_intersection(a0: np.ndarray, a1: np.ndarray, b0: np.ndarray, b1: np.ndar
     Formula from: https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
 
     Given two points on each line, returns their point of intersection, if it exists.
-    Returns false otherwise.
+    Returns None otherwise.
     '''
     # (Px, Py) = x1 + t(x2-x1), y1 + t(y2-y1)
-
     # num = (x1   -x3   ) (y3   -y4   )-(y1   -y3   ) (x3   -x4   )
     t_num = (a0[0]-b0[0])*(b0[1]-b1[1])-(a0[1]-b0[1])*(b0[0]-b1[0])
     # den = (x1   -x2   ) (y3   -y4   )-(y1   -y2   ) (x3   -x4   )
     t_den = (a0[0]-a1[0])*(b0[1]-b1[1])-(a0[1]-a1[1])*(b0[0]-b1[0])
-    
-    print(t_num, t_den)
 
-    # t = t_num/t_den
-    # There exists an intersection if 0.0 <= t <= 1.0
-    # Therefore check if t_num and t_den have the same sign and if t_num <= t_den
-    # neatly also leaves out case if t_den == 0
-    if (abs(t_num) <= abs(t_den)) \
-        and ((t_num >=0 and t_den>0) or (t_num <= 0 and t_den <0)):
-        # Calculate intersection and return it
-        return a0 + (t_num/t_den)*(a1-a0)
+    if t_den == 0:
+        return None # Not possible to divide by 0
+
+    # (Px, Py) = x3 + u(x4-x3), y3 + u(y4-y3)
+    # num = (x1   -x3   ) (y1   -y2   )-(y1   -y3   ) (x1   -x2   )
+    u_num = (a0[0]-b0[0])*(a0[1]-a1[1])-(a0[1]-b0[1])*(a0[0]-a1[0])
+    # den = (x1   -x2   ) (y3   -y4   )-(y1   -y2   ) (x3   -x4   )
+    u_den = t_den
+
+    t = t_num/t_den
+    u = u_num/u_den
+
+    t_int = a0 + t*(a1-a0)
+    u_int = b0 + u*(b1-b0)
+
+    # There exists an intersection if 0.0<=t<=1.0, 0.0<=u<=1.0
+    if t>=0.0 and t<=1.0 and u>=0.0 and u<=1.0:
+        # Calculate intersection and return it.
+        assert np.allclose(t_int, u_int), f"Int 1: {t_int[0]:.2f}, {t_int[1]:.2f} | Int 2: {u_int[0]:.2f}, {u_int[1]:.2f}"
+        return t_int
     else:
-        return False # no intersection
+        return None # no intersection
