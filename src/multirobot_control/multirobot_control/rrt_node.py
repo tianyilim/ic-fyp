@@ -25,7 +25,7 @@ class RRT:
         bounds:Tuple[float, float, float, float],
         path_bias:float=0.2, it_lim:int=2000, node_lim:int=10000,
         max_extend_length:float=0.5, safety_radius:float=0.2, robot_radius:float=0.35,
-        connect_circle_dist:float=1.0,
+        connect_circle_dist:float=1.0, debug_plot:bool=False
     ) -> None:
         '''
         Initializes a RRT* graph.
@@ -46,6 +46,7 @@ class RRT:
             - safety_radius: how far away from an obstacle to plan 
             - robot_radius: 'size' of robot
             - connect_circle_dist: area to search around new node for graph rewiring.
+            - debug_plot: whether or not to visualise the process using matplotlib.
         '''
 
         self.start = np.array(start_pos)
@@ -68,26 +69,28 @@ class RRT:
         self.robot_radius = robot_radius
         self.connect_circle_dist = connect_circle_dist
 
-        # DEBUG ONLY
-        self.fig = plt.figure()
-        plt.ion()
-        plt.show()
-        
-        plt.axes()
-        plt.axis([self.bounds[0]-0.25, self.bounds[2]+0.25, self.bounds[1]-0.25, self.bounds[3]+0.25])
+        self.debug_plot = debug_plot
 
-        # Plot start
-        plt.plot( self.start[0], self.start[1], 'ro' )
-        plt.draw()
-        plt.plot( self.goal[0], self.goal[1], 'go' )
-        plt.draw()
-        plt.pause(0.001)
+        if self.debug_plot:
+            self.fig = plt.figure()
+            plt.ion()
+            plt.show()
+            
+            plt.axes()
+            plt.axis([self.bounds[0]-0.25, self.bounds[2]+0.25, self.bounds[1]-0.25, self.bounds[3]+0.25])
 
-        for (x0, y0, x1, y1) in self.obstacle_list:
-            rect = plt.Rectangle( (x0,y0), (x1-x0), (y1-y0), fc='gray' )
-            plt.gca().add_patch(rect)
+            # Plot start
+            plt.plot( self.start[0], self.start[1], 'ro' )
+            plt.draw()
+            plt.plot( self.goal[0], self.goal[1], 'go' )
             plt.draw()
             plt.pause(0.001)
+
+            for (x0, y0, x1, y1) in self.obstacle_list:
+                rect = plt.Rectangle( (x0,y0), (x1-x0), (y1-y0), fc='gray' )
+                plt.gca().add_patch(rect)
+                plt.draw()
+                plt.pause(0.001)
 
     def explore_one_step(self):
         '''
@@ -228,11 +231,11 @@ class RRT:
         assert best_near_node is not None, "[rrt_chooose_parent] parent node must not be None!"
         # pick the parent resulting in the lowest cost, and return a corresponding node
 
-        # DEBUG
         # ~ print(f"new node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
-        plt.plot( prop_coords[0], prop_coords[1], 'ro' )
-        plt.draw()
-        plt.pause(0.0001)
+        if self.debug_plot:    
+            plt.plot( prop_coords[0], prop_coords[1], 'ro' )
+            plt.draw()
+            plt.pause(0.0001)
 
         return self.Node( prop_coords, best_near_node, min_cost )
 
