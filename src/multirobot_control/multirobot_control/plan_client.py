@@ -1,6 +1,12 @@
+'''
+Choose between commanding the DWA "local" planner and the RRT "global" planner 
+using ROS parameters.
+'''
+
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 
 from planner_action_interfaces.action import LocalPlanner
 from geometry_msgs.msg import Point
@@ -13,7 +19,21 @@ class DWAActionClient(Node):
 
     def __init__(self):
         super().__init__('dwa_action_client')
-        self._action_client = ActionClient(self, LocalPlanner, 'dwa')
+
+        self.declare_parameter('planner', Parameter.Type.STRING)
+
+        if not \
+            (self.get_parameter('planner').value=='dwa' \
+            or self.get_parameter('planner').value=='rrt_star'):
+            self.get_logger().warn(f"Specify either 'dwa' or 'rrt_star' as planner. Choosing 'rrt' by default.")
+            
+            self.planner = 'rrt'
+        else:
+            self.planner = self.get_parameter('planner').value
+
+        self.get_logger().info(f"Using planner {self.planner}")
+
+        self._action_client = ActionClient(self, LocalPlanner, self.planner)
 
     def send_goal(self, goal_position):
         goal_msg = LocalPlanner.Goal()

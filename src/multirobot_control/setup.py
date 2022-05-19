@@ -37,11 +37,12 @@ setup(
         'console_scripts': [
             'spawn_single_bot = multirobot_control.spawn_single_bot:main',
             'gt_odom = multirobot_control.gt_odom:main',
-            'dwa_client = multirobot_control.dwa_client:main',
+            'plan_client = multirobot_control.plan_client:main',
             'dwa_server = multirobot_control.dwa_server:main',
             'odom_distribution = multirobot_control.odom_distribution:main',
             'goal_creation = multirobot_control.goal_creation:main',
-            'map_visualisation = multirobot_control.map_visualisation:main'
+            'map_visualisation = multirobot_control.map_visualisation:main',
+            'rrt_server = multirobot_control.rrt_server:main',
         ],
     },
 )

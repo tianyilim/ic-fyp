@@ -151,3 +151,12 @@
 - Reinstated reversing for the controller. This now lets the robot get out of sticky situations where it would otherwise previously be stuck.
 - Started implementation of a RRT* global planner to get robots around the obstacles
 - Perhaps rename `planner_action_interfaces.action.LocalPlanner` to something like `MotionPlanRequest` as these messages are useful for both Global and Local cases.
+
+### Thu 19/05/22
+- Added in implementation for a RRT* global planner in `rrt_server`. This takes in parameters from `planner_params`.
+- Core implementation of the RRT* planner is in `rrt_node`, which is then called by `rrt_server`.
+- `rrt_server` internally calls `dwa_server` to get from point to point.
+- As we now have 2 path planners (global and local), we rename `dwa_client` to `plan_client` and specify the path planner as an argument.
+- For instance, to run `robot1`:
+- `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='rrt_star'`
+- `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='dwa'`
