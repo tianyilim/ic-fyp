@@ -316,7 +316,7 @@ class DWAActionServer(Node):
 
         goal_K = 10                                         # P factor for proximity to goal
         orientation_thresh = self.params['angular_thresh']  # cutoff in deg for distance to goal
-        orientation_K = orientation_thresh*1.5              # P factor in angle heading.
+        orientation_K = orientation_thresh*0.0              # P factor in angle heading.
 
         safety_thresh_K = 1
         non_thresh_K = 1

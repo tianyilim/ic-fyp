@@ -137,8 +137,11 @@ class GoalCreation(Node):
         self.action_clients[robot_name].wait_for_server()
         self.get_logger().debug(f"Robot {robot_name} action server done")
 
+        # ? Remove feedback callback because RRT node doesn't have that yet?
         self.goal_futures[robot_name] = self.action_clients[robot_name].send_goal_async(
-            goal_msg, feedback_callback=self.feedback_callback, goal_uuid=goal_uuid)
+            goal_msg, goal_uuid=goal_uuid)
+            # goal_msg, feedback_callback=self.feedback_callback, goal_uuid=goal_uuid)
+            
         # Add a callback for when the future (goal response) is complete
         self.goal_futures[robot_name].add_done_callback(self.goal_response_callback)
 

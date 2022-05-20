@@ -117,14 +117,6 @@
 - [x] Scale up single robot DWA demo to the "warehouse" environment
   - [x] Simplify environment to look like Amazon warehouse (manhattan-like)
     - If global planner is needed perhaps use RRT.
-- [ ] Set up multi robot joint planner
-  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
-  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
-  - Dump a results file containing the params file as well as certain metrics, such as:
-    - Average time per goal completion
-    - Average goals per minute
-    - Average robot speed
 
 ### Mon 16/05/22
 - Put in shelf model from AWS warehouse repo into the `models` folder. Need to add `{repo-path}/src/multirobot_control/models` to the `GAZEBO_MODEL_PATH`, which should be handled in the `spawn_bots.launch.py` launch file.
@@ -139,12 +131,12 @@
 - Fixed a bug in the AABB distance finding code.
 - Added in a heading weight to the code which allows the robots to orient themselves to face approximately the next goal (~+-70deg, specified in params->`angular_thresh`). However, it still fails if we use the rectangular obstacles as in our sample world.
 - Solution:
-  - [ ] Implement RRT* to obtain waypoints for each robot.
-- [ ] Visualizations in RViz need to be figured out.
+  - [x] Implement RRT* to obtain waypoints for each robot.
+- [x] Visualizations in RViz need to be figured out.
   - [x] Visualise obstacles from `OBSTACLE_LIST` in RViz using a new node, `map_visualisation.py`. This uses `Marker` messages in RViz to more cleanly display the static obstacles.
-  - [ ] Visualise goals from `goal_creation`
+  - [x] Visualise goals from `goal_creation`
   - [x] Visualise sample trajectories from `dwa_server`
-  - [ ] Visualise waypoints from RRT node
+  - [x] Visualise waypoints from RRT node
 
 ### Wed 18/05/22
 - Added in arrow visualisation for the robot, now it is easier to see what trajectory the DWA controller chooses.
@@ -161,4 +153,17 @@
 - `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='rrt_star'`
 - `ros2 run multirobot_control plan_client --ros-args --params-file src/multirobot_control/params/planner_params.yaml -r __ns:='/robot1' -p planner:='dwa'`
 
-- [ ] Fix bug where RRT is not terminating
+### Fri 20/05/22
+- [x] Fix bug where RRT is not terminating when calling `goal_creation`
+  - This was due to the line intersection being too strict when checking for waypoints to the goal.
+  - Adding a flag to `rrt_node->RRT.check_line_intersection` to relax the inflation values for connecting a waypoint to the goal state helped.
+  - Also, we increase the `max_extend_length` to improve the exploration characterstics of RRT.
+- [ ] Bug where we have "`Error raised in execute callback: [rrt_chooose_parent] parent node must not be None!`"... perhaps after adding feature when parent of goal node is overwritten?
+- [ ] Set up multi robot joint planner
+  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
+  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
+- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
+  - Dump a results file containing the params file as well as certain metrics, such as:
+    - Average time per goal completion
+    - Average goals per minute
+    - Average robot speed
