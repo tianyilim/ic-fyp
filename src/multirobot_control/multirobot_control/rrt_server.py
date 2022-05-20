@@ -55,7 +55,8 @@ class RRTStarActionServer(Node):
                 ('safety_thresh', 0.5),             # How far away from obstacles do we want to keep?
                 ('dist_thresh', 0.1),               # How close to the goal do we need to get?
                 ('rrt_path_bias', 0.15),            # % chance to go straight towards goal
-                ('rrt_it_lim', 2000),               # Number of iterations to run RRT for
+                ('rrt_it_lim', 2000),               # Max number of iterations to run RRT for
+                ('rrt_it_min', 50),               # Min number of iterations to run RRT for
                 ('rrt_max_extend_length', 0.5),     # How far each RRT node is away from the previous
                 ('rrt_connect_circle_dist', 1.0),   # How far away nodes must be to be considered for rewiring in RRT*
                 ('rrt_debug_plot', False),          # Debug plot RRT in MatPlotLib
@@ -87,6 +88,7 @@ class RRTStarActionServer(Node):
             "dist_thresh" :             self.get_parameter("dist_thresh").value,
             "rrt_path_bias":            self.get_parameter("rrt_path_bias").value,
             "rrt_it_lim" :              self.get_parameter("rrt_it_lim").value,
+            "rrt_it_min" :              self.get_parameter("rrt_it_min").value,
             "rrt_max_extend_length" :   self.get_parameter("rrt_max_extend_length").value,
             "rrt_connect_circle_dist" : self.get_parameter("rrt_connect_circle_dist").value,
             "rrt_debug_plot" :          self.get_parameter("rrt_debug_plot").value,
@@ -118,23 +120,25 @@ class RRTStarActionServer(Node):
 
         self.display_goal_marker()
 
-
         # Find a suitable path through the workspace (and save it for future use).
         rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.goal_y),
                                   obstacle_list=OBSTACLE_ARRAY, bounds=OBSTACLE_BOUND,
                                   path_bias=self.params['rrt_path_bias'],
                                   it_lim=self.params['rrt_it_lim'],
+                                  it_min=self.params['rrt_it_min'],
                                   max_extend_length=self.params['rrt_max_extend_length'], 
                                   safety_radius=self.params['safety_thresh'], 
                                   robot_radius=self.params['robot_radius'],
                                   connect_circle_dist=self.params['rrt_connect_circle_dist'],
-                                  debug_plot=self.params['rrt_debug_plot']
+                                  debug_plot=self.params['rrt_debug_plot'],
+                                  logger=self.get_logger()
         )
 
-        self.get_logger().info("Finding path to goal")
+        self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
         # TODO handle when path is not found - no error handling here
+        # This seems not to be able to find a path 
         self.path = rrt_planner.explore()
-        self.get_logger().info("Path found")
+        self.get_logger().info(f"Path found with {len(self.path)} segments")
         self.display_path_marker()
 
         self.global_planner_status = PlannerStatus.PLANNER_EXEC

@@ -23,9 +23,9 @@ class RRT:
     def __init__(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float], 
         obstacle_list: Tuple[float, float, float, float], 
         bounds:Tuple[float, float, float, float],
-        path_bias:float=0.2, it_lim:int=2000,
+        path_bias:float=0.2, it_lim:int=2000, it_min:int=50,
         max_extend_length:float=0.5, safety_radius:float=0.2, robot_radius:float=0.35,
-        connect_circle_dist:float=1.0, debug_plot:bool=False
+        connect_circle_dist:float=1.0, debug_plot:bool=False, logger=None
     ) -> None:
         '''
         Initializes a RRT* graph.
@@ -41,11 +41,13 @@ class RRT:
         - Config args
             - path_bias: % chance of exploring straight towards the goal instead of randomly
             - it_lim: iteration limit before giving up
+            - it_min: min number of iterations (to give a decent path)
             - max_extend_length: how far to extend the path across waypoints
             - safety_radius: how far away from an obstacle to plan 
             - robot_radius: 'size' of robot
             - connect_circle_dist: area to search around new node for graph rewiring.
             - debug_plot: whether or not to visualise the process using matplotlib.
+            - logger: Logger object if starting in a ROS node
         '''
 
         self.start = np.array(start_pos)
@@ -62,32 +64,54 @@ class RRT:
 
         self.path_bias = path_bias
         self.it_lim = it_lim
+        self.it_min = it_min
         self.max_extend_length = max_extend_length
         self.safety_radius = safety_radius
         self.robot_radius = robot_radius
         self.connect_circle_dist = connect_circle_dist
 
         self.debug_plot = debug_plot
+        self.logger = logger
+
 
         if self.debug_plot:
-            # TODO print statements not showing
-            print(self.start)
-            print(self.goal)
-            print(self.node_list)
-            print(self.goal_node)
-            print(self.obstacle_list)
-            print(self.bounds)
-            print(self.x_width)
-            print(self.y_width)
-            print(self.x_ctr)
-            print(self.y_ctr)
-            print(self.path_bias)
-            print(self.it_lim)
-            print(self.max_extend_length)
-            print(self.safety_radius)
-            print(self.robot_radius)
-            print(self.connect_circle_dist)
-            print(self.debug_plot)
+            # if self.logger is None:
+            #     # TODO print statements not showing
+            #     print(self.start)
+            #     print(self.goal)
+            #     print(self.node_list)
+            #     print(self.goal_node)
+            #     print(self.obstacle_list)
+            #     print(self.bounds)
+            #     print(self.x_width)
+            #     print(self.y_width)
+            #     print(self.x_ctr)
+            #     print(self.y_ctr)
+            #     print(self.path_bias)
+            #     print(self.it_lim)
+            #     print(self.it_min)
+            #     print(self.max_extend_length)
+            #     print(self.safety_radius)
+            #     print(self.robot_radius)
+            #     print(self.connect_circle_dist)
+            # else:
+            #     self.logger.info(f"{self.start}")
+            #     self.logger.info(f"{self.goal}")
+            #     self.logger.info(f"{self.node_list}")
+            #     self.logger.info(f"{self.goal_node}")
+            #     self.logger.info(f"{self.obstacle_list}")
+            #     self.logger.info(f"{self.bounds}")
+            #     self.logger.info(f"{self.x_width}")
+            #     self.logger.info(f"{self.y_width}")
+            #     self.logger.info(f"{self.x_ctr}")
+            #     self.logger.info(f"{self.y_ctr}")
+            #     self.logger.info(f"{self.path_bias}")
+            #     self.logger.info(f"{self.it_lim}")
+            #     self.logger.info(f"{self.it_min}")
+            #     self.logger.info(f"{self.max_extend_length}")
+            #     self.logger.info(f"{self.safety_radius}")
+            #     self.logger.info(f"{self.robot_radius}")
+            #     self.logger.info(f"{self.connect_circle_dist}")
 
             self.fig = plt.figure()
             plt.ion()
@@ -188,19 +212,36 @@ class RRT:
 
         A Path is a list of (x,y) waypoints from start to goal.
         '''
-        for i in range(self.it_lim):
+        iterations = 0
+        goal_found = False
+        while True:
+            iterations += 1
             self.explore_one_step()
 
             # Check if node is close to target
             last_endpt = self.node_list[-1]._pos
-            if np.linalg.norm( last_endpt - self.goal_node._pos ) <= self.max_extend_length:
-                if self.check_line_intersection(last_endpt, self.goal_node._pos) == False:
-                    # we found a path!
-                    self.goal_node._parent = self.node_list[-1]
-                    self.node_list.append(self.goal_node)
-                    return self.get_path()
+            dist_to_goal = np.linalg.norm( last_endpt - self.goal_node._pos )
+            intersections = self.check_line_intersection(last_endpt, self.goal_node._pos, waypoint=False)
 
-        print(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
+            if dist_to_goal <= self.max_extend_length and self.logger is not None:
+                self.logger.info(f"Node @ {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+
+            if dist_to_goal <= self.max_extend_length and intersections == False:
+                # we found a path!
+                self.goal_node._parent = self.node_list[-1]
+                self.node_list.append(self.goal_node)
+                goal_found = True
+
+            if goal_found and iterations > self.it_min:
+                return self.get_path()
+
+            if iterations > self.it_lim:
+                break
+
+        if self.logger is None:
+            print(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
+        else:
+            self.logger.error(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
         return []    # Cannot find a path
 
     def get_near_idxs(self, new_pos: np.ndarray):
@@ -297,7 +338,7 @@ class RRT:
         minind = dlist.index(min(dlist))
         return node_list[minind]
 
-    def check_line_intersection(self, line_start: np.ndarray, line_end: np.ndarray):
+    def check_line_intersection(self, line_start: np.ndarray, line_end: np.ndarray, waypoint:bool=True):
         '''
         Checks if proposed line from start to end will come close to any bounding box.
         
@@ -307,9 +348,11 @@ class RRT:
 
         Args:
         - line_start, line_end (2d coords of line endpoints)
+        - Waypoint(bool) if it is a waypoint, we relax the collision rules
 
         Returns:
-        - True if line intersects with something, False otherwise
+        - A list of intersection points if the line intersects with something
+        - False otherwise
         '''
 
         for (x0, y0, x1, y1) in self.obstacle_list:
@@ -321,7 +364,11 @@ class RRT:
             # \.________./
             # This allows the robots to navigate around the narrow corridors of shelves.
 
-            inflate_dist = self.safety_radius + self.robot_radius
+            if waypoint==True:
+                inflate_dist = self.safety_radius + self.robot_radius
+            else:
+                inflate_dist = self.robot_radius
+
             x0_ = x0-inflate_dist
             y0_ = y0-inflate_dist
             x1_ = x1+inflate_dist
@@ -348,8 +395,9 @@ class RRT:
 
             if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
             or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
-                # print(f"Intersection with obstacle @ {x0_:.2f}, {y0_:.2f}, {x1_:.2f}, {y1_:.2f}")
-                return True
+                # Debug hooks
+                intersection_list = [i1,i2,i3,i4,i5,i6,i7,i8]
+                return ([i for i in intersection_list if i is not None], (x0_+x1_)/2, (y0_+y1_)/2)
 
         return False
 
@@ -358,7 +406,7 @@ class RRT:
         Traverse node_list to get path from first node to last node.
         Only call this when exploration is complete, otherwise will throw errors.
         '''
-        path = [ self.node_list[-1] ]   # This should be the goal node
+        path = [ self.goal_node ]   # This should be the goal node
         while np.any(path[-1]._pos != self.start):
             path.append( path[-1]._parent )
 
