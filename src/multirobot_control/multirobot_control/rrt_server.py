@@ -136,8 +136,6 @@ class RRTStarActionServer(Node):
         )
 
         self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
-        # TODO handle when path is not found - no error handling here
-        # This seems not to be able to find a path 
         self.path = rrt_planner.explore()
         self.get_logger().info(f"Path found with {len(self.path)} segments")
         self.display_path_marker()
@@ -149,7 +147,7 @@ class RRTStarActionServer(Node):
             pass
         
         goal_handle.succeed()
-        self.get_logger().info("Robot {} reached goal at X: {} Y: {}".format(
+        self.get_logger().info("{} reached goal at X: {:.2f} Y: {:.2f}".format(
             self.get_namespace(), self.goal_x, self.goal_y
         ))
 
@@ -168,7 +166,7 @@ class RRTStarActionServer(Node):
         # TODO do this as a callback and not by polling...
         if len(self.path) > 0 and self.local_planner_status==PlannerStatus.PLANNER_READY:
             # TODO check if it is the last waypoint (goal) and tighten up the distance threshold
-
+            self.local_planner_status = PlannerStatus.PLANNER_EXEC
             self.get_logger().info(f"Going to waypoint at {self.path[0][0]:.2f}, {self.path[0][1]:.2f}. {len(self.path)} segments left.")
             
             local_goal = LocalPlanner.Goal()
@@ -177,7 +175,7 @@ class RRTStarActionServer(Node):
             self.goal_future = self._action_client.send_goal_async(local_goal)
             self.goal_future.add_done_callback(self.local_planner_done_callback)
         
-        # send ready only when we are done executing
+        # Global planner is ready only when we are done executing all waypoints
         if len(self.path) == 0 and self.global_planner_status == PlannerStatus.PLANNER_EXEC:
             self.get_logger().info("Readying global planner again")
             self.global_planner_status = PlannerStatus.PLANNER_READY
@@ -188,10 +186,10 @@ class RRTStarActionServer(Node):
             # TODO: Respond to goal rejected by attempting to send another goal.
             # If goal cannot be completed in ~TIMEOUT seconds, reject goal too?
             self.get_logger().info('Local Planner goal rejected')
+            self.local_planner_status = PlannerStatus.PLANNER_READY
             return
 
-        self.local_planner_status = PlannerStatus.PLANNER_EXEC
-        self.get_logger().info('Local Planner goal accepted')
+        self.get_logger().debug('Local Planner goal accepted')
         self.result_future = goal_handle.get_result_async()
         self.result_future.add_done_callback(self.local_planner_get_result_callback)
 
@@ -199,10 +197,9 @@ class RRTStarActionServer(Node):
         result = future.result().result
 
         # Extract information about the robot from the response by format
-        robot_name = result.robot_name.data
-        robot_name = robot_name.strip('/')   # get rid of topic name
+        robot_name = result.robot_name.data.strip('/')   # get rid of topic name
 
-        self.get_logger().info('Robot {} Success: {} Final_Position X:{:.2f} Y:{:.2f}'.format(
+        self.get_logger().info('{} Success: {} Final_Position X:{:.2f} Y:{:.2f}'.format(
             robot_name,
             result.success.data, result.final_position.x, result.final_position.y))
         

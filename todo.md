@@ -172,3 +172,6 @@
 ### Tue 24/05/22
 - [x] RRT planner will not work if the _start_ position is invalid (always getting collisions with any proposed node)
   - Snap RRT planner start/end positions to the nearest point on the relavant obstacle/AABB
+- [x] Don't perform snapping to AABB for goal positions? Or perhaps make the threshold for inflation smaller (remove safety radius?)
+- [x] Robot somehow skips goals when going through local planner waypoints. Look through the state machine of `rrt_server`
+  - Write local planner status in the same function (not as part of another callback)

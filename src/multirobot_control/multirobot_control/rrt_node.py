@@ -71,7 +71,7 @@ class RRT:
 
         # Check if start node is valid
         self.start = np.array(start_pos)
-        start_collision = self.check_collision(self.start)
+        start_collision = self.check_collision(self.start, use_safety_radius=False)
         if start_collision[0] is False:
             self.start = start_collision[1]
             if self.logger is None:
@@ -82,7 +82,7 @@ class RRT:
 
         # Check if goal node is valid
         self.goal = np.array(goal_pos)
-        goal_collision = self.check_collision(self.goal)
+        goal_collision = self.check_collision(self.goal, use_safety_radius=False)
         if goal_collision[0] is False:
             self.goal = goal_collision[1]
             if self.logger is None:
@@ -244,7 +244,7 @@ class RRT:
             intersections = self.check_line_intersection(last_endpt, self.goal_node._pos, waypoint=False)
 
             if dist_to_goal <= self.max_extend_length and self.logger is not None:
-                self.logger.debug(f"Node @ {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+                self.logger.debug(f"Node at {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
 
             if dist_to_goal <= self.max_extend_length and intersections == False:
                 # we found a path!
@@ -341,8 +341,12 @@ class RRT:
         
         self.propagate_cost_to_leaves(new_node)
 
-    def check_collision(self, pos:Tuple[float, float]):
+    def check_collision(self, pos:Tuple[float, float], use_safety_radius:bool=True):
         '''
+        Args:
+        - pos (x,y)
+        - use_safety_radius: If safety radius is to be added to the inflation radius.
+
         Checks proposed point (x,y) if it will collide with any of the obstacles.
         
         First inflates obstacles by the safety radius, and returns false if 
@@ -351,7 +355,7 @@ class RRT:
         Returns a valid point that lies outside an obstacle. This assumes that the proposed
         point only collides with one obstacle (probably a valid assumption)
         '''
-        eff_safety_radius = (self.robot_radius + self.safety_radius)
+        eff_safety_radius = (self.robot_radius + self.safety_radius) if use_safety_radius else self.robot_radius
 
         for obstacle in self.obstacle_list:
             obstacle_expanded = (
