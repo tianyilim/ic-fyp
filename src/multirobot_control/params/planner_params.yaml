@@ -2,15 +2,15 @@
 #   ros__parameters:
 /**:
   ros__parameters:
-    pub_freq: 20.0  # Match action duration
-    robot_list: ["robot1", "robot2", "robot3"]
-    robot_starting_x: [-2.0, 0.0, 2.0]
-    robot_starting_y: [1.15, 1.15, 1.15]
-    robot_starting_theta: [0.0, 0.0, 0.0]
-    # robot_list: ["robot1"]
-    # robot_starting_x: [0.0]
-    # robot_starting_y: [1.15]
-    # robot_starting_theta: [0.0]
+    pub_freq: 50.0  # Match action duration
+    # robot_list: ["robot1", "robot2", "robot3"]
+    # robot_starting_x: [-2.0, 0.0, 2.0]
+    # robot_starting_y: [1.15, 1.15, 1.15]
+    # robot_starting_theta: [0.0, 0.0, 0.0]
+    robot_list: ["robot1"]
+    robot_starting_x: [0.0]
+    robot_starting_y: [1.15]
+    robot_starting_theta: [0.0]
 
     # Typically for the DWA Action Server
     robot_radius : 0.35
@@ -19,8 +19,8 @@
     action_duration : 0.03
     linear_speed_limit : 0.5
     angular_speed_limit : 0.5
-    linear_step : 0.1
-    angular_step : 0.1
+    linear_step : 0.05
+    angular_step : 0.05
     dist_thresh : 0.1
     dist_method : "L2"
     inter_robot_dist : 3.0
