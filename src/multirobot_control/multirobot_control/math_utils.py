@@ -1,7 +1,9 @@
 import numpy as np
 from typing import List, Tuple
 
-def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, float, float]]):
+def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, float, float]],
+    get_closest_point:bool=False
+    ):
         '''
         Calculates the distance from the robot base (modelled as a circle) and any Axis-Aligned Bounding Box.
         AABBs are useful here because the shelf obstacles in the world are axis-aligned rectangles.
@@ -11,9 +13,11 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
         ---
 
         Args:
-        curr_x
-        curr_y
-        aabb: [x0, y0, x1, y1]
+        - curr_x
+        - curr_y
+        - aabb: [x0, y0, x1, y1]
+        - get_closest_point: Additionally also returns the closest point on the AABB to the 
+            given point.
         '''
         # First calculate the closest point to the circle on the AABB.
         # AABB coords are always (x1, y1, x2, y2) with x1<x2, y1<y2
@@ -34,8 +38,25 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
         # If both values are not w/h, it means that the center of the circle is within the AABB.
         # In our context this is very bad, (distance is too close!)
         if abs(diff_vect_x_clamped) != w and abs(diff_vect_y_clamped) != h:
-            internal_dist = -np.hypot((diff_vect_x_clamped-curr_x),(diff_vect_y_clamped-curr_y))
-            return internal_dist
+            # internal_dist = -np.hypot((diff_vect_x_clamped-curr_x),(diff_vect_y_clamped-curr_y))
+            internal_dist = -np.hypot(diff_vect_x_clamped, diff_vect_y_clamped)
+
+            if get_closest_point:
+                # Closest point expanding on X
+                closest_x = np.array((aabb_ctr_x + w, aabb_ctr_y + diff_vect_y_clamped))
+                # Closest point expanding on Y
+                closest_y = np.array((aabb_ctr_x + diff_vect_x_clamped, aabb_ctr_y + h))
+
+                dist_closest_x = np.linalg.norm(closest_x - np.array((curr_x, curr_y)) )
+                dist_closest_y = np.linalg.norm(closest_y - np.array((curr_x, curr_y)) )
+
+                # Return the closest point to the edge of the bounding box.
+                if dist_closest_x < dist_closest_y:
+                  return internal_dist, closest_x
+                else:
+                  return internal_dist, closest_y
+            else:
+                return internal_dist
 
         # Find the distance away from the closest point on the AABB to (curr_x, curr_y)
         diff_vect_x_prime = curr_x-(aabb_ctr_x+diff_vect_x_clamped)
@@ -43,7 +64,13 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
 
         dist_to_bot = np.hypot(diff_vect_x_prime, diff_vect_y_prime)
 
-        return dist_to_bot
+        if get_closest_point:
+            return dist_to_bot, np.array((
+                aabb_ctr_x + diff_vect_x_clamped,
+                aabb_ctr_y + diff_vect_y_clamped
+            ))
+        else:
+            return dist_to_bot
 
 def get_intersection(a0: np.ndarray, a1: np.ndarray, b0: np.ndarray, b1: np.ndarray):
     '''

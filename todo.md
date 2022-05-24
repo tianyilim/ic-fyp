@@ -158,7 +158,8 @@
   - This was due to the line intersection being too strict when checking for waypoints to the goal.
   - Adding a flag to `rrt_node->RRT.check_line_intersection` to relax the inflation values for connecting a waypoint to the goal state helped.
   - Also, we increase the `max_extend_length` to improve the exploration characterstics of RRT.
-- [ ] Bug where we have "`Error raised in execute callback: [rrt_chooose_parent] parent node must not be None!`"... perhaps after adding feature when parent of goal node is overwritten?
+- [x] Bug where we have "`Error raised in execute callback: [rrt_chooose_parent] parent node must not be None!`"... perhaps after adding feature when parent of goal node is overwritten?
+  - Because we did not update the cost of the goal node itself, therefore it will never be lower than `np.inf`
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
@@ -167,3 +168,7 @@
     - Average time per goal completion
     - Average goals per minute
     - Average robot speed
+
+### Tue 24/05/22
+- [x] RRT planner will not work if the _start_ position is invalid (always getting collisions with any proposed node)
+  - Snap RRT planner start/end positions to the nearest point on the relavant obstacle/AABB

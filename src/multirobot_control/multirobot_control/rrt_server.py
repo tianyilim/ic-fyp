@@ -118,7 +118,8 @@ class RRTStarActionServer(Node):
         self.goal_x = goal_handle.request.goal_position.x
         self.goal_y = goal_handle.request.goal_position.y
 
-        self.display_goal_marker()
+        self.display_goal_marker(self.goal_x, self.goal_y)
+        self.display_goal_marker(self._x, self._y, 1, (1.0,1.0,0.0))
 
         # Find a suitable path through the workspace (and save it for future use).
         rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.goal_y),
@@ -231,7 +232,8 @@ class RRTStarActionServer(Node):
         self.get_logger().debug("Current X:{} Y:{} Yaw:{}".format(
             self._x, self._y, self._yaw ))
 
-    def display_goal_marker(self) -> Marker:
+    def display_goal_marker(self, x:float, y:float, 
+        id:int=0, color:Tuple[float,float,float]=(0.0,1.0,0.0)) -> Marker:
         '''
         Displays a Marker corresponding to the overall goal of the robot.
         '''
@@ -242,15 +244,15 @@ class RRTStarActionServer(Node):
 
         # namespace and id
         marker.ns = self.goal_marker_topic
-        marker.id = 0
+        marker.id = id
 
         # Type of marker
         marker.type = Marker.CYLINDER
         marker.action = Marker.ADD
 
         # Position of marker
-        marker.pose.position.x = self.goal_x
-        marker.pose.position.y = self.goal_y
+        marker.pose.position.x = x
+        marker.pose.position.y = y
         marker.pose.position.z = -0.05
         marker.pose.orientation.x = 0.0
         marker.pose.orientation.y = 0.0
@@ -263,9 +265,9 @@ class RRTStarActionServer(Node):
         marker.scale.z = 0.1    # height
 
         # Set the color -- be sure to set alpha to something non-zero!
-        marker.color.r = 0.0
-        marker.color.g = 1.0
-        marker.color.b = 0.0
+        marker.color.r = color[0]
+        marker.color.g = color[1]
+        marker.color.b = color[2]
         
         marker.color.a = 0.8
 

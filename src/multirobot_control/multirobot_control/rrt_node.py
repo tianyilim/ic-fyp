@@ -50,10 +50,6 @@ class RRT:
             - logger: Logger object if starting in a ROS node
         '''
 
-        self.start = np.array(start_pos)
-        self.goal = np.array(goal_pos)
-        self.node_list = [self.Node(start_pos, None, 0)]
-        self.goal_node = self.Node(goal_pos, None, np.inf)
         self.obstacle_list = obstacle_list
         self.bounds = bounds
         
@@ -73,6 +69,28 @@ class RRT:
         self.debug_plot = debug_plot
         self.logger = logger
 
+        # Check if start node is valid
+        self.start = np.array(start_pos)
+        start_collision = self.check_collision(self.start)
+        if start_collision[0] is False:
+            self.start = start_collision[1]
+            if self.logger is None:
+                print(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+            else:
+                self.logger.warn(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+        self.node_list = [self.Node(self.start, None, 0)]
+
+        # Check if goal node is valid
+        self.goal = np.array(goal_pos)
+        goal_collision = self.check_collision(self.goal)
+        if goal_collision[0] is False:
+            self.goal = goal_collision[1]
+            if self.logger is None:
+                print(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+            else:
+                self.logger.warn(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+
+        self.goal_node = self.Node(self.goal, None, np.inf)
 
         if self.debug_plot:
             # if self.logger is None:
@@ -161,7 +179,7 @@ class RRT:
                     prop_coords = np.array((prop_x, prop_y))
                     
                     # If this returns false, means we collide with something.
-                    if self.check_collision( prop_coords ):
+                    if self.check_collision( prop_coords )[0]:
                         break
 
             # ~ print(f"Proposed new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
@@ -175,6 +193,8 @@ class RRT:
             dist_to_nearest = np.linalg.norm(vect_to_nearest)
             # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
             # Else scale the vector to be the distance
+            if np.allclose(dist_to_nearest, 0):
+                continue    # Somehow we have a vector that too near a node
             vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
             prop_coords = nearest_node._pos + vect_to_nearest
             
@@ -229,6 +249,9 @@ class RRT:
             if dist_to_goal <= self.max_extend_length and intersections == False:
                 # we found a path!
                 self.goal_node._parent = self.node_list[-1]
+                # Update cost of goal node
+                self.goal_node._cost = self.node_list[-1]._cost + \
+                    np.linalg.norm(self.goal_node._pos - self.node_list[-1]._pos)
                 self.node_list.append(self.goal_node)
                 goal_found = True
 
@@ -321,15 +344,28 @@ class RRT:
     def check_collision(self, pos:Tuple[float, float]):
         '''
         Checks proposed point (x,y) if it will collide with any of the obstacles.
+        
+        First inflates obstacles by the safety radius, and returns false if 
+        the proposed point lies within the expanded obstacle (a would-be collision)
 
-        Returns false if proposed point comes less than the safety radius of the robot.
+        Returns a valid point that lies outside an obstacle. This assumes that the proposed
+        point only collides with one obstacle (probably a valid assumption)
         '''
-        for obstacle in self.obstacle_list:
-            obs_dist = dist_to_aabb(pos[0], pos[1], obstacle)
-            if obs_dist < (self.robot_radius + self.safety_radius):
-                return False
+        eff_safety_radius = (self.robot_radius + self.safety_radius)
 
-        return True
+        for obstacle in self.obstacle_list:
+            obstacle_expanded = (
+                obstacle[0] - eff_safety_radius,
+                obstacle[1] - eff_safety_radius,
+                obstacle[2] + eff_safety_radius,
+                obstacle[3] + eff_safety_radius
+            )
+            obs_dist, closest_point = dist_to_aabb(pos[0], pos[1], obstacle_expanded, get_closest_point=True)
+            # Use copysign here because there is the possibility of -0.0 being returned
+            if np.copysign(1, obs_dist) < 0:
+                return False, closest_point
+
+        return True, pos
 
     @staticmethod
     def get_nearest_node(node_list, pos:np.ndarray):
