@@ -136,8 +136,8 @@ class RRTStarActionServer(Node):
         )
 
         self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
-        self.path = rrt_planner.explore()
-        self.get_logger().info(f"Path found with {len(self.path)} segments")
+        self.path, num_nodes = rrt_planner.explore()
+        self.get_logger().info(f"Path found with {len(self.path)} segments in {num_nodes} nodes")
         self.display_path_marker()
 
         self.global_planner_status = PlannerStatus.PLANNER_EXEC

@@ -111,7 +111,7 @@ def get_intersection(a0: np.ndarray, a1: np.ndarray, b0: np.ndarray, b1: np.ndar
     # There exists an intersection if 0.0<=t<=1.0, 0.0<=u<=1.0
     if t>=0.0 and t<=1.0 and u>=0.0 and u<=1.0:
         # Calculate intersection and return it.
-        assert np.allclose(t_int, u_int), f"Int 1: {t_int[0]:.2f}, {t_int[1]:.2f} | Int 2: {u_int[0]:.2f}, {u_int[1]:.2f}"
+        assert np.allclose(t_int, u_int, atol=1e-4), f"Int 1: {t_int[0]:.4f}, {t_int[1]:.4f} | Int 2: {u_int[0]:.4f}, {u_int[1]:.4f}"
         return t_int
     else:
         return None # no intersection

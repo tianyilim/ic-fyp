@@ -175,3 +175,9 @@
 - [x] Don't perform snapping to AABB for goal positions? Or perhaps make the threshold for inflation smaller (remove safety radius?)
 - [x] Robot somehow skips goals when going through local planner waypoints. Look through the state machine of `rrt_server`
   - Write local planner status in the same function (not as part of another callback)
+- RRT planner now chooses waypoints with a safety radius for intermediate waypoints, but not for the start and goal waypoints.
+- RRT planner now returns a tuple of path (list), #nodes (for debugging purposes)
+- RRT `check_line_intersection` also returns the closest intersection point to one of the lines. However, adding these close intersections to the node list did not help getting solutions to converge.
+- Expose P gains for angular and linear error for DWA as parameters
+
+- [ ] Getting DWA to track the waypoints more robustly and with better directionality

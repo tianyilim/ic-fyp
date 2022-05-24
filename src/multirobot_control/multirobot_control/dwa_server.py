@@ -60,7 +60,9 @@ class DWAActionServer(Node):
                 ('dist_method', "L2"),
                 ('pub_freq', 20.0),
                 ('inter_robot_dist', 3.0),
-                ('angular_thresh', 70.0)
+                ('angular_thresh', 70.0),
+                ('angular_K', 2.0),
+                ('goal_K', 10.0)
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -92,7 +94,8 @@ class DWAActionServer(Node):
             "pub_freq" :            self.get_parameter("pub_freq").value,
             "inter_robot_dist" :    self.get_parameter("inter_robot_dist").value,
             "angular_thresh" :      self.get_parameter("angular_thresh").value,
-
+            "angular_K" :           self.get_parameter("angular_K").value,
+            "goal_K" :              self.get_parameter("goal_K").value,
         }
         
         # other robots on the map
@@ -219,7 +222,7 @@ class DWAActionServer(Node):
 
                     # Rank score
                     self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
-                    score = self.rankPose(end_pose)
+                    score = self.rankPose(end_pose, linear_twist, angular_twist)
 
                     marker_vis = self.marker_from_traj(vis_idx, score, end_pose)
                     vis_msg_array.append(marker_vis)
@@ -281,7 +284,6 @@ class DWAActionServer(Node):
 
             # Sleep for awhile before applying the next motion
             time.sleep(self.params['action_duration'])
-
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             
         # Ensure robot is stopped
@@ -311,12 +313,17 @@ class DWAActionServer(Node):
         return result
 
     # Helper functions
-    def rankPose(self, end_pose):
-        score = 0
+    def rankPose(self, end_pose, linear_twist, angular_twist):
+        '''
+        The core of the DWA algorithm. Scores final positions based on different factors.
 
-        goal_K = 10                                         # P factor for proximity to goal
-        orientation_thresh = self.params['angular_thresh']  # cutoff in deg for distance to goal
-        orientation_K = orientation_thresh*0.8              # P factor in angle heading.
+        Add bonus to moving forward. Add cost for staying still.
+        '''
+        score = 0 if linear_twist!=0 and angular_twist!=0 else -5
+
+        goal_K = self.params['goal_K']                              # P factor for proximity to goal
+        orientation_thresh = self.params['angular_thresh']          # cutoff in deg for distance to goal
+        orientation_K = orientation_thresh*self.params['angular_K'] # P factor in angle heading.
 
         safety_thresh_K = 1
         non_thresh_K = 1
@@ -336,25 +343,6 @@ class DWAActionServer(Node):
             elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
                 score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
 
-        # Else, see how close it gets to the goal.
-        # Cap the score to the maximum cutoff value.
-        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
-        # dist_plus = min(
-        #     goal_K / self.params['dist_thresh'], # Max value it will get to
-        #     goal_K / dist_to_goal )
-        dist_plus = goal_K / dist_to_goal
-        score += dist_plus
-
-        # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
-        # This is proportional to the distance score. Otherwise it will 'overwhelm' the pathing intuition of the robot
-        goal_hdg = np.arctan2(self.goal_y-end_pose[1], self.goal_x-end_pose[0])
-        # We don't want to fall into a local minima so we cap the direction the robot is facing (so long it's within ~80deg --> right orientation)
-        hdg_diff = max( orientation_thresh, abs( np.degrees(goal_hdg - end_pose[2])) )
-        # self.get_logger().debug(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
-        hdg_plus = min( orientation_K*dist_plus, 
-                        orientation_K*dist_plus / hdg_diff )
-        score += hdg_plus
-
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             if dist_to_robot < self.params['robot_radius']:
@@ -364,10 +352,26 @@ class DWAActionServer(Node):
             elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
+        # Else, see how close it gets to the goal.
+        # Cap the score to the maximum cutoff value.
+        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
+        dist_plus = goal_K / dist_to_goal
+        score += dist_plus
+
+        # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
+        # This is proportional to the distance score. Otherwise it will 'overwhelm' the pathing intuition of the robot
+        goal_hdg = np.arctan2(self.goal_y-end_pose[1], self.goal_x-end_pose[0])
+        # We don't want to fall into a local minima so we cap the error the robot is facing
+        hdg_diff = min( orientation_thresh, abs( np.degrees(goal_hdg - end_pose[2])) )
+        # self.get_logger().debug(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
+        hdg_plus = min( orientation_K*dist_plus, 
+                        orientation_K*dist_plus / hdg_diff )
+        score += hdg_plus
+
         # Score breakdown
         self.get_logger().debug(
             f"end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
-            f" | dist+: {dist_plus:.2f} | hdg+: {hdg_plus:.2f}" + \
+            f" | dist+: {dist_plus:.2f} | hdg+: {hdg_plus:.2f} | hdg_diff: {hdg_diff:.2f}" + \
             f" | score: {score:.2f}"
         )
 

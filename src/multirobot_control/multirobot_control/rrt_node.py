@@ -71,7 +71,7 @@ class RRT:
 
         # Check if start node is valid
         self.start = np.array(start_pos)
-        start_collision = self.check_collision(self.start, use_safety_radius=False)
+        start_collision = self.check_collision(self.start, use_safety_radius=True)
         if start_collision[0] is False:
             self.start = start_collision[1]
             if self.logger is None:
@@ -94,7 +94,6 @@ class RRT:
 
         if self.debug_plot:
             # if self.logger is None:
-            #     # TODO print statements not showing
             #     print(self.start)
             #     print(self.goal)
             #     print(self.node_list)
@@ -164,13 +163,15 @@ class RRT:
         nearest_node = None
         new_node = None
 
-        goal_valid = True
+        step_to_goal = False    # Flag set if we are directly stepping towards the goal (random chance by goal bias)
+        goal_valid = True       # Flag set if stepping towards the goal in this circumstance is helpful
 
         # Look for a new x,y coordinate that is correct
         while True:
             # See if we should step in the direction of the goal
             if goal_valid and (self.path_bias > np.random.random()):
                 prop_coords = self.goal
+                step_to_goal = True
             else:
                 # Randomly sample in the configuration space and check for collision-free point
                 while True:
@@ -183,7 +184,7 @@ class RRT:
                         break
 
             # ~ print(f"Proposed new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
-
+            
             # Find NN in node list
             nearest_node = self.get_nearest_node(self.node_list, prop_coords)
             # ~ print(f"Nearest node is at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
@@ -193,18 +194,25 @@ class RRT:
             dist_to_nearest = np.linalg.norm(vect_to_nearest)
             # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
             # Else scale the vector to be the distance
-            if np.allclose(dist_to_nearest, 0):
-                continue    # Somehow we have a vector that too near a node
             vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
             prop_coords = nearest_node._pos + vect_to_nearest
+
+            if np.allclose(dist_to_nearest, 0):
+                if self.logger is not None:
+                    self.logger.debug(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
+                else:
+                    print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
+                continue    # Somehow we have a vector that too near a node
             
             # ~ print(f"Step towards new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
             
             # Check if there are any obstacles along this new line.
             # If there are no obstacles, then we have found a valid new point!
-            if self.check_line_intersection(nearest_node._pos, prop_coords) == False:
-                # ~ print("New node added.\n")
-
+            
+            start_point = len(self.node_list) != 1  # Relax collision rules if we are just starting off
+            c = self.check_line_intersection(nearest_node._pos, prop_coords, waypoint=start_point)
+            
+            if c==False:
                 # If path between new_node and nearest_node is not in collision:
                 # Connect node to best parent in near_inds
                 near_idxs = self.get_near_idxs(prop_coords) # find close nodes
@@ -212,14 +220,24 @@ class RRT:
                 new_node = self.choose_parent(near_idxs, prop_coords)
                 # Rewire nodes in the proximity of new_node if it improves their costs
                 self.rewire(new_node, near_idxs)
-                break
 
+                if self.logger is not None:
+                    self.logger.info(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
+                else:
+                    # ~ print(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
+                    pass
+
+                break
             else:
                 # If a step towards the goal results in a collision, dont do it again
-                if goal_valid and np.all(prop_coords==self.goal):
+                if self.logger is not None:
+                    self.logger.info(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
+                else:
+                    # ~ print(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
+                    pass
+
+                if goal_valid and step_to_goal:
                     goal_valid = False
-            
-                # ~ print("")
 
         # append new node
         assert new_node is not None, "[rrt_explore] new_node must not be None!"
@@ -294,14 +312,17 @@ class RRT:
 
         Return a corresponding new best node.
         '''
+        assert len(near_idxs) > 0, "[rrt_choose_parent] empty list of near nodes!"
+
         min_cost = np.inf
-        best_near_node = None
+        best_near_node = self.node_list[near_idxs[0]]
 
         # Go through all near nodes and evaluate them as potential parent nodes by
         for node_idx in near_idxs:
             prop_parent = self.node_list[node_idx]  # proposed parent
             # check if a connection would result in a collision
-            if self.check_line_intersection(prop_parent._pos, prop_coords) != False:
+            start_extension = len(self.node_list) != 1
+            if self.check_line_intersection(prop_parent._pos, prop_coords, waypoint=start_extension) != False:
                 continue
 
             # evaluate the cost of the new_node if it had that near node as a parent
@@ -330,7 +351,8 @@ class RRT:
         for node_idx in near_idxs:
             prop_child = self.node_list[node_idx]  # proposed child
             # A) Not cause a collision and
-            if self.check_line_intersection(prop_child._pos, new_node._pos) != False:
+            start_extension = len(self.node_list) != 1
+            if self.check_line_intersection(prop_child._pos, new_node._pos, waypoint=start_extension) != False:
                 continue
             # B) reduce their own cost.
             orig_cost = new_node._cost
@@ -388,10 +410,11 @@ class RRT:
 
         Args:
         - line_start, line_end (2d coords of line endpoints)
-        - Waypoint(bool) if it is a waypoint, we relax the collision rules
+        - Waypoint(bool) if the current node is at a start or end point, we relax the collision rules.
+            Else it is a waypoint, and the typical safety radius rules apply.
 
         Returns:
-        - A list of intersection points if the line intersects with something
+        - The closest intersection point to line_start, and the x,y coordinates of the offending obstacle
         - False otherwise
         '''
 
@@ -407,7 +430,8 @@ class RRT:
             if waypoint==True:
                 inflate_dist = self.safety_radius + self.robot_radius
             else:
-                inflate_dist = self.robot_radius
+                # inflate_dist = self.robot_radius
+                inflate_dist = 0.0
 
             x0_ = x0-inflate_dist
             y0_ = y0-inflate_dist
@@ -435,9 +459,18 @@ class RRT:
 
             if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
             or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
-                # Debug hooks
+                # Return closest point of intersection
                 intersection_list = [i1,i2,i3,i4,i5,i6,i7,i8]
-                return ([i for i in intersection_list if i is not None], (x0_+x1_)/2, (y0_+y1_)/2)
+                valid_i = [i for i in intersection_list if i is not None]
+                min_dist = np.inf
+                closest_intersection = valid_i[0]
+                for intersection in valid_i:
+                    dist = np.linalg.norm(line_start-intersection)
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_intersection = intersection
+
+                return (closest_intersection, (x0_+x1_)/2, (y0_+y1_)/2)
 
         return False
 
@@ -445,6 +478,10 @@ class RRT:
         '''
         Traverse node_list to get path from first node to last node.
         Only call this when exploration is complete, otherwise will throw errors.
+
+        We also throw away the first node in the path, as that is near where the robot
+        is anyway. The robot will waste a lot of time making the small adjustments towards the
+        start of the path.
         '''
         path = [ self.goal_node ]   # This should be the goal node
         while np.any(path[-1]._pos != self.start):
@@ -456,8 +493,9 @@ class RRT:
         assert np.all(path[-1]._pos == self.goal), f"Goal position was {self.goal[0]:.2f}, {self.goal[1]:.2f} but end of path was {path[-1]._pos[0]:.2f}, {path[-1]._pos[1]:.2f}"
 
         path_coords = [(n._pos[0], n._pos[1]) for n in path]
+        # path_coords.pop(0)
 
-        return path_coords
+        return path_coords, len(self.node_list)
 
     def propagate_cost_to_leaves(self, parent_node):
         """Recursively update the cost of the nodes"""
