@@ -8,7 +8,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.parameter import Parameter
-from rclpy.time import Duration
+from rclpy.time import Duration, Time
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
@@ -164,7 +164,6 @@ class DWAActionServer(Node):
                     x=self._x, y=self._y, z=0.0
                 )))
 
-
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''
 
@@ -283,7 +282,14 @@ class DWAActionServer(Node):
                 self._linear_twist, self._angular_twist ))
 
             # Sleep for awhile before applying the next motion
-            time.sleep(self.params['action_duration'])
+            start_time = self.get_clock().now()
+            while True:
+                curr_time = self.get_clock().now()
+                s_diff = (curr_time.nanoseconds - start_time.nanoseconds) * 1e9
+                
+                if s_diff > self.params['action_duration']:
+                    break
+
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             
         # Ensure robot is stopped

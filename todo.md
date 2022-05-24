@@ -172,6 +172,7 @@
 - RRT `check_line_intersection` also returns the closest intersection point to one of the lines. However, adding these close intersections to the node list did not help getting solutions to converge.
 - Expose P gains for angular and linear error for DWA as parameters
 - When getting the closest point to an AABB from `dist_to_aabb`, we add a small amount (0.01) to the width and height of the box so that we can pass `>` and `<` comparisons written elsewhere (and so RRT doesn't stall)
+- Got DWA implementation not to use `sleep`, using a while loop instead. Not ideal as it busy waits. Is there a way to write the action to run on a timer interrupt of sorts?
 - [ ] Getting DWA to track the waypoints more robustly and with better directionality
 
 ---
