@@ -32,6 +32,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     urdf = LaunchConfiguration('urdf')
     robot_num = LaunchConfiguration('robot_num')
+    log_level = LaunchConfiguration('log_level')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -81,6 +82,12 @@ def generate_launch_description():
         description='The number of the robot, used to assign colours to distinguish robots'
     )
 
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value='info',
+        description="Log level of nodes"
+    )
+
     # os.environ["GAZEBO_MODEL_PATH"] = os.environ.get("GAZEBO_MODEL_PATH") + ':' \
     #     + os.path.join(robot_model_dir, 'components') + ':' \
     #     + os.path.join(robot_model_dir, 'robots')
@@ -98,9 +105,10 @@ def generate_launch_description():
             '-y', y_pose,
             '-z', z_pose,
             '-Y', yaw_pose,
-            '--robot_num', robot_num
+            '--robot_num', robot_num,
+            '--ros-args', '--log-level', log_level
         ],
-        output='screen'
+        output='screen',
     )
 
     start_robot_state_publisher_cmd = Node(
@@ -113,7 +121,8 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time,
             'robot_description': Command(['xacro ', urdf, ' prefix:=', '"', namespace, '"']),
             # 'frame_prefix': namespace
-        }]
+        }],
+        arguments=['--ros-args', '--log-level', 'warn']
     )
 
     start_tf_relay_cmd = Node(
@@ -129,7 +138,8 @@ def generate_launch_description():
             'lazy': False, 
             'stealth ': False, 
             'monitor_rate': 100.0
-        }]
+        }],
+        arguments=['--ros-args', '--log-level', 'warn']
     )
 
     start_tf_static_relay_cmd = Node(
@@ -145,7 +155,8 @@ def generate_launch_description():
             'lazy': False, 
             'stealth ': False, 
             'monitor_rate': 100.0
-        }]
+        }],
+        arguments=['--ros-args', '--log-level', 'warn']
     )
 
     bringup_group_cmd = GroupAction([
@@ -164,6 +175,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_urdf_cmd)
     ld.add_action(declare_robot_num_cmd)
+    ld.add_action(declare_log_level_cmd)
     
     ld.add_action(bringup_group_cmd)
     # ld.add_action(start_rviz_cmd)

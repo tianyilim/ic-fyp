@@ -16,6 +16,7 @@ Simple demo to load up the aws world and spawn in one or more robots.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from email.policy import default
 from multiprocessing import Condition
 import os
 import yaml
@@ -66,7 +67,9 @@ def generate_launch_description():
     world = LaunchConfiguration('world')
     urdf = LaunchConfiguration('urdf')
     headless_config = LaunchConfiguration('headless')
+    log_level = LaunchConfiguration('log_level')
 
+    # Ensure all logs come out in order
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
 
@@ -114,6 +117,12 @@ def generate_launch_description():
         description="Whether or not to launch full Gazebo GUI. If false, just launch RViz."
     )
 
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value='info',
+        description="Log level of nodes"
+    )
+
     # Launch commands
     gazebo_cmd = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -153,7 +162,8 @@ def generate_launch_description():
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
                     'urdf': urdf,
-                    'robot_num': str(i)  # To tag robots' colours
+                    'robot_num': str(i),  # To tag robots' colours
+                    'log_level': log_level
                 }.items()
             )
         )
@@ -175,7 +185,8 @@ def generate_launch_description():
                     'y_pose': TextSubstitution(text=str(robot['y_pose'])),
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
-                    'autostart': 'true'
+                    'autostart': 'true',
+                    'log_level': log_level
                 }.items()
             )
         )
@@ -185,13 +196,15 @@ def generate_launch_description():
         executable="odom_distribution",
         # No need for namespace
         output='screen',
-        parameters=[params_file]
+        parameters=[params_file],
+        arguments=['--ros-args', '--log-level', log_level]
     )
 
     start_map_viz_cmd = Node(
         package="multirobot_control",
         executable="map_visualisation",
-        output="screen"
+        output="screen",
+        arguments=['--ros-args', '--log-level', log_level]
     )
 
     # Rviz does not need debug hooks
@@ -216,6 +229,7 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_urdf_cmd)
     ld.add_action(declare_headless_cmd)
+    ld.add_action(declare_log_level_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(gazebo_cmd),

@@ -36,6 +36,7 @@ def generate_launch_description():
     map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     autostart = LaunchConfiguration('autostart')
+    log_level = LaunchConfiguration('log_level')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -92,6 +93,12 @@ def generate_launch_description():
         'autostart', default_value='true',
         description='Automatically startup the nav2 stack')
 
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value='info',
+        description="Log level of nodes"
+    )
+
     start_gt_cmd = Node(
         package='multirobot_control',
         executable='gt_odom',
@@ -99,7 +106,8 @@ def generate_launch_description():
         namespace=namespace,
         arguments=[
             '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"]),
-            '--namespace', namespace
+            '--namespace', namespace,
+            '--ros-args', '--log-level', log_level
         ],
         output='screen'
     )
@@ -112,6 +120,7 @@ def generate_launch_description():
         arguments=[ 
             '0', '0', '0', '0', '0', '0', '1',
             'map', PythonExpression(["'", namespace, "' + 'odom'"]),
+            '--ros-args', '--log-level', 'warn'
         ],  # Same frame
         output='screen'
     )
@@ -121,7 +130,8 @@ def generate_launch_description():
         executable='rrt_server',
         namespace=namespace,
         output='screen',
-        parameters=[params_file]
+        parameters=[params_file],
+        arguments=['--ros-args', '--log-level', log_level]
     )
 
     start_dwa_cmd = Node(
@@ -129,7 +139,8 @@ def generate_launch_description():
         executable='dwa_server',
         namespace=namespace,
         output='screen',
-        parameters=[params_file]
+        parameters=[params_file],
+        arguments=['--ros-args', '--log-level', log_level]
     )
 
     # Launch localization to give map -> transform
@@ -178,6 +189,7 @@ def generate_launch_description():
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
+    ld.add_action(declare_log_level_cmd)
     
     ld.add_action(start_static_transform_cmd)
     ld.add_action(start_rrt_cmd)
