@@ -42,6 +42,9 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
             internal_dist = -np.hypot(diff_vect_x_clamped, diff_vect_y_clamped)
 
             if get_closest_point:
+                w += 0.01   # Add a small amount so this passes lt/gt comparisons elsewhere
+                h += 0.01
+
                 # Closest point expanding on X.
                 # Take sign of closest x/y to be the 'closer' side of the AABB box
                 if diff_vect_x_clamped > 0:

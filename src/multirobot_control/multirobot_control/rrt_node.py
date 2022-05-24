@@ -192,10 +192,6 @@ class RRT:
             # Draw a line towards nearest node
             vect_to_nearest = prop_coords - nearest_node._pos
             dist_to_nearest = np.linalg.norm(vect_to_nearest)
-            # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
-            # Else scale the vector to be the distance
-            vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
-            prop_coords = nearest_node._pos + vect_to_nearest
 
             if np.allclose(dist_to_nearest, 0):
                 if self.logger is not None:
@@ -203,14 +199,18 @@ class RRT:
                 else:
                     print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
                 continue    # Somehow we have a vector that too near a node
+
+            # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
+            # Else scale the vector to be the distance
+            vect_to_nearest *= min(1, self.max_extend_length/dist_to_nearest)
+            prop_coords = nearest_node._pos + vect_to_nearest
             
             # ~ print(f"Step towards new point at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
             
             # Check if there are any obstacles along this new line.
             # If there are no obstacles, then we have found a valid new point!
             
-            start_point = len(self.node_list) != 1  # Relax collision rules if we are just starting off
-            c = self.check_line_intersection(nearest_node._pos, prop_coords, waypoint=start_point)
+            c = self.check_line_intersection(nearest_node._pos, prop_coords, waypoint=False)
             
             if c==False:
                 # If path between new_node and nearest_node is not in collision:
@@ -233,7 +233,7 @@ class RRT:
                 if self.logger is not None:
                     self.logger.info(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
                 else:
-                    # ~ print(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
+                    # ~print(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
                     pass
 
                 if goal_valid and step_to_goal:
@@ -256,24 +256,34 @@ class RRT:
             iterations += 1
             self.explore_one_step()
 
-            # Check if node is close to target
-            last_endpt = self.node_list[-1]._pos
-            dist_to_goal = np.linalg.norm( last_endpt - self.goal_node._pos )
-            intersections = self.check_line_intersection(last_endpt, self.goal_node._pos, waypoint=False)
+            if not goal_found:
+                # Check if node is close to target
+                last_endpt = self.node_list[-1]._pos
+                dist_to_goal = np.linalg.norm( last_endpt - self.goal_node._pos )
+                intersections = self.check_line_intersection(last_endpt, self.goal_node._pos, waypoint=False)
 
-            if dist_to_goal <= self.max_extend_length and self.logger is not None:
-                self.logger.debug(f"Node at {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+                if dist_to_goal <= self.max_extend_length:
+                    if self.logger is not None:
+                        self.logger.debug(f"Node at {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+                    else:
+                        # ~ print(f"Node at {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+                        pass
 
-            if dist_to_goal <= self.max_extend_length and intersections == False:
-                # we found a path!
-                self.goal_node._parent = self.node_list[-1]
-                # Update cost of goal node
-                self.goal_node._cost = self.node_list[-1]._cost + \
-                    np.linalg.norm(self.goal_node._pos - self.node_list[-1]._pos)
-                self.node_list.append(self.goal_node)
-                goal_found = True
+                if dist_to_goal <= self.max_extend_length and intersections == False:
+                    # we found a path!
+                    self.goal_node._parent = self.node_list[-1]
+                    # Update cost of goal node
+                    self.goal_node._cost = self.node_list[-1]._cost + \
+                        np.linalg.norm(self.goal_node._pos - self.node_list[-1]._pos)
+                    self.node_list.append(self.goal_node)
+                    goal_found = True
 
             if goal_found and iterations > self.it_min:
+                if self.logger is None:
+                    print("Path found!")
+                else:
+                    self.logger.info("Path found!")
+                        
                 return self.get_path()
 
             if iterations > self.it_lim:
@@ -430,8 +440,8 @@ class RRT:
             if waypoint==True:
                 inflate_dist = self.safety_radius + self.robot_radius
             else:
-                # inflate_dist = self.robot_radius
-                inflate_dist = 0.0
+                inflate_dist = self.robot_radius
+                # inflate_dist = 0.0
 
             x0_ = x0-inflate_dist
             y0_ = y0-inflate_dist

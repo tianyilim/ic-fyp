@@ -160,14 +160,6 @@
   - Also, we increase the `max_extend_length` to improve the exploration characterstics of RRT.
 - [x] Bug where we have "`Error raised in execute callback: [rrt_chooose_parent] parent node must not be None!`"... perhaps after adding feature when parent of goal node is overwritten?
   - Because we did not update the cost of the goal node itself, therefore it will never be lower than `np.inf`
-- [ ] Set up multi robot joint planner
-  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
-  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
-  - Dump a results file containing the params file as well as certain metrics, such as:
-    - Average time per goal completion
-    - Average goals per minute
-    - Average robot speed
 
 ### Tue 24/05/22
 - [x] RRT planner will not work if the _start_ position is invalid (always getting collisions with any proposed node)
@@ -179,5 +171,16 @@
 - RRT planner now returns a tuple of path (list), #nodes (for debugging purposes)
 - RRT `check_line_intersection` also returns the closest intersection point to one of the lines. However, adding these close intersections to the node list did not help getting solutions to converge.
 - Expose P gains for angular and linear error for DWA as parameters
-
+- When getting the closest point to an AABB from `dist_to_aabb`, we add a small amount (0.01) to the width and height of the box so that we can pass `>` and `<` comparisons written elsewhere (and so RRT doesn't stall)
 - [ ] Getting DWA to track the waypoints more robustly and with better directionality
+
+---
+
+- [ ] Set up multi robot joint planner
+  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
+  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
+- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
+  - Dump a results file containing the params file as well as certain metrics, such as:
+    - Average time per goal completion
+    - Average goals per minute
+    - Average robot speed
