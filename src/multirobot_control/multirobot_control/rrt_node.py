@@ -244,7 +244,7 @@ class RRT:
             intersections = self.check_line_intersection(last_endpt, self.goal_node._pos, waypoint=False)
 
             if dist_to_goal <= self.max_extend_length and self.logger is not None:
-                self.logger.info(f"Node @ {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
+                self.logger.debug(f"Node @ {last_endpt[0]:.2f},{last_endpt[1]:.2f} Dist to goal {dist_to_goal:.2f}, {dist_to_goal<=self.max_extend_length}, {intersections}, {iterations}")
 
             if dist_to_goal <= self.max_extend_length and intersections == False:
                 # we found a path!

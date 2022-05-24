@@ -169,7 +169,7 @@ class RRTStarActionServer(Node):
         if len(self.path) > 0 and self.local_planner_status==PlannerStatus.PLANNER_READY:
             # TODO check if it is the last waypoint (goal) and tighten up the distance threshold
 
-            self.get_logger().info(f"Going to waypoint. {len(self.path)} segments left.")
+            self.get_logger().info(f"Going to waypoint at {self.path[0][0]:.2f}, {self.path[0][1]:.2f}. {len(self.path)} segments left.")
             
             local_goal = LocalPlanner.Goal()
             local_goal.goal_position = Point(x=self.path[0][0], y=self.path[0][1], z=0.0)

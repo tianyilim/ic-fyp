@@ -42,10 +42,18 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
             internal_dist = -np.hypot(diff_vect_x_clamped, diff_vect_y_clamped)
 
             if get_closest_point:
-                # Closest point expanding on X
-                closest_x = np.array((aabb_ctr_x + w, aabb_ctr_y + diff_vect_y_clamped))
+                # Closest point expanding on X.
+                # Take sign of closest x/y to be the 'closer' side of the AABB box
+                if diff_vect_x_clamped > 0:
+                    closest_x = np.array((aabb_ctr_x + w, aabb_ctr_y + diff_vect_y_clamped))
+                else:
+                    closest_x = np.array((aabb_ctr_x - w, aabb_ctr_y + diff_vect_y_clamped))
+                
                 # Closest point expanding on Y
-                closest_y = np.array((aabb_ctr_x + diff_vect_x_clamped, aabb_ctr_y + h))
+                if diff_vect_y_clamped > 0:
+                    closest_y = np.array((aabb_ctr_x + diff_vect_x_clamped, aabb_ctr_y + h))
+                else:
+                    closest_y = np.array((aabb_ctr_x + diff_vect_x_clamped, aabb_ctr_y - h))
 
                 dist_closest_x = np.linalg.norm(closest_x - np.array((curr_x, curr_y)) )
                 dist_closest_y = np.linalg.norm(closest_y - np.array((curr_x, curr_y)) )
