@@ -177,6 +177,7 @@
 
 ### Wed 25/05/22
 - [ ] Getting DWA to track the waypoints more robustly and with better directionality
+  - [ ] TODO final goal needs tweaking, when robot goes back to its original position
 - [ ] Tuning DWA for slightly better robustness
 - [ ] Debug `odom_distribution`, doesn't seem to work anymore
 
