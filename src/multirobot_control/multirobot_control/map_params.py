@@ -21,6 +21,11 @@ OBSTACLE_ARRAY: List[Tuple[float, float, float, float]] = []
 # Iterate through shelves
 total_x = 3
 total_y = 5
+
+OBS_WIDTH = 5.5
+OBS_HEIGHT = 2.3
+GOAL_Y_OFFSET = 0.8
+
 for x_coord in range(3):
     for y_coord in range(5):
         # Iterate through each shelf
@@ -28,16 +33,16 @@ for x_coord in range(3):
         x = x_coord - 1 # Iterates from -1, 0, 1
         y = y_coord - 2 # Iterates from -2, 0, 2
 
-        x_pos = x*5.5   # Values taken from Gazebo
-        y_pos = y*2.3
+        x_pos = x*OBS_WIDTH   # Values taken from Gazebo
+        y_pos = y*OBS_HEIGHT
         
         # Goals are (x,y) coords
-        GOAL_ARRAY.append((x_pos+1, y_pos+0.8))
-        GOAL_ARRAY.append((x_pos, y_pos+0.8))
-        GOAL_ARRAY.append((x_pos-1, y_pos+0.8))
-        GOAL_ARRAY.append((x_pos+1, y_pos-0.8))
-        GOAL_ARRAY.append((x_pos, y_pos-0.8))
-        GOAL_ARRAY.append((x_pos-1, y_pos-0.8))
+        GOAL_ARRAY.append((x_pos+1, y_pos+GOAL_Y_OFFSET))
+        GOAL_ARRAY.append((x_pos, y_pos+GOAL_Y_OFFSET))
+        GOAL_ARRAY.append((x_pos-1, y_pos+GOAL_Y_OFFSET))
+        GOAL_ARRAY.append((x_pos+1, y_pos-GOAL_Y_OFFSET))
+        GOAL_ARRAY.append((x_pos, y_pos-GOAL_Y_OFFSET))
+        GOAL_ARRAY.append((x_pos-1, y_pos-GOAL_Y_OFFSET))
 
         # Obstacles are ((x1,y1,x2,y2)) coords, where x1<x2, y1<y2
         # Based on the size (4x0.8) of the shelves

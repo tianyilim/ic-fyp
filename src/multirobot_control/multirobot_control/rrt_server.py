@@ -25,7 +25,7 @@ from visualization_msgs.msg import Marker
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
-from multirobot_control.map_params import OBSTACLE_ARRAY, OBSTACLE_BOUND
+from multirobot_control.map_params import OBSTACLE_ARRAY, OBSTACLE_BOUND, OBS_WIDTH, OBS_HEIGHT, GOAL_Y_OFFSET
 from multirobot_control.rrt_node import RRT as RRTPlanner
 
 import time
@@ -118,11 +118,22 @@ class RRTStarActionServer(Node):
         self.goal_x = goal_handle.request.goal_position.x
         self.goal_y = goal_handle.request.goal_position.y
 
+        # Figure out which side of the obstacle the goal is on and ensure we approach the obstacle from a right angle
+        y_idx = np.round(self.goal_y / OBS_HEIGHT)
+        up_down = (self.goal_y - y_idx*OBS_HEIGHT) > 0
+        # No need to modify x
+        if up_down:
+            # obstacle on top of goal
+            self.intermediate_y = self.goal_y + 0.35    # 0.8-0.4+1.5/2
+        else:
+            # obstacle below goal
+            self.intermediate_y = self.goal_y -0.35     # 0.8-0.4+1.5/2
+
         self.display_goal_marker(self.goal_x, self.goal_y)
         self.display_goal_marker(self._x, self._y, 1, (1.0,1.0,0.0))
 
         # Find a suitable path through the workspace (and save it for future use).
-        rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.goal_y),
+        rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
                                   obstacle_list=OBSTACLE_ARRAY, bounds=OBSTACLE_BOUND,
                                   path_bias=self.params['rrt_path_bias'],
                                   it_lim=self.params['rrt_it_lim'],
@@ -137,6 +148,7 @@ class RRTStarActionServer(Node):
 
         self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
         self.path, num_nodes = rrt_planner.explore()
+        self.path.append((self.goal_x, self.goal_y))
         self.get_logger().info(f"Path found with {len(self.path)} segments in {num_nodes} nodes")
         self.display_path_marker()
 

@@ -173,7 +173,12 @@
 - Expose P gains for angular and linear error for DWA as parameters
 - When getting the closest point to an AABB from `dist_to_aabb`, we add a small amount (0.01) to the width and height of the box so that we can pass `>` and `<` comparisons written elsewhere (and so RRT doesn't stall)
 - Got DWA implementation not to use `sleep`, using a while loop instead. Not ideal as it busy waits. Is there a way to write the action to run on a timer interrupt of sorts?
+- Added a virtual point before each goal point that results in a 90 degree turn towards the goal, hopefully allowing the goal to be reached at a 90 degree orientation to the shelf.
+
+### Wed 25/05/22
 - [ ] Getting DWA to track the waypoints more robustly and with better directionality
+- [ ] Tuning DWA for slightly better robustness
+- [ ] Debug `odom_distribution`, doesn't seem to work anymore
 
 ---
 

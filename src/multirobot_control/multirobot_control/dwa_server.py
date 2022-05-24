@@ -331,7 +331,7 @@ class DWAActionServer(Node):
         orientation_thresh = self.params['angular_thresh']          # cutoff in deg for distance to goal
         orientation_K = orientation_thresh*self.params['angular_K'] # P factor in angle heading.
 
-        safety_thresh_K = 1
+        safety_thresh_K = 2
         non_thresh_K = 1
         
         # Check for collisions or close shaves
