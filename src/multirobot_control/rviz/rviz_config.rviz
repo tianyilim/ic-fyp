@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Robot2Odometry1/Shape1
-      Splitter Ratio: 0.5
+      Splitter Ratio: 0.6205882430076599
     Tree Height: 719
   - Class: rviz_common/Selection
     Name: Selection
@@ -55,49 +55,21 @@ Visualization Manager:
       Frames:
         All Enabled: false
         map:
-          Value: true
+          Value: false
         robot1_base_footprint:
           Value: true
         robot1_base_link:
-          Value: true
+          Value: false
         robot1_front_caster:
-          Value: true
+          Value: false
         robot1_left_wheel:
-          Value: true
+          Value: false
         robot1_rear_caster:
-          Value: true
+          Value: false
         robot1_right_wheel:
-          Value: true
+          Value: false
         robot1odom:
-          Value: true
-        robot2_base_footprint:
-          Value: true
-        robot2_base_link:
-          Value: true
-        robot2_front_caster:
-          Value: true
-        robot2_left_wheel:
-          Value: true
-        robot2_rear_caster:
-          Value: true
-        robot2_right_wheel:
-          Value: true
-        robot2odom:
-          Value: true
-        robot3_base_footprint:
-          Value: true
-        robot3_base_link:
-          Value: true
-        robot3_front_caster:
-          Value: true
-        robot3_left_wheel:
-          Value: true
-        robot3_rear_caster:
-          Value: true
-        robot3_right_wheel:
-          Value: true
-        robot3odom:
-          Value: true
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: false
@@ -115,28 +87,6 @@ Visualization Manager:
                 robot1_rear_caster:
                   {}
                 robot1_right_wheel:
-                  {}
-          robot2odom:
-            robot2_base_footprint:
-              robot2_base_link:
-                robot2_front_caster:
-                  {}
-                robot2_rear_caster:
-                  {}
-              robot2_left_wheel:
-                {}
-              robot2_right_wheel:
-                {}
-          robot3odom:
-            robot3_base_footprint:
-              robot3_base_link:
-                robot3_front_caster:
-                  {}
-                robot3_left_wheel:
-                  {}
-                robot3_rear_caster:
-                  {}
-                robot3_right_wheel:
                   {}
       Update Interval: 0
       Value: true
@@ -248,7 +198,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot1DWA
       Namespaces:
-        {}
+        /robot1/trajectories: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -260,7 +210,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot1 Goals
       Namespaces:
-        {}
+        /robot1/goals: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -273,7 +223,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot1 Waypoints
       Namespaces:
-        {}
+        /robot1/waypoints: true
       Topic:
         Depth: 20
         Durability Policy: Volatile
@@ -300,35 +250,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        robot2_base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        robot2_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot2_front_caster:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot2_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot2_rear_caster:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot2_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: Robot2Model
       TF Prefix: ""
       Update Interval: 0
@@ -429,35 +350,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        robot3_base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        robot3_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot3_front_caster:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot3_left_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot3_rear_caster:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        robot3_right_wheel:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: Robot3Model
       TF Prefix: ""
       Update Interval: 0
