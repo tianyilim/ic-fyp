@@ -184,7 +184,8 @@
   - Also cap the distance error between `orientation_lb_deg` and `orientation_ub_deg`.
   - Tweak the `safety_thresh` for RRT to generate more "legit" waypoints (not cutting through corners unrealistlcally, for example)
   - Add to `simulate_duration` to ensure the robot can "look ahead" further
-- [ ] Debug `odom_distribution`, doesn't seem to work anymore
+- [x] Debug `odom_distribution`, doesn't seem to work anymore
+  - The `dist_thresh` param name clashed with the `odom_distribution` one, renaming it seems to have fixed the problem.
 
 ---
 

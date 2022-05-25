@@ -26,7 +26,7 @@ class OdomDistribution(Node):
             parameters=[
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
                 ('pub_freq', 10.0),      # Frequency to publish at
-                ('dist_thresh', 2.0),   # Distance range robots can 'communicate'
+                ('odom_dist_thresh', 2.0),   # Distance range robots can 'communicate'
             ]
         )
 
@@ -104,7 +104,7 @@ class OdomDistribution(Node):
 
         # Filter for distances not on the diagonal
         np.fill_diagonal(distances, 1e9)    # large to avoid filter below
-        i_index, j_index = np.nonzero( distances <= self.get_parameter("dist_thresh").value )
+        i_index, j_index = np.nonzero( distances <= self.get_parameter("odom_dist_thresh").value )
         # We know the matrix is symmetrical so this cuts down our search space
         i_index = np.split(i_index, 2)[0]
         j_index = np.split(j_index, 2)[0]
@@ -195,7 +195,7 @@ class OdomDistribution(Node):
                         param.name, freq_check ))
 
                     return SetParametersResult(successful=True)
-            elif param.name == 'dist_thresh':
+            elif param.name == 'odom_dist_thresh':
                 if param.type_==Parameter.Type.DOUBLE or param.type_==Parameter.Type.INTEGER:
                     return SetParametersResult(successful=True)
         
