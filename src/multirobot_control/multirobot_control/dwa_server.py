@@ -186,7 +186,7 @@ class DWAActionServer(Node):
             possible_linear = [ self._linear_twist ]
             if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']:
                 possible_linear.append(self._linear_twist + self.params['linear_step'])
-            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']/2:
+            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']:
                 possible_linear.append(self._linear_twist - self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
@@ -238,7 +238,7 @@ class DWAActionServer(Node):
 
                     vis_idx += 1
             
-            self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
+            self.get_logger().info(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
 
             # Label top score with color. Invalid -> red, Not top score -> yellow, Top score -> Green
             vis_msg_array[top_idx].color.r = 0.0
@@ -338,8 +338,21 @@ class DWAActionServer(Node):
         
         # Staying still will have a cost of half of the best possible score.
         # This should reduce the chance of the robot stalling far away from the goal.
-        score = 0 if linear_twist!=0 and angular_twist!=0 else -(goal_K/self.params['dist_thresh'])/2
+        if linear_twist!=0 and angular_twist!=0:
+            score = 0
+        else:
+            score = -(goal_K/self.params['dist_thresh'])/2
 
+        # Else, see how close it gets to the goal.
+        # Cap the score to the maximum cutoff value.
+        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
+        # dist_plus = min( goal_K / dist_to_goal,
+        #                  goal_K / (self.params['dist_thresh']/2)
+        #                 )
+        dist_plus = goal_K / dist_to_goal
+        score += dist_plus
+
+        obstacle_acc = 0
         # Check for collisions or close shaves
         # OBSTACLE_ARRAY also handles the walls
         for obstacle in OBSTACLE_ARRAY:
@@ -353,24 +366,24 @@ class DWAActionServer(Node):
                 score = -np.inf # Collision, don't process further
                 return score
             elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
+                '''
                 score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
+                '''
+                # Use % instead of flat scaling
+                obstacle_m = 1.0/self.params['safety_thresh']
+                obstacle_c = -obstacle_m*(self.params['safety_thresh']+self.params['robot_radius'])
+                obstacle_cost = (obstacle_m*dist_to_obstacle + obstacle_c)*dist_plus
+                obstacle_acc += obstacle_cost
+                score += obstacle_cost # obstacle cost is negative
 
         for x, y in self.other_robots:
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
-            if dist_to_robot < self.params['robot_radius']:
+            if dist_to_robot < 2*self.params['robot_radius']:
                 self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
                 score = -np.inf # Collision, don't process further
                 return score
             elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
-
-        # Else, see how close it gets to the goal.
-        # Cap the score to the maximum cutoff value.
-        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
-        dist_plus = min( goal_K / dist_to_goal,
-                         goal_K / (self.params['dist_thresh']/2)
-                        )
-        score += dist_plus
 
         # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
         # This is proportional to the distance score. Otherwise it will 'overwhelm' the pathing intuition of the robot
@@ -392,10 +405,11 @@ class DWAActionServer(Node):
         score += hdg_cost # hdg cost is negative
 
         # Score breakdown
-        self.get_logger().debug(
-            f"end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
+        self.get_logger().info(
+            f"lin_t: {linear_twist:.2f} | ang_t: {angular_twist:.2f}" + \
+            f" | end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
             f" | dist+: {dist_plus:.2f} | hdg-: {hdg_cost:.2f} | hdg_diff: {hdg_diff:.2f}" + \
-            f" | score: {score:.2f}"
+            f" | obstacle-: {obstacle_acc:.2f} | score: {score:.2f}"
         )
 
         return score

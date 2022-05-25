@@ -69,7 +69,7 @@
   - [x] Safety thresholds for robot
   - [x] Forward simulation duration
 - [ ] Implement parameterized map (perhaps by parsing the world file?)
-- [ ] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
+- [x] Tune DWA parameters (`goal_K`, `safety_thresh_K`, `non_thresh_K`)
 - [x] Add cost/benefit to orientation wrt goal
 - [x] What happens when all DWA options are equally bad?
 - [x] Check if simulated input using `cmd_vel` is sufficient
@@ -186,7 +186,16 @@
   - Add to `simulate_duration` to ensure the robot can "look ahead" further
 - [x] Debug `odom_distribution`, doesn't seem to work anymore
   - The `dist_thresh` param name clashed with the `odom_distribution` one, renaming it seems to have fixed the problem.
+- [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
 
+### Thu 26/05/22
+- QOL/Presentation tweaks:
+  - [ ] Breadcrumbs disappear when they are approached
+  - [ ] Colours for diff robots (and their respective goals) in RViz
+  - [ ] Goal rejected by robots when re-running `goal_creation` multiple times
+- [ ] Recovery behaviour: do something random?
+  - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
+- [ ] ... when I remember it
 ---
 
 - [ ] Set up multi robot joint planner
