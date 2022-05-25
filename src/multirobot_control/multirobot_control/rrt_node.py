@@ -112,23 +112,23 @@ class RRT:
             #     print(self.robot_radius)
             #     print(self.connect_circle_dist)
             # else:
-            #     self.logger.info(f"{self.start}")
-            #     self.logger.info(f"{self.goal}")
-            #     self.logger.info(f"{self.node_list}")
-            #     self.logger.info(f"{self.goal_node}")
-            #     self.logger.info(f"{self.obstacle_list}")
-            #     self.logger.info(f"{self.bounds}")
-            #     self.logger.info(f"{self.x_width}")
-            #     self.logger.info(f"{self.y_width}")
-            #     self.logger.info(f"{self.x_ctr}")
-            #     self.logger.info(f"{self.y_ctr}")
-            #     self.logger.info(f"{self.path_bias}")
-            #     self.logger.info(f"{self.it_lim}")
-            #     self.logger.info(f"{self.it_min}")
-            #     self.logger.info(f"{self.max_extend_length}")
-            #     self.logger.info(f"{self.safety_radius}")
-            #     self.logger.info(f"{self.robot_radius}")
-            #     self.logger.info(f"{self.connect_circle_dist}")
+            #     self.logger.debug(f"{self.start}")
+            #     self.logger.debug(f"{self.goal}")
+            #     self.logger.debug(f"{self.node_list}")
+            #     self.logger.debug(f"{self.goal_node}")
+            #     self.logger.debug(f"{self.obstacle_list}")
+            #     self.logger.debug(f"{self.bounds}")
+            #     self.logger.debug(f"{self.x_width}")
+            #     self.logger.debug(f"{self.y_width}")
+            #     self.logger.debug(f"{self.x_ctr}")
+            #     self.logger.debug(f"{self.y_ctr}")
+            #     self.logger.debug(f"{self.path_bias}")
+            #     self.logger.debug(f"{self.it_lim}")
+            #     self.logger.debug(f"{self.it_min}")
+            #     self.logger.debug(f"{self.max_extend_length}")
+            #     self.logger.debug(f"{self.safety_radius}")
+            #     self.logger.debug(f"{self.robot_radius}")
+            #     self.logger.debug(f"{self.connect_circle_dist}")
 
             self.fig = plt.figure()
             plt.ion()
@@ -222,7 +222,7 @@ class RRT:
                 self.rewire(new_node, near_idxs)
 
                 if self.logger is not None:
-                    self.logger.info(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
+                    self.logger.debug(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
                 else:
                     # ~ print(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
                     pass
@@ -231,7 +231,7 @@ class RRT:
             else:
                 # If a step towards the goal results in a collision, dont do it again
                 if self.logger is not None:
-                    self.logger.info(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
+                    self.logger.debug(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
                 else:
                     # ~print(f"Extension from {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f} to {prop_coords[0]:.2f}, {prop_coords[1]:.2f} collides with obstacle at {c[1]:.2f}, {c[2]:.2f}, closest int {c[0][0]:.2f}, {c[0][1]:.2f}")
                     pass

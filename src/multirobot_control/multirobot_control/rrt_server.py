@@ -124,15 +124,15 @@ class RRTStarActionServer(Node):
         goal_ratio = GOAL_Y_OFFSET / OBS_HEIGHT             # around 0.8/2.3
         up_down = (self.goal_y - y_idx*OBS_HEIGHT) > 0
 
-        # ? find out if we are dealing with a regular starting pose or goal
+        # find out if we are dealing with a regular starting pose or goal
         if abs( abs( (self.goal_y - y_idx*OBS_HEIGHT) ) - GOAL_Y_OFFSET ) < 0.1:
             # It's a goal pose, place an artificial extra waypoint
             if up_down:
                 # obstacle on top of goal
-                self.intermediate_y = self.goal_y + 0.35    # 0.8-0.4+1.5/2
+                self.intermediate_y = self.goal_y + 0.45    # ? 0.8-0.4+1.5/2
             else:
                 # obstacle below goal
-                self.intermediate_y = self.goal_y -0.35     # 0.8-0.4+1.5/2
+                self.intermediate_y = self.goal_y -0.45     # 0.8-0.4+1.5/2
         else:
             # Not goal pose
             self.intermediate_y = self.goal_y
