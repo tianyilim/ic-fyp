@@ -60,9 +60,11 @@ class DWAActionServer(Node):
                 ('dist_method', "L2"),
                 ('pub_freq', 20.0),
                 ('inter_robot_dist', 3.0),
-                ('angular_thresh', 70.0),
-                ('angular_K', 2.0),
-                ('goal_K', 10.0)
+                ('orientation_ub_deg', 180.0),
+                ('orientation_lb_deg', 20.0),
+                ('angular_K', 0.5),
+                ('goal_K', 10.0),
+                ('obstacle_K', 1.0)
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -93,9 +95,11 @@ class DWAActionServer(Node):
             "dist_method" :         self.get_parameter("dist_method").value,
             "pub_freq" :            self.get_parameter("pub_freq").value,
             "inter_robot_dist" :    self.get_parameter("inter_robot_dist").value,
-            "angular_thresh" :      self.get_parameter("angular_thresh").value,
+            "orientation_ub_deg" :  self.get_parameter("orientation_ub_deg").value,
+            "orientation_lb_deg" :  self.get_parameter("orientation_lb_deg").value,
             "angular_K" :           self.get_parameter("angular_K").value,
             "goal_K" :              self.get_parameter("goal_K").value,
+            "obstacle_K" :          self.get_parameter("obstacle_K").value,
         }
         
         # other robots on the map
@@ -175,22 +179,20 @@ class DWAActionServer(Node):
         self.goal_x = goal_handle.request.goal_position.x
         self.goal_y = goal_handle.request.goal_position.y
 
-        self.get_logger().info('Moving towards goal X:{:.2f} Y:{:.2f}'.format(self.goal_x, self.goal_y))
+        self.get_logger().info('{} moving towards goal ({:.2f}, {:.2f})'.format(self.get_namespace(), self.goal_x, self.goal_y))
 
         while not self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
             # Enumerate possible actions, checking for bounds
             possible_linear = [ self._linear_twist ]
-            if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']: 
+            if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']:
                 possible_linear.append(self._linear_twist + self.params['linear_step'])
-            # ? Temporary
-            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']: 
-            # if (self._linear_twist - self.params['linear_step']) >= 0: 
+            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']/2:
                 possible_linear.append(self._linear_twist - self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
-            if (self._angular_twist + self.params['angular_step']) <= self.params['angular_speed_limit']: 
+            if (self._angular_twist + self.params['angular_step']) <= self.params['angular_speed_limit']:
                 possible_angular.append(self._angular_twist + self.params['angular_step'])
-            if (self._angular_twist - self.params['angular_step']) >= -self.params['angular_speed_limit']: 
+            if (self._angular_twist - self.params['angular_step']) >= -self.params['angular_speed_limit']:
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
@@ -236,7 +238,7 @@ class DWAActionServer(Node):
 
                     vis_idx += 1
             
-            self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----")
+            self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
 
             # Label top score with color. Invalid -> red, Not top score -> yellow, Top score -> Green
             vis_msg_array[top_idx].color.r = 0.0
@@ -306,8 +308,8 @@ class DWAActionServer(Node):
 
         # After DWA reaches goal
         goal_handle.succeed()
-        self.get_logger().info("Robot {} reached goal at X: {:.2f} Y: {:.2f}".format(
-            self.get_namespace(), self.goal_x, self.goal_y
+        self.get_logger().info("{} reached goal ({:.2f}, {:.2f}), currently at ({:.2f}, {:.2f})".format(
+            self.get_namespace(), self.goal_x, self.goal_y, self._x, self._y
         ))
 
         result = LocalPlanner.Result()
@@ -325,15 +327,19 @@ class DWAActionServer(Node):
 
         Add bonus to moving forward. Add cost for staying still.
         '''
-        score = 0 if linear_twist!=0 and angular_twist!=0 else -5
 
         goal_K = self.params['goal_K']                              # P factor for proximity to goal
-        orientation_thresh = self.params['angular_thresh']          # cutoff in deg for distance to goal
-        orientation_K = orientation_thresh*self.params['angular_K'] # P factor in angle heading.
+        orientation_ub_deg = self.params['orientation_ub_deg']      # cutoff in deg for distance to goal
+        orientation_lb_deg = self.params['orientation_lb_deg']
+        orientation_K = self.params['angular_K']
+        # Max proportion of orientation that this can take
 
-        safety_thresh_K = 2
-        non_thresh_K = 1
+        safety_thresh_K = self.params['obstacle_K']
         
+        # Staying still will have a cost of half of the best possible score.
+        # This should reduce the chance of the robot stalling far away from the goal.
+        score = 0 if linear_twist!=0 and angular_twist!=0 else -(goal_K/self.params['dist_thresh'])/2
+
         # Check for collisions or close shaves
         # OBSTACLE_ARRAY also handles the walls
         for obstacle in OBSTACLE_ARRAY:
@@ -361,23 +367,34 @@ class DWAActionServer(Node):
         # Else, see how close it gets to the goal.
         # Cap the score to the maximum cutoff value.
         dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
-        dist_plus = goal_K / dist_to_goal
+        dist_plus = min( goal_K / dist_to_goal,
+                         goal_K / (self.params['dist_thresh']/2)
+                        )
         score += dist_plus
 
         # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
         # This is proportional to the distance score. Otherwise it will 'overwhelm' the pathing intuition of the robot
         goal_hdg = np.arctan2(self.goal_y-end_pose[1], self.goal_x-end_pose[0])
-        # We don't want to fall into a local minima so we cap the error the robot is facing
-        hdg_diff = min( orientation_thresh, abs( np.degrees(goal_hdg - end_pose[2])) )
-        # self.get_logger().debug(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
-        hdg_plus = min( orientation_K*dist_plus, 
-                        orientation_K*dist_plus / hdg_diff )
-        score += hdg_plus
+        hdg_diff = min( orientation_ub_deg, abs( np.degrees(goal_hdg - end_pose[2])) )
+        self.get_logger().debug(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
+        # Clamp heading between max and min
+        hdg_clamp = max(min(hdg_diff, orientation_ub_deg), orientation_lb_deg)
+        # y = mx + c
+        #   0 = m*(orientation_lb_deg) + c
+        # -orientation_K = m*(orientation_ub_deg) + c
+        # c = -m*orientation_lb_deg
+        # -orientation_K = m*(orientation_ub_deg-orientation_lb_deg)
+        # m = orientation_K/-(orientation_ub_deg-orientation_lb_deg)
+        # c follows
+        hdg_m = -orientation_K/(orientation_ub_deg-orientation_lb_deg)
+        hdg_c = -hdg_m*orientation_lb_deg
+        hdg_cost = (hdg_m*hdg_clamp + hdg_c)*dist_plus
+        score += hdg_cost # hdg cost is negative
 
         # Score breakdown
         self.get_logger().debug(
             f"end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
-            f" | dist+: {dist_plus:.2f} | hdg+: {hdg_plus:.2f} | hdg_diff: {hdg_diff:.2f}" + \
+            f" | dist+: {dist_plus:.2f} | hdg-: {hdg_cost:.2f} | hdg_diff: {hdg_diff:.2f}" + \
             f" | score: {score:.2f}"
         )
 

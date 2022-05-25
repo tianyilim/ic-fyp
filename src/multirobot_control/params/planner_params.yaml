@@ -8,36 +8,38 @@
     # robot_starting_y: [1.15, 1.15, 1.15]
     # robot_starting_theta: [0.0, 0.0, 0.0]
     
-    # robot_list: ["robot1"]
-    # robot_starting_x: [0.0]
-    # robot_starting_y: [1.15]
-    # robot_starting_theta: [0.0]
+    robot_list: ["robot1"]
+    robot_starting_x: [0.0]
+    robot_starting_y: [1.15]
+    robot_starting_theta: [0.0]
 
-    robot_list: ["robot1", "robot2"]
-    robot_starting_x: [-2.0, 2.0]
-    robot_starting_y: [1.15, 1.15]
-    robot_starting_theta: [0.0, 1.57]
+    # robot_list: ["robot1", "robot2"]
+    # robot_starting_x: [-2.0, 2.0]
+    # robot_starting_y: [1.15, 1.15]
+    # robot_starting_theta: [0.0, 1.57]
     
     # Typically for the DWA Action Server
     robot_radius : 0.35
-    safety_thresh : 0.2
-    simulate_duration : 0.25
-    action_duration : 0.03
-    linear_speed_limit : 0.5
+    safety_thresh : 0.3
+    simulate_duration : 0.4
+    action_duration : 0.01
+    linear_speed_limit : 0.6
     angular_speed_limit : 1.0
     linear_step : 0.05
     angular_step : 0.05
     dist_thresh : 0.1
     dist_method : "L2"
     inter_robot_dist : 3.0
-    angular_thresh : 95.0
-    angular_K : 1.5
+    orientation_ub_deg : 180.0
+    orientation_lb_deg : 15.0
+    angular_K : 0.5 # the max proportion of dist_to_goal that angular contributes
     goal_K : 10.0
+    obstacle_K: 1.5
 
     # Typically for the RRT Action Server
     rrt_path_bias: 0.1
     rrt_it_lim : 2000
-    rrt_it_min : 100
-    rrt_max_extend_length : 2.0
+    rrt_it_min : 200
+    rrt_max_extend_length : 1.5
     rrt_connect_circle_dist : 1.5
     rrt_debug_plot : false
