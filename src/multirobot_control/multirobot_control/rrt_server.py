@@ -119,15 +119,23 @@ class RRTStarActionServer(Node):
         self.goal_y = goal_handle.request.goal_position.y
 
         # Figure out which side of the obstacle the goal is on and ensure we approach the obstacle from a right angle
-        y_idx = np.round(self.goal_y / OBS_HEIGHT)
-        up_down = (self.goal_y - y_idx*OBS_HEIGHT) > 0
         # No need to modify x
-        if up_down:
-            # obstacle on top of goal
-            self.intermediate_y = self.goal_y + 0.35    # 0.8-0.4+1.5/2
+        y_idx = np.round(self.goal_y / OBS_HEIGHT)
+        goal_ratio = GOAL_Y_OFFSET / OBS_HEIGHT             # around 0.8/2.3
+        up_down = (self.goal_y - y_idx*OBS_HEIGHT) > 0
+
+        # ? find out if we are dealing with a regular starting pose or goal
+        if abs( abs( (self.goal_y - y_idx*OBS_HEIGHT) ) - GOAL_Y_OFFSET ) < 0.1:
+            # It's a goal pose, place an artificial extra waypoint
+            if up_down:
+                # obstacle on top of goal
+                self.intermediate_y = self.goal_y + 0.35    # 0.8-0.4+1.5/2
+            else:
+                # obstacle below goal
+                self.intermediate_y = self.goal_y -0.35     # 0.8-0.4+1.5/2
         else:
-            # obstacle below goal
-            self.intermediate_y = self.goal_y -0.35     # 0.8-0.4+1.5/2
+            # Not goal pose
+            self.intermediate_y = self.goal_y
 
         self.display_goal_marker(self.goal_x, self.goal_y)
         self.display_goal_marker(self._x, self._y, 1, (1.0,1.0,0.0))
