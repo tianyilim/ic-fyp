@@ -176,9 +176,14 @@
 - Added a virtual point before each goal point that results in a 90 degree turn towards the goal, hopefully allowing the goal to be reached at a 90 degree orientation to the shelf.
 
 ### Wed 25/05/22
-- [ ] Getting DWA to track the waypoints more robustly and with better directionality
-  - [ ] TODO final goal needs tweaking, when robot goes back to its original position
-- [ ] Tuning DWA for slightly better robustness
+- [x] Getting DWA to track the waypoints more robustly and with better directionality
+  - [x] TODO final goal needs tweaking, when robot goes back to its original position
+- [x] Tuning DWA for slightly better robustness
+- Tweaks to DWA:
+  - Changed the heuristic to score yaw. Instead of adding a bonus proportional to the distance score that is scored as an inverse, we use a simple linear function, where the cost of angular error is a proportion of the distance score, the maximum cost docked from the distance score is `angular_K`.
+  - Also cap the distance error between `orientation_lb_deg` and `orientation_ub_deg`.
+  - Tweak the `safety_thresh` for RRT to generate more "legit" waypoints (not cutting through corners unrealistlcally, for example)
+  - Add to `simulate_duration` to ensure the robot can "look ahead" further
 - [ ] Debug `odom_distribution`, doesn't seem to work anymore
 
 ---
