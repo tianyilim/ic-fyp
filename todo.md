@@ -197,13 +197,25 @@
 - [ ] Recovery behaviour: do something random?
   - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
 - [ ] ... when I remember it
+
+- [x] Come up with metrics on how delivery time / package throughput is affected by number of robots
+  - This is dumped as a YAML file that can be parsed later.
+    - [x] start time
+    - [x] end time
+    - [ ] each robot has its own entry with a list corresponding to each goal:
+      - [x] start coords
+      - [x] distance travelled
+      - [x] number of rrt waypoints
+        - To complete the first 3 we need to modify the response from each action.\
+        - Luckily this does not break the pre-existing API, `LocalPlanner` still works for the DWA node.
+      - [x] goal coords
+      - [x] start time
+      - [x] completion time
+    - [x] parameters
+      - The _easiest_ way to do this is to pass in the file path as another parameter/launch argument in `goal_creation`.
+      - Thus, now run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml" -p params_filepath:="/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
 ---
 
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-- [ ] Come up with metrics on how delivery time / package throughput is affected by number of robots
-  - Dump a results file containing the params file as well as certain metrics, such as:
-    - Average time per goal completion
-    - Average goals per minute
-    - Average robot speed

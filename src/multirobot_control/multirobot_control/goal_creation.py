@@ -2,6 +2,8 @@
 Node that handles creating and visualizing 'goals' for each robot. 
 '''
 
+from dataclasses import dataclass
+from typing import Dict, Tuple, List
 import xml.etree.ElementTree as ET
 import os
 
@@ -30,11 +32,9 @@ from multirobot_control.colour_palette import colour_palette
 from multirobot_control.map_params import GOAL_ARRAY
 
 import numpy as np
-
 from enum import Enum, auto
-
-# Number of goals each robot has to finish
-TOTAL_GOALS = 2
+import yaml
+from datetime import datetime
 
 GOAL_SDF_PATH = os.path.join(get_package_share_directory('multirobot_control'),
     'urdf', 'goal.sdf')
@@ -44,6 +44,25 @@ class RobotGoalStatus(Enum):
     GOAL_STATUS_DOING = auto()      # Done with the goal
     GOAL_STATUS_PENDING = auto()    # Processing a goal
 
+@dataclass
+class goal_output():
+    goal_coords: Tuple[float, float]
+    start_coords: Tuple[float, float] = (0,0)
+    distance_travelled: float = -1
+    num_waypoints: int = -1
+    start_time: float = -1
+    completion_time: float = -1
+
+    def to_dict(self) -> Dict :
+        ''' Returns the output as a dictionary, so that we can easily write to YAML log file later. '''
+        return {
+            'goal_coords' : self.goal_coords,
+            'start_coords' : self.start_coords,
+            'distance_travelled' : self.distance_travelled,
+            'num_waypoints' : self.num_waypoints,
+            'start_time' : self.start_time,
+            'completion_time' : self.completion_time,
+        }
 
 class GoalCreation(Node):
 
@@ -55,7 +74,11 @@ class GoalCreation(Node):
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
                 ('robot_starting_x', Parameter.Type.DOUBLE_ARRAY),
                 ('robot_starting_y', Parameter.Type.DOUBLE_ARRAY),
-                ('robot_starting_theta', Parameter.Type.DOUBLE_ARRAY)
+                ('robot_starting_theta', Parameter.Type.DOUBLE_ARRAY),
+                ('total_goals', Parameter.Type.INTEGER),
+                ('watchdog_timeout_s', Parameter.Type.INTEGER),
+                ('result_folder', Parameter.Type.STRING),
+                ('params_filepath', Parameter.Type.STRING)
             ]
         )
 
@@ -68,7 +91,6 @@ class GoalCreation(Node):
         assert len(self.get_parameter("robot_starting_y").value) == len(self.get_parameter("robot_list").value), \
             "Ensure all robot starting y are specified!"
 
-        # ? Better to use a dataclass?
         self.robot_remaining_goals = {}     # Collection of goals each robot still has to finish
         self.robot_uuids = {}               # Collection of UUID objects corresponding to each robot
         self.gazebo_goals = {}              # Flag if a Gazebo entity has been spawned already
@@ -90,13 +112,32 @@ class GoalCreation(Node):
 
         self.get_logger().debug('Goal SDF path: {}'.format(GOAL_SDF_PATH))
 
+        # Code to write to file
+        self.parameter_file = self.get_parameter('params_filepath').value
+        self.get_logger().info(f"Params file: {self.parameter_file}")
+
+        result_dir = os.path.join(os.getcwd(), self.get_parameter('result_folder').value)
+        if not os.path.exists(result_dir): os.mkdir(result_dir)
+        self.result_file = os.path.join(result_dir, f"{datetime.now().strftime('%d%m%y_%H%M%S')}.yaml")
+        self.get_logger().info(f"Writing results to {self.result_file}")
+
+        now_s = self.get_clock().now().seconds_nanoseconds()
+        now_s = float(now_s[0] + now_s[1]/1e9)
+        self.results = {
+            'start_time': now_s,
+            'end_time': -1,
+        }
+
         for index, robot in enumerate(self.get_parameter("robot_list").value):
             self.action_clients[robot] = \
                 ActionClient(self, LocalPlanner, robot+'/rrt_star')
                 # ActionClient(self, LocalPlanner, robot+'/dwa')
 
             self.robot_name_to_idx[robot] = index
-            self.robot_remaining_goals[robot] = TOTAL_GOALS + 1
+            self.robot_remaining_goals[robot] = self.get_parameter('total_goals').value + 1
+
+            # add to logging
+            self.results[robot] = []
 
             # Send initial first goal (random generated)
             goal_idx = np.random.randint(len(GOAL_ARRAY))
@@ -118,10 +159,20 @@ class GoalCreation(Node):
         goal_timer_period = 1.0
         self.goal_assignment_timer = self.create_timer( goal_timer_period, self.goal_assignment_timer_callback )
 
+        watchdog_timer_period = self.get_parameter('watchdog_timeout_s').value
+        self.goal_assignment_timer = self.create_timer( watchdog_timer_period, self.watchdog_timer_callback )
+
     def send_goal(self, robot_name, goal_position: Point, goal_uuid):
         '''Sends a Point goal to the robot (specified by robot name)'''
         goal_msg = LocalPlanner.Goal()
         goal_msg.goal_position = goal_position
+
+        now_s = self.get_clock().now().seconds_nanoseconds()
+        now_s = float(now_s[0] + now_s[1]/1e9)
+        new_goal = goal_output(goal_coords=(
+            goal_position.x, goal_position.y
+        ), distance_travelled=0.0, start_time=now_s)
+        self.results[robot_name].append(new_goal)
 
         # Delete existing object, if it exists
         if robot_name in self.gazebo_goals.keys():
@@ -184,12 +235,26 @@ class GoalCreation(Node):
         self.robot_remaining_goals[robot_name] -= 1
         self.get_logger().info(f"Robot {robot_name} has {self.robot_remaining_goals[robot_name]} goals remaining.")
 
+        # Update field in goal log
+        now_s = self.get_clock().now().seconds_nanoseconds()
+        now_s = float(now_s[0] + now_s[1]/1e9)
+        self.results[robot_name][-1].completion_time = now_s
+        self.results[robot_name][-1].start_coords = (result.initial_position.x, result.initial_position.y)
+        self.results[robot_name][-1].distance_travelled = result.distance_travelled
+        self.results[robot_name][-1].num_waypoints = result.num_waypoints
+
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_READY
 
     def goal_assignment_timer_callback(self):
         # Check if all robots are done
         if all( remaining_goals == 0 for remaining_goals in self.robot_remaining_goals.values() ):
+            now_s = self.get_clock().now().seconds_nanoseconds()
+            now_s = float(now_s[0] + now_s[1]/1e9)
+            self.results['end_time'] = now_s
+
             self.get_logger().info("All robots are done with their goals. Shutting down node.")
+
+            self.dump_results()
             self.destroy_node()
             rclpy.shutdown()
 
@@ -232,6 +297,17 @@ class GoalCreation(Node):
                     self.send_goal(robot_name, Point(x=start_x, y=start_y, z=0.0), 
                         goal_uuid=curr_uuid)
                     
+    def watchdog_timer_callback(self):
+        '''
+        If this callback triggers, the time limit for execution is over.
+
+        Shut down gracefully and dump existing values to CSV.
+        '''
+        self.get_logger().warn(f"Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
+        self.dump_results()
+
+        self.destroy_node()
+        rclpy.shutdown()
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback.current_pose
@@ -271,7 +347,7 @@ class GoalCreation(Node):
         request.initial_pose.position.y = goal_y
         request.initial_pose.position.z = 0.0
 
-        self.get_logger().info(f"Spawning goal {TOTAL_GOALS-self.robot_remaining_goals[robot_name]+1} for {robot_name}.")
+        self.get_logger().info(f"Spawning goal {self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]+1} for {robot_name}.")
         # Send request
         self.spawn_future = self.spawn_client.call_async(request)
         self.spawn_future.add_done_callback(self.spawn_done)
@@ -286,13 +362,35 @@ class GoalCreation(Node):
         request = DeleteEntity.Request()
         request.name = robot_name + "_goal" # match that in spawn_goal
 
-        self.get_logger().info(f"Deleting goal {TOTAL_GOALS-self.robot_remaining_goals[robot_name]} for {robot_name}.")
+        self.get_logger().info(f"Deleting goal {self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]} for {robot_name}.")
         # Send request
         self.delete_future = self.delete_client.call_async(request)
         self.delete_future.add_done_callback(self.delete_done)
     
     def delete_done(self, response):
         self.get_logger().debug("Delete Service done!")
+
+    def dump_results(self) -> None:
+        '''
+        Dumps the `results` dictionary to a YAML file. 
+        '''
+        # Go through all the dataclasses and convert to dictionary
+        for label in self.results.keys():
+            # Only go through the 'robots' keys
+            if 'start_time' in label or 'end_time' in label:
+                continue            
+            for element in self.results[label]:
+                element = element.to_dict()
+        
+
+        self.get_logger().debug(f"Saved results file in {self.result_file}")
+        with open(self.result_file, 'w') as file:
+            yaml.dump(self.results, file, sort_keys=True)
+
+            with open(self.parameter_file, 'r') as f2:
+                # Append planner params yaml file to the end of results file
+                file.write('\n')
+                file.write(f2.read())
 
 def main(args=None):
     rclpy.init(args=args)

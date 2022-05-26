@@ -5,6 +5,9 @@ geometry_msgs/Point goal_position
 std_msgs/String robot_name
 std_msgs/Bool success
 geometry_msgs/Point final_position
+geometry_msgs/Point initial_position
+std_msgs/Float64 distance_travelled
+std_msgs/Int32 num_waypoints
 ---
 # Feedback
 std_msgs/String robot_name

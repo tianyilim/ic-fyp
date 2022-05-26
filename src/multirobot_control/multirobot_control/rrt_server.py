@@ -125,18 +125,19 @@ class RRTStarActionServer(Node):
         # Figure out which side of the obstacle the goal is on and ensure we approach the obstacle from a right angle
         # No need to modify x
         y_idx = np.round(self.goal_y / OBS_HEIGHT)
-        goal_ratio = GOAL_Y_OFFSET / OBS_HEIGHT             # around 0.8/2.3
         up_down = (self.goal_y - y_idx*OBS_HEIGHT) > 0
 
         # find out if we are dealing with a regular starting pose or goal
         if abs( abs( (self.goal_y - y_idx*OBS_HEIGHT) ) - GOAL_Y_OFFSET ) < 0.1:
-            # It's a goal pose, place an artificial extra waypoint
+            # It's a goal pose, place an artificial extra waypoint slightly
+            # away from the midpoint between two shelves
+            # Around 0.8-0.4+1.5/2 + 0.1 = 0.45
             if up_down:
                 # obstacle on top of goal
-                self.intermediate_y = self.goal_y + 0.45    # ? 0.8-0.4+1.5/2
+                self.intermediate_y = self.goal_y + 0.45
             else:
                 # obstacle below goal
-                self.intermediate_y = self.goal_y -0.45     # 0.8-0.4+1.5/2
+                self.intermediate_y = self.goal_y - 0.45
         else:
             # Not goal pose
             self.intermediate_y = self.goal_y
@@ -145,6 +146,10 @@ class RRTStarActionServer(Node):
         self.get_logger().info(f"Robot ID {self.robot_num}")
         self.display_goal_marker(self.goal_x, self.goal_y)
         self.display_goal_marker(self._x, self._y, id=1, alpha=0.4)
+        
+        start_x = self._x
+        start_y = self._y
+        self.dist_travelled = 0.0
 
         # Find a suitable path through the workspace (and save it for future use).
         rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
@@ -184,6 +189,11 @@ class RRTStarActionServer(Node):
         result.final_position.y = self._y
         result.final_position.z = 0.0
         result.robot_name = String(data=self.get_namespace())
+        result.initial_position.x = start_x
+        result.initial_position.y = start_y
+        result.initial_position.z = 0.0
+        result.distance_travelled = self.dist_travelled
+        result.num_waypoints = num_nodes
         return result
 
     def spin_callback(self):
@@ -247,7 +257,18 @@ class RRTStarActionServer(Node):
         raise NotImplementedError
 
     def handle_odom(self, msg):
-        '''Handle incoming data on `odom` by updating private variables'''
+        '''
+        Handle incoming data on `odom` by updating private variables
+        Also increments the absolute distance travelled.
+        '''
+        
+        # Increment distance travelled if we are travelling
+        if self.global_planner_status == PlannerStatus.PLANNER_EXEC:
+            self.dist_travelled += np.linalg.norm(
+                np.array((self._x, self._y)) - \
+                np.array((msg.pose.pose.position.x,msg.pose.pose.position.y))
+            )
+
         self._x = msg.pose.pose.position.x
         self._y = msg.pose.pose.position.y
         self._rpy = euler_from_quaternion([

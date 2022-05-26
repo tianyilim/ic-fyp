@@ -3,4 +3,5 @@ install/*
 log/*
 experiment/*
 tmp/*
+result/*
 **/__pycache__
