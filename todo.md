@@ -187,7 +187,6 @@
   - Add to `simulate_duration` to ensure the robot can "look ahead" further
 - [x] Debug `odom_distribution`, doesn't seem to work anymore
   - The `dist_thresh` param name clashed with the `odom_distribution` one, renaming it seems to have fixed the problem.
-- [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
 
 ### Thu 26/05/22
 - QOL/Presentation tweaks:
@@ -196,13 +195,11 @@
   - [ ] Goal rejected by robots when re-running `goal_creation` multiple times
 - [ ] Recovery behaviour: do something random?
   - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
-- [ ] ... when I remember it
-
 - [x] Come up with metrics on how delivery time / package throughput is affected by number of robots
   - This is dumped as a YAML file that can be parsed later.
     - [x] start time
     - [x] end time
-    - [ ] each robot has its own entry with a list corresponding to each goal:
+    - [x] each robot has its own entry with a list corresponding to each goal:
       - [x] start coords
       - [x] distance travelled
       - [x] number of rrt waypoints
@@ -214,6 +211,8 @@
     - [x] parameters
       - The _easiest_ way to do this is to pass in the file path as another parameter/launch argument in `goal_creation`.
       - Thus, now run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml" -p params_filepath:="/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
+- [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
+- [ ] Setting DWA distance threshold parameter based on waypoint or goal.
 ---
 
 - [ ] Set up multi robot joint planner

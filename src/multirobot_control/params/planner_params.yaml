@@ -6,15 +6,15 @@
     # robot_starting_y: [1.15, 1.15, 1.15]
     # robot_starting_theta: [0.0, 0.0, 0.0]
     
-    robot_list: ["robot1"]
-    robot_starting_x: [0.0]
-    robot_starting_y: [1.15]
-    robot_starting_theta: [0.0]
+    # robot_list: ["robot1"]
+    # robot_starting_x: [0.0]
+    # robot_starting_y: [1.15]
+    # robot_starting_theta: [0.0]
 
-    # robot_list: ["robot1", "robot2"]
-    # robot_starting_x: [-0.5, 0.5]
-    # robot_starting_y: [1.15, 1.15]
-    # robot_starting_theta: [0.0, 1.57]
+    robot_list: ["robot1", "robot2"]
+    robot_starting_x: [-0.5, 0.5]
+    robot_starting_y: [1.15, 1.15]
+    robot_starting_theta: [0.0, 1.57]
 
     total_goals: 1
     watchdog_timeout_s: 60
@@ -24,17 +24,17 @@
     robot_radius : 0.35
     safety_thresh : 0.3
     simulate_duration : 0.4
-    action_duration : 0.05
+    action_duration : 0.03
     linear_speed_limit : 0.6
-    angular_speed_limit : 1.0
-    linear_step : 0.05
-    angular_step : 0.05
+    angular_speed_limit : 1.5
+    linear_step : 0.1
+    angular_step : 0.2
     dist_thresh : 0.1
     dist_method : "L2"
     inter_robot_dist : 3.0
     orientation_ub_deg : 180.0
-    orientation_lb_deg : 15.0
-    angular_K : 0.5 # the max proportion of dist_to_goal that angular contributes
+    orientation_lb_deg : 5.0
+    angular_K : 1.0 # the max proportion of dist_to_goal that angular contributes
     goal_K : 10.0
     obstacle_K: 1.0
 

@@ -240,8 +240,8 @@ class GoalCreation(Node):
         now_s = float(now_s[0] + now_s[1]/1e9)
         self.results[robot_name][-1].completion_time = now_s
         self.results[robot_name][-1].start_coords = (result.initial_position.x, result.initial_position.y)
-        self.results[robot_name][-1].distance_travelled = result.distance_travelled
-        self.results[robot_name][-1].num_waypoints = result.num_waypoints
+        self.results[robot_name][-1].distance_travelled = result.distance_travelled.data
+        self.results[robot_name][-1].num_waypoints = result.num_waypoints.data
 
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_READY
 

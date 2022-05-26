@@ -18,7 +18,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 
-from std_msgs.msg import Bool, String, Header
+from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 from visualization_msgs.msg import Marker
@@ -192,8 +192,8 @@ class RRTStarActionServer(Node):
         result.initial_position.x = start_x
         result.initial_position.y = start_y
         result.initial_position.z = 0.0
-        result.distance_travelled = self.dist_travelled
-        result.num_waypoints = num_nodes
+        result.distance_travelled = Float64(data=self.dist_travelled)
+        result.num_waypoints = Int32(data=len(self.path))
         return result
 
     def spin_callback(self):
