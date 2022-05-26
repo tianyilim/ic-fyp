@@ -211,8 +211,11 @@
     - [x] parameters
       - The _easiest_ way to do this is to pass in the file path as another parameter/launch argument in `goal_creation`.
       - Thus, now run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml" -p params_filepath:="/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
+- Added a piecewise function to score distance away from goal. If less than 1.0m away from the obstacle, use an inverse function, but from 1.0 to 1.5m (and beyond) we use a linear function. 
 - [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
-- [ ] Setting DWA distance threshold parameter based on waypoint or goal.
+- [x] Setting DWA distance threshold parameter based on waypoint or goal.
+  - Add 2 distance thresholds, `dist_thresh_hi` and `dist_thresh_lo` that correspond to waypoints OTW to the goal, or the goal itself.
+  - [ ] Debug this, calling in callback sometimes causes stuff to hang. Either write as async or something else.
 ---
 
 - [ ] Set up multi robot joint planner

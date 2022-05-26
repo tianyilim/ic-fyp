@@ -22,6 +22,8 @@ from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 from visualization_msgs.msg import Marker
+from rcl_interfaces.srv import SetParameters
+from rcl_interfaces.msg import Parameter, ParameterValue, SetParametersResult, ParameterType
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -54,7 +56,8 @@ class RRTStarActionServer(Node):
             parameters=[
                 ('robot_radius', 0.35),             # Physical radius of robot
                 ('safety_thresh', 0.5),             # How far away from obstacles do we want to keep?
-                ('dist_thresh', 0.1),               # How close to the goal do we need to get?
+                ('dist_thresh_hi', 0.2),               # How close to the goal do we need to get?
+                ('dist_thresh_lo', 0.05),               # How close to the goal do we need to get?
                 ('rrt_path_bias', 0.15),            # % chance to go straight towards goal
                 ('rrt_it_lim', 2000),               # Max number of iterations to run RRT for
                 ('rrt_it_min', 50),               # Min number of iterations to run RRT for
@@ -87,7 +90,8 @@ class RRTStarActionServer(Node):
         self.params = {
             "robot_radius" :            self.get_parameter("robot_radius").value,
             "safety_thresh" :           self.get_parameter("safety_thresh").value,
-            "dist_thresh" :             self.get_parameter("dist_thresh").value,
+            "dist_thresh_hi" :          self.get_parameter("dist_thresh_hi").value,
+            "dist_thresh_lo" :          self.get_parameter("dist_thresh_lo").value,
             "rrt_path_bias":            self.get_parameter("rrt_path_bias").value,
             "rrt_it_lim" :              self.get_parameter("rrt_it_lim").value,
             "rrt_it_min" :              self.get_parameter("rrt_it_min").value,
@@ -98,6 +102,9 @@ class RRTStarActionServer(Node):
 
         self.robot_num = self.get_parameter('robot_num').value
     
+        # Service client
+        self.dist_thresh_client = self.create_client(SetParameters, self.get_namespace()+'/dwa_action_server/set_parameters')
+
         # DWA client (or other local planner) -> TODO make this into a parameter
         self._action_client = ActionClient(self, LocalPlanner, 'dwa')
 
@@ -174,6 +181,16 @@ class RRTStarActionServer(Node):
         self.global_planner_status = PlannerStatus.PLANNER_EXEC
         self.waypoint_idx = 0
 
+        # set distance thresh
+        srv = SetParameters.Request()
+        srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
+            type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
+        ))]
+        resp = self.dist_thresh_client.call(srv)
+        print(dir(resp))
+        self.get_logger().info(f"Set distance threshold to {self.params['dist_thresh_hi']:.2f} {resp.results[0].successful}")
+
+
         # We need to wait until the other threads finish
         while self.global_planner_status != PlannerStatus.PLANNER_READY:
             time.sleep(0.1)
@@ -202,7 +219,15 @@ class RRTStarActionServer(Node):
 
         # TODO do this as a callback and not by polling...
         if len(self.path) > 0 and self.local_planner_status==PlannerStatus.PLANNER_READY:
-            # TODO check if it is the last waypoint (goal) and tighten up the distance threshold
+            if len(self.path) == 1:
+                # set distance thresh
+                srv = SetParameters.Request()
+                srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
+                    type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_lo']
+                ))]
+                resp = self.dist_thresh_client.call(srv)
+                self.get_logger().info(f"Set distance threshold to {self.params['dist_thresh_lo']:.2f} {resp.results[0].successful}")
+            
             self.local_planner_status = PlannerStatus.PLANNER_EXEC
             self.get_logger().info(f"Going to waypoint at {self.path[0][0]:.2f}, {self.path[0][1]:.2f}. {len(self.path)} segments left.")
             

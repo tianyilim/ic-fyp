@@ -6,15 +6,15 @@
     # robot_starting_y: [1.15, 1.15, 1.15]
     # robot_starting_theta: [0.0, 0.0, 0.0]
     
-    # robot_list: ["robot1"]
-    # robot_starting_x: [0.0]
-    # robot_starting_y: [1.15]
-    # robot_starting_theta: [0.0]
+    robot_list: ["robot1"]
+    robot_starting_x: [0.0]
+    robot_starting_y: [1.15]
+    robot_starting_theta: [0.0]
 
-    robot_list: ["robot1", "robot2"]
-    robot_starting_x: [-0.5, 0.5]
-    robot_starting_y: [1.15, 1.15]
-    robot_starting_theta: [0.0, 1.57]
+    # robot_list: ["robot1", "robot2"]
+    # robot_starting_x: [-0.5, 0.5]
+    # robot_starting_y: [1.15, 1.15]
+    # robot_starting_theta: [0.0, 1.57]
 
     total_goals: 1
     watchdog_timeout_s: 60
@@ -29,7 +29,8 @@
     angular_speed_limit : 1.5
     linear_step : 0.1
     angular_step : 0.2
-    dist_thresh : 0.1
+    dist_thresh_hi : 0.2
+    dist_thresh_lo : 0.05
     dist_method : "L2"
     inter_robot_dist : 3.0
     orientation_ub_deg : 180.0
