@@ -192,7 +192,7 @@
 ### Thu 26/05/22
 - QOL/Presentation tweaks:
   - [x] Breadcrumbs disappear when they are approached
-  - [ ] Colours for diff robots (and their respective goals) in RViz
+  - [x] Colours for diff robots (and their respective goals) in RViz
   - [ ] Goal rejected by robots when re-running `goal_creation` multiple times
 - [ ] Recovery behaviour: do something random?
   - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)

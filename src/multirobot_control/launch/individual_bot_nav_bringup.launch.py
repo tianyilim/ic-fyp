@@ -36,6 +36,7 @@ def generate_launch_description():
     map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     autostart = LaunchConfiguration('autostart')
+    robot_num = LaunchConfiguration('robot_num')
     log_level = LaunchConfiguration('log_level')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
@@ -93,6 +94,12 @@ def generate_launch_description():
         'autostart', default_value='true',
         description='Automatically startup the nav2 stack')
 
+    declare_robot_num_cmd = DeclareLaunchArgument(
+        'robot_num',
+        default_value='15',
+        description='The number of the robot, used to assign colours to distinguish robots'
+    )
+
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level',
         default_value='info',
@@ -130,8 +137,8 @@ def generate_launch_description():
         executable='rrt_server',
         namespace=namespace,
         output='screen',
-        parameters=[params_file],
-        arguments=['--ros-args', '--log-level', log_level]
+        parameters=[{"robot_num": robot_num}, params_file],
+        arguments=['--robot_num', robot_num, '--ros-args', '--log-level', log_level]
     )
 
     start_dwa_cmd = Node(
@@ -189,6 +196,7 @@ def generate_launch_description():
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
+    ld.add_action(declare_robot_num_cmd)
     ld.add_action(declare_log_level_cmd)
     
     ld.add_action(start_static_transform_cmd)

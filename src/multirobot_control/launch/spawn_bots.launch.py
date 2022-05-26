@@ -216,7 +216,7 @@ def generate_launch_description():
     start_rviz_cmd = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')],
+        arguments=['-d', os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz'), '--ros-args', '--log-level', 'info'],
         # output='screen'
     )
 
@@ -300,8 +300,11 @@ def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
                 break
 
     # Save file for reference
-    output_filepath = os.path.join(os.getcwd(), "tmp", f"out_{robot_namespace}.xml")
-    with open(output_filepath, 'wb') as f:
+    output_dir = os.path.join(os.getcwd(), "tmp")
+    output_filepath = os.path.join(output_dir, f"out_{robot_namespace}.xml")
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    with open(output_filepath, 'wb+') as f:
         ET.ElementTree(root).write(f)
 
     return output_filepath

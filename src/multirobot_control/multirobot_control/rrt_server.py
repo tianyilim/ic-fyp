@@ -27,6 +27,7 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from multirobot_control.map_params import OBSTACLE_ARRAY, OBSTACLE_BOUND, OBS_WIDTH, OBS_HEIGHT, GOAL_Y_OFFSET
 from multirobot_control.rrt_node import RRT as RRTPlanner
+from multirobot_control.colour_palette import colour_palette_rviz
 
 import time
 import numpy as np
@@ -60,6 +61,7 @@ class RRTStarActionServer(Node):
                 ('rrt_max_extend_length', 0.5),     # How far each RRT node is away from the previous
                 ('rrt_connect_circle_dist', 1.0),   # How far away nodes must be to be considered for rewiring in RRT*
                 ('rrt_debug_plot', False),          # Debug plot RRT in MatPlotLib
+                ('robot_num', -1),                  # Assign goal colour in Rviz
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -93,6 +95,8 @@ class RRTStarActionServer(Node):
             "rrt_connect_circle_dist" : self.get_parameter("rrt_connect_circle_dist").value,
             "rrt_debug_plot" :          self.get_parameter("rrt_debug_plot").value,
         }
+
+        self.robot_num = self.get_parameter('robot_num').value
     
         # DWA client (or other local planner) -> TODO make this into a parameter
         self._action_client = ActionClient(self, LocalPlanner, 'dwa')
@@ -137,8 +141,10 @@ class RRTStarActionServer(Node):
             # Not goal pose
             self.intermediate_y = self.goal_y
 
+        # Show goal and start locations
+        self.get_logger().info(f"Robot ID {self.robot_num}")
         self.display_goal_marker(self.goal_x, self.goal_y)
-        self.display_goal_marker(self._x, self._y, 1, (1.0,1.0,0.0))
+        self.display_goal_marker(self._x, self._y, id=1, alpha=0.4)
 
         # Find a suitable path through the workspace (and save it for future use).
         rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
@@ -161,10 +167,11 @@ class RRTStarActionServer(Node):
         self.display_path_marker()
 
         self.global_planner_status = PlannerStatus.PLANNER_EXEC
+        self.waypoint_idx = 0
 
         # We need to wait until the other threads finish
         while self.global_planner_status != PlannerStatus.PLANNER_READY:
-            pass
+            time.sleep(0.1)
         
         goal_handle.succeed()
         self.get_logger().info("{} reached goal at X: {:.2f} Y: {:.2f}".format(
@@ -197,7 +204,7 @@ class RRTStarActionServer(Node):
         
         # Global planner is ready only when we are done executing all waypoints
         if len(self.path) == 0 and self.global_planner_status == PlannerStatus.PLANNER_EXEC:
-            self.get_logger().info("Readying global planner again")
+            self.get_logger().info("Readying global planner")
             self.global_planner_status = PlannerStatus.PLANNER_READY
 
     def local_planner_done_callback(self, future):
@@ -225,6 +232,11 @@ class RRTStarActionServer(Node):
         
         # Remove goal from current robot.
         self.path.pop(0)
+        
+        # Remove waypoint marker from RViz Visualisation
+        self.remove_path_marker_by_idx(self.waypoint_idx)
+        self.waypoint_idx += 1
+
         self.local_planner_status = PlannerStatus.PLANNER_READY
         self.get_logger().info(f"Robot {robot_name} has {len(self.path)} waypoints left.")
 
@@ -250,7 +262,7 @@ class RRTStarActionServer(Node):
             self._x, self._y, self._yaw ))
 
     def display_goal_marker(self, x:float, y:float, 
-        id:int=0, color:Tuple[float,float,float]=(0.0,1.0,0.0)) -> Marker:
+        id:int=0, alpha:float=0.8) -> Marker:
         '''
         Displays a Marker corresponding to the overall goal of the robot.
         '''
@@ -282,11 +294,12 @@ class RRTStarActionServer(Node):
         marker.scale.z = 0.1    # height
 
         # Set the color -- be sure to set alpha to something non-zero!
+        color = colour_palette_rviz[self.robot_num]
         marker.color.r = color[0]
         marker.color.g = color[1]
         marker.color.b = color[2]
         
-        marker.color.a = 0.8
+        marker.color.a = alpha
 
         # Duration of marker
         marker.lifetime = Duration().to_msg()
@@ -295,48 +308,51 @@ class RRTStarActionServer(Node):
 
     def display_path_marker(self) -> None:
         '''
-        Displays a CubeList of waypoints that the robot will follow using its local planner.
+        Displays a list of waypoints that the robot will follow using its local planner.
         '''
-        marker = Marker()
-        # header stamp
-        marker.header.frame_id = "/map"             # Set relative to global frame
-        marker.header.stamp = self.get_clock().now().to_msg()
+        for i, (x, y) in enumerate(self.path):
+            marker = Marker()
+            # header stamp
+            marker.header.frame_id = "/map"             # Set relative to global frame
+            marker.header.stamp = self.get_clock().now().to_msg()
 
-        # namespace and id
-        marker.ns = self.path_marker_topic
-        marker.id = 0
+            # namespace and id
+            marker.ns = self.path_marker_topic
+            marker.id = i
 
-        # Type of marker
-        marker.type = Marker.CUBE_LIST
-        marker.action = Marker.ADD
+            # Type of marker
+            marker.type = Marker.CUBE
+            marker.action = Marker.ADD
 
-        # Set the scale of the marker
-        marker.scale.x = 0.1
-        marker.scale.y = 0.1
-        marker.scale.z = 0.1
-
-        # Set the color -- be sure to set alpha to something non-zero!
-        marker.color.r = 0.0
-        marker.color.g = 1.0
-        marker.color.b = 1.0
-        marker.color.a = 0.8
-
-        # Duration of marker
-        marker.lifetime = Duration().to_msg()
-
-        points = []
-
-        for x, y in self.path:
             # Position of marker
-            points.append(Point(x=float(x), y=float(y), z=-0.05))
+            marker.pose.position.x = float(x)
+            marker.pose.position.y = float(y)
+            marker.pose.position.z = -0.05
+            marker.pose.orientation.x = 0.0
+            marker.pose.orientation.y = 0.0
+            marker.pose.orientation.z = 0.0
+            marker.pose.orientation.w = 1.0
 
-        marker.points = points
+            # Set the scale of the marker
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
 
-        self.vis_waypoint_pub.publish(marker)
+            # Set the color -- be sure to set alpha to something non-zero!
+            color = colour_palette_rviz[self.robot_num]
+            marker.color.r = color[0]
+            marker.color.g = color[1]
+            marker.color.b = color[2]
+            marker.color.a = 0.8
+
+            # Duration of marker
+            marker.lifetime = Duration().to_msg()
+
+            self.vis_waypoint_pub.publish(marker)
 
     def remove_path_marker(self) -> Marker:
         '''
-        Remove all path markers corresponding to the previous movement.
+        Remove all waypoint markers corresponding to the previous movement.
         '''
         marker = Marker()
         marker.header.frame_id = "/map"             # Set relative to global frame
@@ -347,7 +363,25 @@ class RRTStarActionServer(Node):
         marker.id = 0
 
         # Type of marker
-        marker.type = Marker.CUBE_LIST
+        marker.type = Marker.CUBE
+        marker.action = Marker.DELETE
+
+        self.vis_waypoint_pub.publish(marker)
+
+    def remove_path_marker_by_idx(self, idx:int) -> Marker:
+        '''
+        Remove the previously-reached waypoint marker.
+        '''
+        marker = Marker()
+        marker.header.frame_id = "/map"             # Set relative to global frame
+        marker.header.stamp = self.get_clock().now().to_msg()
+
+        # namespace and id
+        marker.ns = self.path_marker_topic
+        marker.id = idx
+
+        # Type of marker
+        marker.type = Marker.CUBE
         marker.action = Marker.DELETE
 
         self.vis_waypoint_pub.publish(marker)
@@ -397,7 +431,6 @@ class RRTStarActionServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     try:
         rrt_star_action_server = RRTStarActionServer()
         # MultiThreadedExecutor lets us listen to the current location while also doing 

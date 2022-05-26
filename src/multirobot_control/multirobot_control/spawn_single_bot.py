@@ -19,7 +19,6 @@ Spawns a single robot in Gazebo with its own namespace.
 import argparse
 import os
 import xml.etree.ElementTree as ET
-import xacro
 
 from ament_index_python.packages import get_package_share_directory
 from gazebo_msgs.srv import SpawnEntity
