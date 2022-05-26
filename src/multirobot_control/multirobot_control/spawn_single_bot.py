@@ -28,7 +28,6 @@ import rclpy
 from tf_transformations import quaternion_from_euler
 
 # The dictionary containing the palette of robots--> gazebo colors
-from multirobot_control.colour_palette import colour_palette
 
 def main():
     bringup_dir = get_package_share_directory('multirobot_control')
@@ -70,12 +69,6 @@ def main():
 
     node.get_logger().info('Taking URDF from {}'.format(args.urdf))
 
-    if args.robot_num in colour_palette:
-        color = colour_palette[args.robot_num]
-    else:
-        color = 'gray'
-    node.get_logger().info("Setting colour to {}".format(color))
-
     node.get_logger().info(
         'Creating Service client to connect to `/spawn_entity`')
     client = node.create_client(SpawnEntity, '/spawn_entity')
@@ -84,50 +77,9 @@ def main():
     if not client.service_is_ready():
         client.wait_for_service()
         node.get_logger().info('...connected!')
-
-    # We need to remap the transform (/tf) topic so each robot has its own.
-    # We do this by adding `ROS argument entries` to the sdf file for
-    # each plugin broadcasting a transform. These argument entries provide the
-    # remapping rule, i.e. /tf -> /<robot_id>/tf
     
-    root = ET.fromstring(xacro.process(args.urdf, mappings={'prefix': args.robot_namespace}))
-    if args.robot_namespace:
-        for plugin in root.iter('plugin'):
-            # # Find all frames and add the relevant prefix
-            # for elem in plugin:
-            #     # if 'joint' in elem.tag or 'frame' in elem.tag:
-            #     #     elem.text = args.robot_namespace + elem.text
-            #     if 'frame' in elem.tag:
-            #         elem.text = args.robot_namespace + elem.text
-
-            ros_params = plugin.find('ros')
-            if ros_params is not None:
-                # only remap for diff drive plugin
-                if 'ros_diff_drive' in plugin.get('filename'):
-                    remap = ros_params.find('remapping')
-                    if remap is None:
-                        remap = ET.SubElement(ros_params, 'remapping')
-                    remap.text = f'/tf:=/{args.robot_namespace}/tf'
-                # add namespaces to all plugins
-                ns = ros_params.find('namespace')
-                if ns is None:
-                    ns = ET.SubElement(ros_params, 'namespace')
-                ns.text = '/' + args.robot_namespace
-                ns.text = args.robot_namespace
-
-        # Change robot colour as well
-        links = root.findall('gazebo')
-        for elem in links:
-            # Use short-circuit eval to only get things with 'reference' attrib
-            if 'reference' in elem.attrib and 'base_link' in elem.attrib['reference']:
-                # print(elem.find('material').text)
-                elem.find('material').text = color
-
-    # Save file for reference
-    # with open('out_{}.xml'.format(args.robot_name), 'wb') as f:
-    #     ET.ElementTree(root).write(f)
-
     # Set data for request
+    root = ET.parse(args.urdf).getroot()
     request = SpawnEntity.Request()
     request.name = args.robot_name
     request.xml = ET.tostring(root, encoding='unicode')

@@ -3,7 +3,8 @@
 ## Todo
 - [x] Get the multiple robots spawned to be visualised with different colours in Gazebo (eg. Robot1 is red, 2 is blue, etc...)
 - [x] Show a visualization in Gazebo(?) of each robot's goal position
-- [ ] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
+- [x] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
+  - Parsed in `spawn_bots.launch.py`
 - [ ] Programatically create Rviz files for visualising each robot (currently hardcoded)
 - [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
 
@@ -190,7 +191,7 @@
 
 ### Thu 26/05/22
 - QOL/Presentation tweaks:
-  - [ ] Breadcrumbs disappear when they are approached
+  - [x] Breadcrumbs disappear when they are approached
   - [ ] Colours for diff robots (and their respective goals) in RViz
   - [ ] Goal rejected by robots when re-running `goal_creation` multiple times
 - [ ] Recovery behaviour: do something random?

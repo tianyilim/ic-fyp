@@ -16,8 +16,6 @@ Simple demo to load up the aws world and spawn in one or more robots.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from email.policy import default
-from multiprocessing import Condition
 import os
 import yaml
 
@@ -31,6 +29,9 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
 from launch_ros.actions import PushRosNamespace, Node
 
+import xml.etree.ElementTree as ET
+import xacro
+from multirobot_control.colour_palette import colour_palette, colour_palette_rviz_named
 
 def generate_launch_description():
     # Get the launch directory
@@ -65,7 +66,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
     world = LaunchConfiguration('world')
-    urdf = LaunchConfiguration('urdf')
+    # urdf = LaunchConfiguration('urdf')
     headless_config = LaunchConfiguration('headless')
     log_level = LaunchConfiguration('log_level')
 
@@ -104,12 +105,12 @@ def generate_launch_description():
         default_value=params_file_dir,
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
-    declare_urdf_cmd = DeclareLaunchArgument(
-        'urdf',
-        # default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
-        default_value=os.path.join(robot_base_dir, 'urdf', 'robot_base.xacro'),
-        description='Full path to robot URDF to load'
-    )
+    # declare_urdf_cmd = DeclareLaunchArgument(
+    #     'urdf',
+    #     # default_value=os.path.join(bringup_dir, 'urdf', 'mp_400.urdf.xacro'),
+    #     default_value=os.path.join(robot_base_dir, 'urdf', 'robot_base.xacro'),
+    #     description='Full path to robot URDF to load'
+    # )
 
     declare_headless_cmd = DeclareLaunchArgument(
         'headless',
@@ -147,7 +148,13 @@ def generate_launch_description():
         )
 
     spawn_robot_cmds = []
+    start_navigation_cmds = []
     for i, robot in enumerate(robots):
+        # Parse URDF here
+        # ? URDF not using Launch arguments, hardcoded below
+        urdf_filepath = os.path.join(robot_base_dir, 'urdf', 'robot_base.xacro')
+        urdf = parse_urdf(urdf_filepath, i, robot['name'])
+
         spawn_robot_cmds.append(
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -167,9 +174,6 @@ def generate_launch_description():
                 }.items()
             )
         )
-
-    start_navigation_cmds = []
-    for robot in robots:
         start_navigation_cmds.append(
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -185,6 +189,7 @@ def generate_launch_description():
                     'y_pose': TextSubstitution(text=str(robot['y_pose'])),
                     'z_pose': TextSubstitution(text=str(robot['z_pose'])),
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
+                    'robot_num': str(i),  # To tag robots' colours
                     'autostart': 'true',
                     'log_level': log_level
                 }.items()
@@ -227,7 +232,7 @@ def generate_launch_description():
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
-    ld.add_action(declare_urdf_cmd)
+    # ld.add_action(declare_urdf_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)
 
@@ -244,3 +249,59 @@ def generate_launch_description():
     ld.add_action(start_rviz_cmd)
 
     return ld
+
+def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
+    if robot_num in colour_palette:
+        color = colour_palette[robot_num]
+        color_rviz = colour_palette_rviz_named[robot_num]
+    else:
+        color = 'Gazebo/Grey'
+        color_rviz = 'gray'
+
+    root = ET.fromstring(xacro.process(urdf_filepath, mappings={'prefix': robot_namespace}))
+    if robot_namespace:
+        for plugin in root.iter('plugin'):
+            # # Find all frames and add the relevant prefix
+            # for elem in plugin:
+            #     # if 'joint' in elem.tag or 'frame' in elem.tag:
+            #     #     elem.text = args.robot_namespace + elem.text
+            #     if 'frame' in elem.tag:
+            #         elem.text = args.robot_namespace + elem.text
+
+            ros_params = plugin.find('ros')
+            if ros_params is not None:
+                # only remap for diff drive plugin
+                if 'ros_diff_drive' in plugin.get('filename'):
+                    remap = ros_params.find('remapping')
+                    if remap is None:
+                        remap = ET.SubElement(ros_params, 'remapping')
+                    remap.text = f'/tf:=/{robot_namespace}/tf'
+                # add namespaces to all plugins
+                ns = ros_params.find('namespace')
+                if ns is None:
+                    ns = ET.SubElement(ros_params, 'namespace')
+                ns.text = '/' + robot_namespace
+                ns.text = robot_namespace
+
+        # Change robot colour as well
+        links = root.findall('gazebo')
+        for elem in links:
+            # Use short-circuit eval to only get things with 'reference' attrib
+            if 'reference' in elem.attrib and 'base_link' in elem.attrib['reference']:
+                # print(elem.find('material').text)
+                elem.find('material').text = color
+
+        links = root.findall('link')
+        for elem in links:
+            if 'name' in elem.attrib and 'base_link' in elem.attrib['name']:
+                material = elem.find('visual').find('material')
+                material.attrib['name'] = color_rviz
+
+                break
+
+    # Save file for reference
+    output_filepath = os.path.join(os.getcwd(), "tmp", f"out_{robot_namespace}.xml")
+    with open(output_filepath, 'wb') as f:
+        ET.ElementTree(root).write(f)
+
+    return output_filepath

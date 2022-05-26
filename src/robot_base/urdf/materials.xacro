@@ -1,15 +1,14 @@
 <?xml version="1.0"?>
 <!-- definition of the materials used -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <material name="gray"><color rgba="${120/255} ${120/255} ${120/255} 1.0"/></material>
+  <!-- <material name="gray"><color rgba="${120/255} ${120/255} ${120/255} 1.0"/></material>
   <material name="black"><color rgba="${5/255} ${5/255} ${5/255} 1.0"/></material>
   <material name="red"><color rgba="${255/255} ${10/255} ${10/255} 1.0"/></material>
   <material name="green"><color rgba="${10/255} ${255/255} ${10/255} 1.0"/></material>
   <material name="blue"><color rgba="${10/255} ${10/255} ${255/255} 1.0"/></material>
-  <material name="white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material>
-
+  <material name="white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material> -->
   <!-- 16 colour palette -->
-  <material name="00black"><color rgba="${0/255} ${0/255} ${0/255} 1.0"/></material>
+  <!-- <material name="00black"><color rgba="${0/255} ${0/255} ${0/255} 1.0"/></material>
   <material name="01maroon"><color rgba="${132/255} ${2/255} ${6/255} 1.0"/></material>
   <material name="02green"><color rgba="${0/255} ${128/255} ${23/255} 1.0"/></material>
   <material name="03olive"><color rgba="${128/255} ${128/255} ${26/255} 1.0"/></material>
@@ -24,6 +23,21 @@
   <material name="12blue"><color rgba="${0/255} ${8/255} ${249/255} 1.0"/></material>
   <material name="13fuchsia"><color rgba="${255/255} ${17/255} ${250/255} 1.0"/></material>
   <material name="14aqua"><color rgba="${0/255} ${255/255} ${254/255} 1.0"/></material>
-  <material name="15white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material>
-
+  <material name="15white"><color rgba="${255/255} ${255/255} ${255/255} 1.0"/></material> -->
+  <material name="red"><color rgba="1.0 0.0 0.0 1.0"/></material>
+  <material name="green"><color rgba="0.0 1.0 0.0 1.0"/></material>
+  <material name="blue"><color rgba="0.0 0.0 1.0 0.2"/></material>
+  <material name="yellow"><color rgba="1.0 1.0 0.0 1.0"/></material>
+  <material name="purple"><color rgba="1.0 0.0 1.0 1.0"/></material>
+  <material name="turquoise"><color rgba="0.0 1.0 1.0 1.0"/></material>
+  <material name="orange"><color rgba="1.0 0.5 0.0 1.0"/></material>
+  <material name="indigo"><color rgba="0.84 0.75 0.84 1.0"/></material>
+  <material name="darkyellow"><color rgba="0.96 0.75 0.0 1.0"/></material>
+  <material name="skyblue"><color rgba="0.53 0.81 0.91 1.0"/></material>
+  <material name="zincyellow"><color rgba="0.98 0.79 0.19 1.0"/></material>
+  <material name="redbright"><color rgba="1.0 0.2 0.2 1.0"/></material>
+  <material name="bluelaser"><color rgba="0.2 0.2 1.0 1.0"/></material>
+  <material name="grey"><color rgba="0.5 0.5 0.5 1.0"/></material>
+  <material name="black"><color rgba="0.0 0.0 0.0 1.0"/></material>
+  <material name="white"><color rgba="1.0 1.0 1.0 1.0"/></material>
 </robot>
