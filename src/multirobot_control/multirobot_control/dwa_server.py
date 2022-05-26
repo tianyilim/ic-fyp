@@ -238,7 +238,7 @@ class DWAActionServer(Node):
 
                     vis_idx += 1
             
-            self.get_logger().info(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
+            self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
 
             # Label top score with color. Invalid -> red, Not top score -> yellow, Top score -> Green
             vis_msg_array[top_idx].color.r = 0.0
@@ -331,17 +331,16 @@ class DWAActionServer(Node):
         goal_K = self.params['goal_K']                              # P factor for proximity to goal
         orientation_ub_deg = self.params['orientation_ub_deg']      # cutoff in deg for distance to goal
         orientation_lb_deg = self.params['orientation_lb_deg']
-        orientation_K = self.params['angular_K']
-        # Max proportion of orientation that this can take
+        orientation_K = self.params['angular_K']                    # Max proportion of orientation that this can take
 
         safety_thresh_K = self.params['obstacle_K']
         
         # Staying still will have a cost of half of the best possible score.
         # This should reduce the chance of the robot stalling far away from the goal.
-        if linear_twist!=0 and angular_twist!=0:
-            score = 0
+        if np.allclose(linear_twist, 0.0, atol=1e-3) and np.allclose(angular_twist, 0.0, atol=1e-3):
+            score = -(goal_K/self.params['dist_thresh'])/4
         else:
-            score = -(goal_K/self.params['dist_thresh'])/2
+            score = 0
 
         # Else, see how close it gets to the goal.
         # Cap the score to the maximum cutoff value.
@@ -349,12 +348,24 @@ class DWAActionServer(Node):
         # dist_plus = min( goal_K / dist_to_goal,
         #                  goal_K / (self.params['dist_thresh']/2)
         #                 )
+        '''
         dist_plus = goal_K / dist_to_goal
+        '''
+        dist_plus = 0.0
+        if dist_to_goal < 1.0:
+            dist_plus = goal_K / dist_to_goal
+        else:
+            goal_lb = 1.5   # The distance at which there is a dist_plus of 0
+            dist_m = goal_K/(1.0-goal_lb)
+            dist_c = -dist_m*goal_lb
+            dist_plus = dist_m*dist_to_goal + dist_c
+
         score += dist_plus
 
         obstacle_acc = 0
         # Check for collisions or close shaves
         # OBSTACLE_ARRAY also handles the walls
+        od_min = 1e9
         for obstacle in OBSTACLE_ARRAY:
             dist_to_obstacle = dist_to_aabb(end_pose[0], end_pose[1], obstacle)
             
@@ -362,17 +373,20 @@ class DWAActionServer(Node):
             #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
 
             if dist_to_obstacle < self.params['robot_radius']:
-                self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
+                self.get_logger().debug(f"End pose ({end_pose[0]:.2f},{end_pose[1]:.2f},{np.degrees(end_pose[2]):.2f}) collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
                 score = -np.inf # Collision, don't process further
                 return score
+
             elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
                 '''
                 score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
                 '''
+                if dist_to_obstacle < od_min: od_min = dist_to_obstacle
+                
                 # Use % instead of flat scaling
                 obstacle_m = 1.0/self.params['safety_thresh']
                 obstacle_c = -obstacle_m*(self.params['safety_thresh']+self.params['robot_radius'])
-                obstacle_cost = (obstacle_m*dist_to_obstacle + obstacle_c)*dist_plus
+                obstacle_cost = (obstacle_m*dist_to_obstacle + obstacle_c)*safety_thresh_K
                 obstacle_acc += obstacle_cost
                 score += obstacle_cost # obstacle cost is negative
 
@@ -405,11 +419,11 @@ class DWAActionServer(Node):
         score += hdg_cost # hdg cost is negative
 
         # Score breakdown
-        self.get_logger().info(
-            f"lin_t: {linear_twist:.2f} | ang_t: {angular_twist:.2f}" + \
-            f" | end_x: {end_pose[0]:.2f} end_y: {end_pose[1]:.2f} end_yaw: {np.degrees(end_pose[2]):.2f}" + \
-            f" | dist+: {dist_plus:.2f} | hdg-: {hdg_cost:.2f} | hdg_diff: {hdg_diff:.2f}" + \
-            f" | obstacle-: {obstacle_acc:.2f} | score: {score:.2f}"
+        self.get_logger().debug(
+            f"{linear_twist:.2f}|{angular_twist:.2f}" + \
+            f" | end: ({end_pose[0]:.2f}, {end_pose[1]:.2f}, {np.degrees(end_pose[2]):.2f})" + \
+            f" | d: {dist_to_goal:.2f},{dist_plus:.2f} | h: {hdg_diff:.2f},{hdg_cost:.2f}" + \
+            f" | o: {od_min:.2f},{obstacle_acc:.2f} | {score:.2f}"
         )
 
         return score
