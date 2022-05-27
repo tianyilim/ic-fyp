@@ -196,7 +196,7 @@ class DWAActionServer(Node):
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
 
             top_score = -np.inf
-            top_pose = None
+            top_pose = (self._x, self._y, self._yaw)
 
             # Variables for visualising trajectories in RViz
             vis_msg_array = []
@@ -219,7 +219,7 @@ class DWAActionServer(Node):
 
                     # Eventual position and orientation
                     end_pose = displacement + np.array([self._x, self._y])
-                    end_pose = [end_pose[0], end_pose[1], effective_yaw]
+                    end_pose = (end_pose[0], end_pose[1], effective_yaw)
 
                     # Rank score
                     self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
