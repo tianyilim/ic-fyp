@@ -192,9 +192,8 @@
 - QOL/Presentation tweaks:
   - [x] Breadcrumbs disappear when they are approached
   - [x] Colours for diff robots (and their respective goals) in RViz
-  - [ ] Goal rejected by robots when re-running `goal_creation` multiple times
-- [ ] Recovery behaviour: do something random?
-  - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
+  - [x] Goal rejected by robots when re-running `goal_creation` multiple times
+    - Randomly generate the first 15 UUID integers, because somehow the action server can't repeat UUIDs.
 - [x] Come up with metrics on how delivery time / package throughput is affected by number of robots
   - This is dumped as a YAML file that can be parsed later.
     - [x] start time
@@ -212,10 +211,14 @@
       - The _easiest_ way to do this is to pass in the file path as another parameter/launch argument in `goal_creation`.
       - Thus, now run `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml" -p params_filepath:="/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"`
 - Added a piecewise function to score distance away from goal. If less than 1.0m away from the obstacle, use an inverse function, but from 1.0 to 1.5m (and beyond) we use a linear function. 
-- [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
 - [x] Setting DWA distance threshold parameter based on waypoint or goal.
   - Add 2 distance thresholds, `dist_thresh_hi` and `dist_thresh_lo` that correspond to waypoints OTW to the goal, or the goal itself.
-  - [ ] Debug this, calling in callback sometimes causes stuff to hang. Either write as async or something else.
+  - [x] Debug this, calling in callback sometimes causes stuff to hang. Either write as async or something else.
+
+### Fri 27/05/22
+- [ ] Recovery behaviour: do something random?
+  - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
+  - [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
 ---
 
 - [ ] Set up multi robot joint planner
