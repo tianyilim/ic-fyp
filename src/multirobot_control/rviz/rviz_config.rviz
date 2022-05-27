@@ -5,6 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Robot2Odometry1/Shape1
+        - /Robot1 Waypoints2
+        - /Robot2 Waypoints2
+        - /Robot3 Waypoints2
       Splitter Ratio: 0.6205882430076599
     Tree Height: 719
   - Class: rviz_common/Selection
@@ -70,6 +73,76 @@ Visualization Manager:
           Value: false
         robot1odom:
           Value: false
+        robot2_base_footprint:
+          Value: true
+        robot2_base_link:
+          Value: true
+        robot2_front_caster:
+          Value: true
+        robot2_left_wheel:
+          Value: true
+        robot2_rear_caster:
+          Value: true
+        robot2_right_wheel:
+          Value: true
+        robot2odom:
+          Value: true
+        robot3_base_footprint:
+          Value: true
+        robot3_base_link:
+          Value: true
+        robot3_front_caster:
+          Value: true
+        robot3_left_wheel:
+          Value: true
+        robot3_rear_caster:
+          Value: true
+        robot3_right_wheel:
+          Value: true
+        robot3odom:
+          Value: true
+        robot4_base_footprint:
+          Value: true
+        robot4_base_link:
+          Value: true
+        robot4_front_caster:
+          Value: true
+        robot4_left_wheel:
+          Value: true
+        robot4_rear_caster:
+          Value: true
+        robot4_right_wheel:
+          Value: true
+        robot4odom:
+          Value: true
+        robot5_base_footprint:
+          Value: true
+        robot5_base_link:
+          Value: true
+        robot5_front_caster:
+          Value: true
+        robot5_left_wheel:
+          Value: true
+        robot5_rear_caster:
+          Value: true
+        robot5_right_wheel:
+          Value: true
+        robot5odom:
+          Value: true
+        robot6_base_footprint:
+          Value: true
+        robot6_base_link:
+          Value: true
+        robot6_front_caster:
+          Value: true
+        robot6_left_wheel:
+          Value: true
+        robot6_rear_caster:
+          Value: true
+        robot6_right_wheel:
+          Value: true
+        robot6odom:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
@@ -88,6 +161,61 @@ Visualization Manager:
                   {}
                 robot1_right_wheel:
                   {}
+          robot2odom:
+            robot2_base_footprint:
+              robot2_base_link:
+                robot2_front_caster:
+                  {}
+                robot2_rear_caster:
+                  {}
+              robot2_left_wheel:
+                {}
+              robot2_right_wheel:
+                {}
+          robot3odom:
+            robot3_base_footprint:
+              robot3_base_link:
+                robot3_front_caster:
+                  {}
+                robot3_rear_caster:
+                  {}
+              robot3_left_wheel:
+                {}
+              robot3_right_wheel:
+                {}
+          robot4odom:
+            robot4_base_footprint:
+              robot4_base_link:
+                robot4_front_caster:
+                  {}
+                robot4_rear_caster:
+                  {}
+              robot4_left_wheel:
+                {}
+              robot4_right_wheel:
+                {}
+          robot5odom:
+            robot5_base_footprint:
+              robot5_base_link:
+                robot5_front_caster:
+                  {}
+                robot5_left_wheel:
+                  {}
+                robot5_rear_caster:
+                  {}
+                robot5_right_wheel:
+                  {}
+          robot6odom:
+            robot6_base_footprint:
+              robot6_base_link:
+                robot6_front_caster:
+                  {}
+                robot6_rear_caster:
+                  {}
+              robot6_left_wheel:
+                {}
+              robot6_right_wheel:
+                {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Marker
@@ -250,6 +378,35 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        robot2_base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        robot2_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot2_front_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot2_left_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot2_rear_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot2_right_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
       Name: Robot2Model
       TF Prefix: ""
       Update Interval: 0
@@ -298,7 +455,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot2DWA
       Namespaces:
-        {}
+        /robot2/trajectories: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -310,7 +467,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot2 Goals
       Namespaces:
-        {}
+        /robot2/goals: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -323,7 +480,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot2 Waypoints
       Namespaces:
-        {}
+        /robot2/waypoints: true
       Topic:
         Depth: 20
         Durability Policy: Volatile
@@ -350,6 +507,35 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        robot3_base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        robot3_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot3_front_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot3_left_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot3_rear_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot3_right_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
       Name: Robot3Model
       TF Prefix: ""
       Update Interval: 0
@@ -398,7 +584,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot3DWA
       Namespaces:
-        {}
+        /robot3/trajectories: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -410,7 +596,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot3 Goals
       Namespaces:
-        {}
+        /robot3/goals: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -423,7 +609,7 @@ Visualization Manager:
       Enabled: true
       Name: Robot3 Waypoints
       Namespaces:
-        {}
+        /robot3/waypoints: true
       Topic:
         Depth: 20
         Durability Policy: Volatile
@@ -431,6 +617,393 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /robot3/waypoint_markers
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: robot4/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        robot4_base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        robot4_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot4_front_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot4_left_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot4_rear_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot4_right_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: Robot4Model
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 30
+      Name: Robot4Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.20000000298023224
+        Head Radius: 0.10000000149011612
+        Shaft Length: 0.5
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot4/odom
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Robot4DWA
+      Namespaces:
+        /robot4/trajectories: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot4/planned_pos_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot4 Goals
+      Namespaces:
+        /robot4/goals: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot4/goal_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot4 Waypoints
+      Namespaces:
+        /robot4/waypoints: true
+      Topic:
+        Depth: 20
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot4/waypoint_markers
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: robot5/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        robot5_base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        robot5_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot5_front_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot5_left_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot5_rear_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot5_right_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: Robot5Model
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 30
+      Name: Robot5Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.20000000298023224
+        Head Radius: 0.10000000149011612
+        Shaft Length: 0.5
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot5/odom
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Robot5DWA
+      Namespaces:
+        /robot5/trajectories: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot5/planned_pos_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot5 Goals
+      Namespaces:
+        /robot5/goals: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot5/goal_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot5 Waypoints
+      Namespaces:
+        {}
+      Topic:
+        Depth: 20
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot5/waypoint_markers
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: robot6/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        robot6_base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        robot6_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot6_front_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot6_left_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot6_rear_caster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot6_right_wheel:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: Robot6Model
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 30
+      Name: Robot6Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.20000000298023224
+        Head Radius: 0.10000000149011612
+        Shaft Length: 0.5
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot6/odom
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Robot6DWA
+      Namespaces:
+        /robot6/trajectories: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot6/planned_pos_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot6 Goals
+      Namespaces:
+        /robot6/goals: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot6/goal_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Robot6 Waypoints
+      Namespaces:
+        /robot6/waypoints: true
+      Topic:
+        Depth: 20
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot6/waypoint_markers
       Value: true
   Enabled: true
   Global Options:
@@ -499,7 +1072,7 @@ Window Geometry:
   Height: 1016
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001560000035afc0200000008fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000035a000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d0061006700650100000233000000970000000000000000fb0000000a0049006d00610067006501000002d0000000c70000000000000000000000010000010f0000035afc0200000005fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000003d000000a10000005c00fffffffb0000000a0056006900650077007301000000e40000021d000000a400fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000001d6000001500000000000000000fb0000001200530065006c0065006300740069006f006e0100000307000000900000005c00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d00650100000000000007800000026c00fffffffb0000000800540069006d006501000000000000045000000000000000000000050f0000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001b80000035afc0200000008fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000035a000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d0061006700650100000233000000970000000000000000fb0000000a0049006d00610067006501000002d0000000c70000000000000000000000010000010f0000035afc0200000005fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000003d000000a10000005c00fffffffb0000000a0056006900650077007301000000e40000021d000000a400fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000001d6000001500000000000000000fb0000001200530065006c0065006300740069006f006e0100000307000000900000005c00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d00650100000000000007800000026c00fffffffb0000000800540069006d00650100000000000004500000000000000000000004ad0000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

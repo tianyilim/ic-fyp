@@ -2,22 +2,27 @@
   ros__parameters:
     pub_freq: 50.0  # Match action duration
     # robot_list: ["robot1", "robot2", "robot3"]
-    # robot_starting_x: [-2.0, 0.0, 2.0]
+    # robot_starting_x: [-5.5, 0.0, 5.5]
     # robot_starting_y: [1.15, 1.15, 1.15]
     # robot_starting_theta: [0.0, 0.0, 0.0]
     
-    robot_list: ["robot1"]
-    robot_starting_x: [0.0]
-    robot_starting_y: [1.15]
-    robot_starting_theta: [0.0]
+    # robot_list: ["robot1"]
+    # robot_starting_x: [0.0]
+    # robot_starting_y: [1.15]
+    # robot_starting_theta: [0.0]
 
     # robot_list: ["robot1", "robot2"]
     # robot_starting_x: [-0.5, 0.5]
     # robot_starting_y: [1.15, 1.15]
     # robot_starting_theta: [0.0, 1.57]
 
+    robot_list: ["robot1", "robot2", "robot3", "robot4", "robot5", "robot6"]
+    robot_starting_x: [-5.5, 0.0, 5.5, -5.5, 0.0, 5.5]
+    robot_starting_y: [1.15, 1.15, 1.15, -1.15, -1.15, -1.15]
+    robot_starting_theta: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
     total_goals: 1
-    watchdog_timeout_s: 60
+    watchdog_timeout_s: 120
     result_folder: "result"
 
     # Typically for the DWA Action Server
