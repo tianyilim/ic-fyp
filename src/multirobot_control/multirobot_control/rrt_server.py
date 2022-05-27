@@ -186,10 +186,8 @@ class RRTStarActionServer(Node):
         srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
             type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
         ))]
-        resp = self.dist_thresh_client.call(srv)
-        print(dir(resp))
-        self.get_logger().info(f"Set distance threshold to {self.params['dist_thresh_hi']:.2f} {resp.results[0].successful}")
-
+        resp_future = self.dist_thresh_client.call_async(srv)
+        resp_future.add_done_callback(self.param_set_callback)
 
         # We need to wait until the other threads finish
         while self.global_planner_status != PlannerStatus.PLANNER_READY:
@@ -225,8 +223,8 @@ class RRTStarActionServer(Node):
                 srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
                     type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_lo']
                 ))]
-                resp = self.dist_thresh_client.call(srv)
-                self.get_logger().info(f"Set distance threshold to {self.params['dist_thresh_lo']:.2f} {resp.results[0].successful}")
+                resp_future = self.dist_thresh_client.call_async(srv)
+                resp_future.add_done_callback(self.param_set_callback)
             
             self.local_planner_status = PlannerStatus.PLANNER_EXEC
             self.get_logger().info(f"Going to waypoint at {self.path[0][0]:.2f}, {self.path[0][1]:.2f}. {len(self.path)} segments left.")
@@ -474,6 +472,10 @@ class RRTStarActionServer(Node):
 
         # Write parameter result change
         return SetParametersResult(successful=True)
+
+    def param_set_callback(self, future):
+        resp = future.result()
+        self.get_logger().info(f"Set distance threshold to {self.params['dist_thresh_lo']:.2f} {resp.results[0].successful}")
 
 def main(args=None):
     rclpy.init(args=args)

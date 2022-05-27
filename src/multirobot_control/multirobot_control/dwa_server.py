@@ -472,8 +472,6 @@ class DWAActionServer(Node):
                 self.get_logger().debug("Set parameter {} to value {}".format(
                     param.name, self.params[param.name] ))
 
-
-
         # Write parameter result change
         return SetParametersResult(successful=True)
 
