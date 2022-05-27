@@ -142,10 +142,11 @@ class GoalCreation(Node):
             # Send initial first goal (random generated)
             goal_idx = np.random.randint(len(GOAL_ARRAY))
             initial_goal =  GOAL_ARRAY[goal_idx]
-            uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
+            uuid_arr = np.random.randint(256, size=16, dtype='uint8')   # Random UUID except the first number
+            # uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
             uuid_arr[-1] = index
             curr_uuid = UUID(uuid=uuid_arr)
-            self.robot_uuids[robot] = index # Just take the last element as the UUID
+            self.robot_uuids[robot] = uuid_arr
             self.robot_goal_status[robot] = RobotGoalStatus.GOAL_STATUS_READY
 
             self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
@@ -203,7 +204,7 @@ class GoalCreation(Node):
 
         # Extract information about the robot from the response (no way to do this via other means)
         for key in self.robot_uuids.keys():
-            if self.robot_uuids[key] == goal_handle.goal_id.uuid[-1]:
+            if np.all(self.robot_uuids[key] == goal_handle.goal_id.uuid):
                 robot_name = key
                 break
 
@@ -270,11 +271,12 @@ class GoalCreation(Node):
                 goal_idx = np.random.randint(len(GOAL_ARRAY))
                 goal_coords =  GOAL_ARRAY[goal_idx]
 
-                uuid_num = self.robot_uuids[robot_name]
-                uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
+                uuid_num = self.robot_uuids[robot_name][-1]
+                uuid_arr = np.random.randint(256, size=16, dtype='uint8')   # Random UUID except the first number
+                # uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
                 uuid_arr[-1] = uuid_num + len(self.robot_remaining_goals)
                 curr_uuid = UUID(uuid=uuid_arr)
-                self.robot_uuids[robot_name] = uuid_arr[-1]
+                self.robot_uuids[robot_name] = uuid_arr
                 self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_PENDING
 
                 if self.robot_remaining_goals[robot_name] > 1:
