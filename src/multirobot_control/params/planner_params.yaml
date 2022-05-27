@@ -11,15 +11,15 @@
     # robot_starting_y: [1.15]
     # robot_starting_theta: [0.0]
 
-    # robot_list: ["robot1", "robot2"]
-    # robot_starting_x: [-0.5, 0.5]
-    # robot_starting_y: [1.15, 1.15]
-    # robot_starting_theta: [0.0, 1.57]
+    robot_list: ["robot1", "robot2"]
+    robot_starting_x: [-0.5, 0.5]
+    robot_starting_y: [1.15, 1.15]
+    robot_starting_theta: [0.0, 1.57]
 
-    robot_list: ["robot1", "robot2", "robot3", "robot4", "robot5", "robot6"]
-    robot_starting_x: [-5.5, 0.0, 5.5, -5.5, 0.0, 5.5]
-    robot_starting_y: [1.15, 1.15, 1.15, -1.15, -1.15, -1.15]
-    robot_starting_theta: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # robot_list: ["robot1", "robot2", "robot3", "robot4", "robot5", "robot6"]
+    # robot_starting_x: [-5.5, 0.0, 5.5, -5.5, 0.0, 5.5]
+    # robot_starting_y: [1.15, 1.15, 1.15, -1.15, -1.15, -1.15]
+    # robot_starting_theta: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     total_goals: 1
     watchdog_timeout_s: 120
@@ -43,6 +43,8 @@
     angular_K : 1.0 # the max proportion of dist_to_goal that angular contributes
     goal_K : 10.0
     obstacle_K: 1.0
+    stall_det_period: 1.0
+    stall_dist_thresh: 0.1
 
     # Typically for the RRT Action Server
     rrt_path_bias: 0.1

@@ -64,7 +64,9 @@ class DWAActionServer(Node):
                 ('orientation_lb_deg', 20.0),
                 ('angular_K', 0.5),
                 ('goal_K', 10.0),
-                ('obstacle_K', 1.0)
+                ('obstacle_K', 1.0),
+                ('stall_det_period', 1.0),
+                ('stall_dist_thresh', 0.1),
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -80,6 +82,9 @@ class DWAActionServer(Node):
 
         self._planned_pose = None
         self._planner_state = DWAServerStatus.STATUS_FREE
+
+        # Distance accumulator
+        self._dist_travelled = 0.0
 
         # Parameters
         self.params = {
@@ -100,6 +105,8 @@ class DWAActionServer(Node):
             "angular_K" :           self.get_parameter("angular_K").value,
             "goal_K" :              self.get_parameter("goal_K").value,
             "obstacle_K" :          self.get_parameter("obstacle_K").value,
+            "stall_det_period" :    self.get_parameter("stall_det_period").value,
+            "stall_dist_thresh" :   self.get_parameter("stall_dist_thresh").value,
         }
         
         # other robots on the map
@@ -119,12 +126,22 @@ class DWAActionServer(Node):
         self.planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
         self.vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
 
-        # Timer callback
+        # Timer callback for planned position
         timer_period = 1 / self.params['pub_freq']
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.planned_pos_timer = self.create_timer(timer_period, self.planned_pos_timer_callback)
+
+        # Timer callback for stall detection
+        timer_period = self.params['stall_det_period']
+        self.stall_detection_timer = self.create_timer(timer_period, self.stall_detection_callback)
 
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
+        # Accumulate distance travelled
+        self._dist_travelled += np.linalg.norm(
+            np.array((self._x, self._y)) -
+            np.array((msg.pose.pose.position.x, msg.pose.pose.position.y))
+        )
+
         self._x = msg.pose.pose.position.x
         self._y = msg.pose.pose.position.y
         self._rpy = euler_from_quaternion([
@@ -149,9 +166,10 @@ class DWAActionServer(Node):
                 (pose.x, pose.y)
             )
     
-    def timer_callback(self):
-        ''' Sends out planned position if DWA server is BUSY (a action is currently executing).
-            Else, sends the current position.
+    def planned_pos_timer_callback(self):
+        ''' 
+        Sends out planned position if DWA server is BUSY (a action is currently executing).
+        Else, sends the current position.
         '''
         if self._planner_state == DWAServerStatus.STATUS_BUSY:
             # If an action is currently being executed=
@@ -167,6 +185,67 @@ class DWAActionServer(Node):
                 point=Point(
                     x=self._x, y=self._y, z=0.0
                 )))
+
+    def stall_detection_callback(self):
+        '''
+        Checks if the robot has moved a certain threshold distance within a certain time. 
+        
+        If not, perform recovery action:
+        - If dist to obstacle is too low, propose a vector that moves away from obstacle at large speed
+        - Else, propose a random vector (break out of local minima)
+        '''
+
+        if self._planner_state == DWAServerStatus.STATUS_BUSY:
+            if self._dist_travelled < self.params['stall_dist_thresh']:
+                local_goal_x = self.goal_x
+                local_goal_y = self.goal_y
+                
+                for obstacle in OBSTACLE_ARRAY:
+                    dist_to_obstacle, closest_point = dist_to_aabb(self._x, self._y, obstacle, get_closest_point=True)
+                    if dist_to_obstacle < 1.5*self.params['robot_radius']:
+                        # Set local goal to be twice the robot radius away from the closest point at a right angle.
+                        # Take advantage of AABB - one axis of robot and closest point coords are the same
+                        # Degenerates into 4 cases:
+                        
+                        self.get_logger().info(f"Robot too close to obstacle. Planning away from it.")
+
+                        # X same
+                        if np.allclose(self._x, closest_point[0], atol=1e-3):
+                            local_goal_x = self._x
+                            if self._y > closest_point[1]:  # robot above obstacle
+                                local_goal_y = closest_point[1] + self.params['robot_radius']*1.5
+                            else:                           # robot below obstacle
+                                local_goal_y = closest_point[1] - self.params['robot_radius']*1.5
+                        # Y same
+                        elif np.allclose(self._y, closest_point[1], atol=1e-3):
+                            local_goal_y = self._y
+                            if self._x > closest_point[0]:  # robot right of obstacle
+                                local_goal_x = closest_point[0] + self.params['robot_radius']*1.5
+                            else:                           # robot left of obstacle
+                                local_goal_x = closest_point[0] - self.params['robot_radius']*1.5
+                        # Catch error
+                        else:
+                            assert False, f"Closest point on AABB not on the same axis as robot loc.\nRobot at {self._x:.2f},{self._y:.2f}, Closest Point at {closest_point[0]:.2f},{closest_point[1]:.2f}"
+                        
+                # If we are not too close to an obstacle, move toward the goal on an arc
+                goal_hdg = np.arctan2(local_goal_y-self._y, local_goal_x-self._x)
+                hdg_diff = goal_hdg - self._yaw
+                # Sine and Cosine of the heading diff informs our proposed vector, 
+                # So long we use the same hypotenuse (choose the linear speed limit so 
+                # it's not possible to exceed it)
+                # We don't want the acceleration to be very great, so we limit the
+                # max linear speed limit by dividing by 1.5
+                lin_twist = (self.params['linear_speed_limit']/1.5)*np.cos(hdg_diff)
+                ang_twist = (self.params['linear_speed_limit']/1.5)*np.sin(hdg_diff)
+
+                # We also discretize the values to one of the steps of the planner.
+                self._linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])
+                self._angular_twist = self.params['angular_step']*np.round(ang_twist/self.params['angular_step'])
+
+                self.get_logger().info(f"Stall detected. Moving towards local goal {local_goal_x:.2f},{local_goal_y:.2f} with vect {self._linear_twist:.2f}, {self._angular_twist:.2f}")
+
+        # Reset distance travelled accumulator
+        self._dist_travelled = 0
 
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''

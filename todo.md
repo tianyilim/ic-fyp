@@ -202,7 +202,7 @@
       - [x] start coords
       - [x] distance travelled
       - [x] number of rrt waypoints
-        - To complete the first 3 we need to modify the response from each action.\
+        - To complete the first 3 we need to modify the response from each action.
         - Luckily this does not break the pre-existing API, `LocalPlanner` still works for the DWA node.
       - [x] goal coords
       - [x] start time
@@ -216,11 +216,28 @@
   - [x] Debug this, calling in callback sometimes causes stuff to hang. Either write as async or something else.
 
 ### Fri 27/05/22
-- [ ] Recovery behaviour: do something random?
-  - [ ] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
+- [x] Recovery behaviour
+  - [x] Implement a stall detection algo (integrate the distance travelled in the past ~seconds/iterations?)
+    - The DWA planner now takes in 2 more parameters: `stall_det_period`, which governs the time window in which to check cumulative distance travelled, and `stall_dist_thresh`, which is the upper bound of distance travelled for a stall to be considered.
+    - When a stall is detected, there are two options depending on if we are (too) close to an obstacle.
+      - If too close to an obstacle, a 'virtual' goal is created that gets the robot away from the obstacle (using a point on AABB)
+      - If not, we set the goal to the current waypoint, as per usual.
+    - Using `cmd_vel` as an interface we select the angular and linear twists, as shown in this diagram:
+    ![getting twist from goal pos](doc/angle.drawio.png)
   - [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
+    - This is minimised using the stall detection algorithm mentioned above.
+
 ---
 
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
+  - [ ] There is a real chance that more than 2 robots come in proxmity
+  - [ ] Performance issues with multiple robots running on the same computer, check if there is any 'sim time' setting instead of using wall clock time, if `time.sleep` affects anything?
+- [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
+- [ ] Come up with test environments
+  - [ ] Swap position (perhaps on the same x-coordinate/axis)
+  - [ ] Hold position (one robot has reached its goal but another robot needs to pass through its current position)
+  - [ ] Standardised goal sets for different robots
+  - [ ] Parameterised interface for choosing test environments
+- [ ] Tips on report, what should be done in terms of references, report structure etc?
