@@ -229,6 +229,8 @@
 
 ### Sat 28/05/22
 - QOL change: Set RViz programatically based on the number of robots in the simulation.
+- Add in `use_sim_time=true` for all nodes, hopefully fixing timing issues as number of robots scale.
+- Use `create_rate` in the RRT and DWA nodes to create `Rate` objects that handle sleeping actions in ROS time (instead of relying on `time.sleep`)
 
 ---
 

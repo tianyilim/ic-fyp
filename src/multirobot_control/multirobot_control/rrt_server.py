@@ -119,6 +119,9 @@ class RRTStarActionServer(Node):
         # Periodically poll if a new task is ready
         self.create_timer(0.1, self.spin_callback)
 
+        # Rate object to poll for DWA status
+        self._dwa_wait_rate = self.create_rate(10)
+
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
         self.global_planner_status = PlannerStatus.PLANNER_PLAN
@@ -191,7 +194,7 @@ class RRTStarActionServer(Node):
 
         # We need to wait until the other threads finish
         while self.global_planner_status != PlannerStatus.PLANNER_READY:
-            time.sleep(0.1)
+            self._dwa_wait_rate.sleep()
         
         goal_handle.succeed()
         self.get_logger().info("{} reached goal at X: {:.2f} Y: {:.2f}".format(

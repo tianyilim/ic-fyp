@@ -134,6 +134,9 @@ class DWAActionServer(Node):
         timer_period = self.params['stall_det_period']
         self.stall_detection_timer = self.create_timer(timer_period, self.stall_detection_callback)
 
+        # Wait item to implement DWA node
+        self._dwa_wait_rate = self.create_rate(1/self.params['action_duration'])
+
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
         # Accumulate distance travelled
@@ -363,6 +366,7 @@ class DWAActionServer(Node):
                 self._linear_twist, self._angular_twist ))
 
             # Sleep for awhile before applying the next motion
+            '''
             start_time = self.get_clock().now()
             while True:
                 curr_time = self.get_clock().now()
@@ -370,6 +374,8 @@ class DWAActionServer(Node):
                 
                 if s_diff > self.params['action_duration']:
                     break
+            '''
+            self._dwa_wait_rate.sleep()
 
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             

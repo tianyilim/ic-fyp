@@ -108,6 +108,7 @@ def generate_launch_description():
             '--robot_num', robot_num,
             '--ros-args', '--log-level', log_level
         ],
+        parameters=[{'use_sim_time': use_sim_time}],
         output='screen',
     )
 
@@ -137,7 +138,8 @@ def generate_launch_description():
             'output_topic': "/tf", 
             'lazy': False, 
             'stealth ': False, 
-            'monitor_rate': 100.0
+            'monitor_rate': 100.0,
+            'use_sim_time': use_sim_time,
         }],
         arguments=['--ros-args', '--log-level', 'warn']
     )
@@ -154,7 +156,8 @@ def generate_launch_description():
             'output_topic': "/tf_static", 
             'lazy': False, 
             'stealth ': False, 
-            'monitor_rate': 100.0
+            'monitor_rate': 100.0,
+            'use_sim_time': use_sim_time,
         }],
         arguments=['--ros-args', '--log-level', 'warn']
     )
@@ -178,6 +181,5 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     
     ld.add_action(bringup_group_cmd)
-    # ld.add_action(start_rviz_cmd)
 
     return ld

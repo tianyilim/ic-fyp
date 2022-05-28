@@ -116,6 +116,7 @@ def generate_launch_description():
             '--namespace', namespace,
             '--ros-args', '--log-level', log_level
         ],
+        parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
 
@@ -129,6 +130,7 @@ def generate_launch_description():
             'map', PythonExpression(["'", namespace, "' + 'odom'"]),
             '--ros-args', '--log-level', 'warn'
         ],  # Same frame
+        parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
 
@@ -137,7 +139,9 @@ def generate_launch_description():
         executable='rrt_server',
         namespace=namespace,
         output='screen',
-        parameters=[{"robot_num": robot_num}, params_file],
+        parameters=[{"robot_num": robot_num,
+                     "use_sim_time": use_sim_time},
+                     params_file],
         arguments=['--robot_num', robot_num, '--ros-args', '--log-level', log_level]
     )
 
@@ -146,7 +150,7 @@ def generate_launch_description():
         executable='dwa_server',
         namespace=namespace,
         output='screen',
-        parameters=[params_file],
+        parameters=[{"use_sim_time": use_sim_time}, params_file],
         arguments=['--ros-args', '--log-level', log_level]
     )
 
