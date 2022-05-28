@@ -5,7 +5,7 @@
 - [x] Show a visualization in Gazebo(?) of each robot's goal position
 - [x] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
   - Parsed in `spawn_bots.launch.py`
-- [ ] Programatically create Rviz files for visualising each robot (currently hardcoded)
+- [x] Programatically create Rviz files for visualising each robot (currently hardcoded)
 - [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
 
 ---
@@ -226,6 +226,9 @@
     ![getting twist from goal pos](doc/angle.drawio.png)
   - [ ] Robots get stuck in local minima when far away from a goal but close to obstacle. Perhaps setting costs to be % of the `goal_plus` would help?
     - This is minimised using the stall detection algorithm mentioned above.
+
+### Sat 28/05/22
+- QOL change: Set RViz programatically based on the number of robots in the simulation.
 
 ---
 

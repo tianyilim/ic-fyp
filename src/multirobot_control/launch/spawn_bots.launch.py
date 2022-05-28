@@ -32,6 +32,7 @@ from launch_ros.actions import PushRosNamespace, Node
 import xml.etree.ElementTree as ET
 import xacro
 from multirobot_control.colour_palette import colour_palette, colour_palette_rviz_named
+from multirobot_control.set_rviz_config import set_rviz_config
 
 def generate_launch_description():
     # Get the launch directory
@@ -46,6 +47,10 @@ def generate_launch_description():
     os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
 
     params_file_dir = os.path.join(bringup_dir, 'params', 'planner_params.yaml')
+    rviz_ref_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')
+    rviz_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config_.rviz')
+
+    set_rviz_config(rviz_src=rviz_ref_file_dir, rviz_dest=rviz_file_dir, config_path=params_file_dir)
 
     with open(params_file_dir, 'r') as pf:
         configs = yaml.safe_load(pf)
@@ -63,7 +68,6 @@ def generate_launch_description():
     # Create the launch configuration variables
     map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
-    use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
     world = LaunchConfiguration('world')
     # urdf = LaunchConfiguration('urdf')
@@ -73,11 +77,6 @@ def generate_launch_description():
     # Ensure all logs come out in order
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
-
-    declare_use_sim_time_cmd = DeclareLaunchArgument(
-        'use_sim_time',
-        default_value='false',
-        description='Use simulation (Gazebo) clock if true')
 
     declare_autostart_cmd = DeclareLaunchArgument(
         'autostart', default_value='true',
@@ -216,7 +215,7 @@ def generate_launch_description():
     start_rviz_cmd = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz'), '--ros-args', '--log-level', 'info'],
+        arguments=['-d',  rviz_file_dir, '--ros-args', '--log-level', 'info'],
         # output='screen'
     )
 
@@ -227,7 +226,6 @@ def generate_launch_description():
     ld.add_action(stdout_linebuf_envvar)
 
     # Declare the launch options
-    ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_map_yaml_cmd)
