@@ -35,6 +35,7 @@ import numpy as np
 from enum import Enum, auto
 import yaml
 from datetime import datetime
+from ast import literal_eval
 
 GOAL_SDF_PATH = os.path.join(get_package_share_directory('multirobot_control'),
     'urdf', 'goal.sdf')
@@ -78,20 +79,40 @@ class GoalCreation(Node):
                 ('total_goals', Parameter.Type.INTEGER),
                 ('watchdog_timeout_s', Parameter.Type.INTEGER),
                 ('result_folder', Parameter.Type.STRING),
-                ('params_filepath', Parameter.Type.STRING)
+                ('params_filepath', Parameter.Type.STRING),
+                ('goal_array', Parameter.Type.STRING),
             ]
         )
-
         self.add_on_set_parameters_callback(self.parameter_callback)
+
+        # 'goal_array' is a multidimensional array with
+        # [ [r1g1,r1g2,...r1gN], [r2g1,...r2gN],... [rMg1,...rMgN] ]
+        # Multidimensional arrays are not supported with ROS2 so we have to parse it as a string.
+        try:
+            self.goal_array = literal_eval(self.get_parameter('goal_array').value)
+        except SyntaxError:
+            self.get_logger().error(f"Goal array parameter has syntax error. Substituting empty list. Passed in: \'{self.get_parameter('goal_array').value}\'")
+            self.goal_array = []
         
+        # We follow goal generation rules based on whether the goals are specified or not
+        # If goals were specified 
+        self.randomly_generate_goals = ( len(self.goal_array) == 0 )
+        if self.randomly_generate_goals:
+            self.get_logger().info(f"Randomly generating goals from GOAL_ARRAY. Each robot has {self.get_parameter('total_goals').value} goals.")
+        else:
+            self.get_logger().info(f"Taking goals from list:\n{self.goal_array}")
+
         assert self.get_parameter("robot_list").value is not None
         assert len(self.get_parameter("robot_list").value) != 0
         assert len(self.get_parameter("robot_starting_x").value) == len(self.get_parameter("robot_list").value), \
             "Ensure all robot starting x are specified!"
         assert len(self.get_parameter("robot_starting_y").value) == len(self.get_parameter("robot_list").value), \
             "Ensure all robot starting y are specified!"
+        if len(self.goal_array) != 0:
+            assert len(self.goal_array) == len(self.get_parameter("robot_list").value), \
+            "Ensure that goal array has same number of elements as the number of robots!"
 
-        self.robot_remaining_goals = {}     # Collection of goals each robot still has to finish
+        self.robot_remaining_goals = {}     # Collection of number goals each robot still has to finish
         self.robot_uuids = {}               # Collection of UUID objects corresponding to each robot
         self.gazebo_goals = {}              # Flag if a Gazebo entity has been spawned already
         self.robot_goal_status: dict[str, RobotGoalStatus] = {}       
@@ -131,30 +152,33 @@ class GoalCreation(Node):
         for index, robot in enumerate(self.get_parameter("robot_list").value):
             self.action_clients[robot] = \
                 ActionClient(self, LocalPlanner, robot+'/rrt_star')
-                # ActionClient(self, LocalPlanner, robot+'/dwa')
 
             self.robot_name_to_idx[robot] = index
-            self.robot_remaining_goals[robot] = self.get_parameter('total_goals').value + 1
 
             # add to logging
             self.results[robot] = []
 
-            # Send initial first goal (random generated)
-            goal_idx = np.random.randint(len(GOAL_ARRAY))
-            initial_goal =  GOAL_ARRAY[goal_idx]
-            uuid_arr = np.random.randint(256, size=16, dtype='uint8')   # Random UUID except the first number
-            # uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
-            uuid_arr[-1] = index
-            curr_uuid = UUID(uuid=uuid_arr)
-            self.robot_uuids[robot] = uuid_arr
-            self.robot_goal_status[robot] = RobotGoalStatus.GOAL_STATUS_READY
+            # Generate goals or read from the list
+            if self.randomly_generate_goals:
+                self.robot_remaining_goals[robot] = self.get_parameter('total_goals').value
+                # Send initial first goal (random generated)
+                goal_idx = np.random.randint(len(GOAL_ARRAY))
+                initial_goal =  GOAL_ARRAY[goal_idx]
+            else:
+                self.robot_remaining_goals[robot] = len(self.goal_array[index])
+                if len(self.goal_array[index]) > 0:
+                    initial_goal = (self.goal_array[index][0][0], self.goal_array[index][0][1])
+                else:
+                    initial_goal = None
 
-            self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
-                robot, initial_goal[0], initial_goal[1], curr_uuid.uuid[-1]
-            ))
+            if initial_goal is not None:
+                self.robot_goal_status[robot] = RobotGoalStatus.GOAL_STATUS_READY
 
-            self.send_goal(robot, Point(x=initial_goal[0], y=initial_goal[1], z=0.0), 
-                goal_uuid=curr_uuid)
+                self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
+                    robot, initial_goal[0], initial_goal[1]
+                ))
+
+                self.send_goal(robot, Point(x=initial_goal[0], y=initial_goal[1], z=0.0))
 
         # Create a timer callback to periodically assign goals
         goal_timer_period = 1.0
@@ -163,8 +187,17 @@ class GoalCreation(Node):
         watchdog_timer_period = self.get_parameter('watchdog_timeout_s').value
         self.goal_assignment_timer = self.create_timer( watchdog_timer_period, self.watchdog_timer_callback )
 
-    def send_goal(self, robot_name, goal_position: Point, goal_uuid):
-        '''Sends a Point goal to the robot (specified by robot name)'''
+    def send_goal(self, robot_name, goal_position: Point):
+        '''
+        Sends a Point goal to the robot (specified by `robot_name`)
+        '''
+        self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_PENDING
+
+        # Assign UUID
+        uuid_arr = np.random.randint(256, size=16, dtype='uint8')   # Random UUID
+        curr_uuid = UUID(uuid=uuid_arr)
+        self.robot_uuids[robot_name] = uuid_arr
+        
         goal_msg = LocalPlanner.Goal()
         goal_msg.goal_position = goal_position
 
@@ -177,11 +210,11 @@ class GoalCreation(Node):
 
         # Delete existing object, if it exists
         if robot_name in self.gazebo_goals.keys():
-            self.get_logger().info(f"Attempting to delete goal for {robot_name}")
+            self.get_logger().debug(f"Attempting to delete goal for {robot_name}")
             self.delete_goal(robot_name)
         
         # Spawn object
-        self.get_logger().info(f"Attempting to spawn goal for {robot_name}")
+        self.get_logger().debug(f"Attempting to spawn goal for {robot_name}")
         self.spawn_goal(robot_name, goal_position.x, goal_position.y)
         self.gazebo_goals[robot_name] = True
 
@@ -191,7 +224,7 @@ class GoalCreation(Node):
 
         # ? Remove feedback callback because RRT node doesn't have that yet?
         self.goal_futures[robot_name] = self.action_clients[robot_name].send_goal_async(
-            goal_msg, goal_uuid=goal_uuid)
+            goal_msg, goal_uuid=curr_uuid)
             # goal_msg, feedback_callback=self.feedback_callback, goal_uuid=goal_uuid)
             
         # Add a callback for when the future (goal response) is complete
@@ -199,8 +232,7 @@ class GoalCreation(Node):
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
-
-        # self.get_logger().info("Goal ID {}".format(goal_handle.goal_id))
+        # self.get_logger().info("Goal ID {}".format(goal_handle.goal_id.uuid))
 
         # Extract information about the robot from the response (no way to do this via other means)
         for key in self.robot_uuids.keys():
@@ -266,44 +298,28 @@ class GoalCreation(Node):
             self.get_logger().debug(f"Robot {robot_name} status {self.robot_goal_status[robot_name]} " + \
             f"Remaining Goals {self.robot_remaining_goals[robot_name]}")
 
-            if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY:
+            if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY \
+                and self.robot_remaining_goals[robot_name] > 0:
                 # assign a new goal
-                goal_idx = np.random.randint(len(GOAL_ARRAY))
-                goal_coords =  GOAL_ARRAY[goal_idx]
+                if self.randomly_generate_goals:
+                    goal_idx = np.random.randint(len(GOAL_ARRAY))
+                    goal_coords =  GOAL_ARRAY[goal_idx]
+                else:
+                    robot_idx = self.robot_name_to_idx[robot_name]
+                    goal_idx = len(self.goal_array[robot_idx]) - self.robot_remaining_goals[robot_name]
+                    goal_coords = (self.goal_array[robot_idx][goal_idx][0], self.goal_array[robot_idx][goal_idx][1])
 
-                uuid_num = self.robot_uuids[robot_name][-1]
-                uuid_arr = np.random.randint(256, size=16, dtype='uint8')   # Random UUID except the first number
-                # uuid_arr = np.zeros(16, dtype='uint8') # This is the datatype used to uniquely identify action goals
-                uuid_arr[-1] = uuid_num + len(self.robot_remaining_goals)
-                curr_uuid = UUID(uuid=uuid_arr)
-                self.robot_uuids[robot_name] = uuid_arr
-                self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_PENDING
+                self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
+                    robot_name, goal_coords[0], goal_coords[1]
+                ))
 
-                if self.robot_remaining_goals[robot_name] > 1:
-                    self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f} with UUID {}".format(
-                        robot_name, goal_coords[0], goal_coords[1], uuid_arr[-1]
-                    ))
+                self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
 
-                    self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0), 
-                        goal_uuid=curr_uuid)
-
-                elif self.robot_remaining_goals[robot_name] == 1:
-                    # assign goal back to start
-                    robot_index = self.robot_name_to_idx[robot_name]
-                    start_x = self.get_parameter('robot_starting_x').value[robot_index]
-                    start_y = self.get_parameter('robot_starting_y').value[robot_index]
-                    self.get_logger().info("Sending {} back to starting position X:{:.2f} Y:{:.2f} with UUID {}".format(
-                        robot_name, start_x, start_y, uuid_arr[-1]
-                    ))
-
-                    self.send_goal(robot_name, Point(x=start_x, y=start_y, z=0.0), 
-                        goal_uuid=curr_uuid)
-                    
     def watchdog_timer_callback(self):
         '''
         If this callback triggers, the time limit for execution is over.
 
-        Shut down gracefully and dump existing values to CSV.
+        Shut down gracefully and dump existing values to log file.
         '''
         self.get_logger().warn(f"Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
         self.dump_results()
@@ -349,7 +365,12 @@ class GoalCreation(Node):
         request.initial_pose.position.y = goal_y
         request.initial_pose.position.z = 0.0
 
-        self.get_logger().info(f"Spawning goal {self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]+1} for {robot_name}.")
+        if self.randomly_generate_goals:
+            goal_num = self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name] + 1
+        else:
+            robot_idx = self.robot_name_to_idx[robot_name]
+            goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name] + 1
+        self.get_logger().info(f"Spawning goal {goal_num} for {robot_name}.")
         # Send request
         self.spawn_future = self.spawn_client.call_async(request)
         self.spawn_future.add_done_callback(self.spawn_done)
@@ -363,8 +384,13 @@ class GoalCreation(Node):
         '''
         request = DeleteEntity.Request()
         request.name = robot_name + "_goal" # match that in spawn_goal
-
-        self.get_logger().info(f"Deleting goal {self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]} for {robot_name}.")
+        
+        if self.randomly_generate_goals:
+            goal_num = self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]
+        else:
+            robot_idx = self.robot_name_to_idx[robot_name]
+            goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name]
+        self.get_logger().info(f"Deleting goal {goal_num} for {robot_name}.")
         # Send request
         self.delete_future = self.delete_client.call_async(request)
         self.delete_future.add_done_callback(self.delete_done)

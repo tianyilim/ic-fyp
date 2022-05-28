@@ -1,0 +1,28 @@
+/**:
+  ros__parameters:
+    # robot_list: ["robot1", "robot2", "robot3"]
+    # robot_starting_x: [-5.5, 0.0, 5.5]
+    # robot_starting_y: [1.15, 1.15, 1.15]
+    # robot_starting_theta: [0.0, 0.0, 0.0]
+    
+    # robot_list: ["robot1"]
+    # robot_starting_x: [0.0]
+    # robot_starting_y: [1.15]
+    # robot_starting_theta: [0.0]
+
+    # robot_list: ["robot1", "robot2"]
+    # robot_starting_x: [-5.5, 5.5]
+    # robot_starting_y: [1.15, 1.15]
+    # robot_starting_theta: [0.0, 1.57]
+
+    robot_list: ["robot1", "robot2", "robot3", "robot4", "robot5", "robot6"]
+    robot_starting_x: [-5.5, 0.0, 5.5, -5.5, 0.0, 5.5]
+    robot_starting_y: [1.15, 1.15, 1.15, -1.15, -1.15, -1.15]
+    robot_starting_theta: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    total_goals: 1
+    watchdog_timeout_s: 120
+    result_folder: "result"
+    params_filepath: "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"
+
+    # If random goals are desired, leave this as an empty list
+    goal_array: "[]"

@@ -47,22 +47,23 @@ def generate_launch_description():
     os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
 
     params_file_dir = os.path.join(bringup_dir, 'params', 'planner_params.yaml')
+    scenario_file_dir = os.path.join(bringup_dir, 'params', 'scenario_swap.yaml')   # Change this for different runs.
     rviz_ref_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')
     rviz_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config_.rviz')
 
-    set_rviz_config(rviz_src=rviz_ref_file_dir, rviz_dest=rviz_file_dir, config_path=params_file_dir)
+    set_rviz_config(rviz_src=rviz_ref_file_dir, rviz_dest=rviz_file_dir, config_path=scenario_file_dir)
 
-    with open(params_file_dir, 'r') as pf:
-        configs = yaml.safe_load(pf)
+    with open(scenario_file_dir, 'r') as pf:
+        scenario_configs = yaml.safe_load(pf)
 
     robots = []
-    for idx in range(len(configs['/**']['ros__parameters']['robot_list'])):
+    for idx in range(len(scenario_configs['/**']['ros__parameters']['robot_list'])):
         robots.append({
-            'name': configs['/**']['ros__parameters']['robot_list'][idx],
-            'x_pose': configs['/**']['ros__parameters']['robot_starting_x'][idx],
-            'y_pose': configs['/**']['ros__parameters']['robot_starting_y'][idx],
+            'name': scenario_configs['/**']['ros__parameters']['robot_list'][idx],
+            'x_pose': scenario_configs['/**']['ros__parameters']['robot_starting_x'][idx],
+            'y_pose': scenario_configs['/**']['ros__parameters']['robot_starting_y'][idx],
             'z_pose': 0.10,
-            'yaw_pose': configs['/**']['ros__parameters']['robot_starting_theta'][idx]
+            'yaw_pose': scenario_configs['/**']['ros__parameters']['robot_starting_theta'][idx]
         })
 
     # Create the launch configuration variables
@@ -200,7 +201,7 @@ def generate_launch_description():
         executable="odom_distribution",
         # No need for namespace
         output='screen',
-        parameters=[params_file],
+        parameters=[params_file, scenario_file_dir],
         arguments=['--ros-args', '--log-level', log_level]
     )
 

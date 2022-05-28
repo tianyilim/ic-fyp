@@ -233,6 +233,19 @@
   - Add in `use_sim_time=true` for all nodes, hopefully fixing timing issues as number of robots scale.
   - Use `create_rate` in the RRT and DWA nodes to create `Rate` objects that handle sleeping actions in ROS time (instead of relying on `time.sleep`)
 - DWA stall detection now also considers moving away from other robots (in addition to away from obstacles)
+- [x] Come up with test environments
+  - Decoupled node parameters from the test environment parameters. `params/planner_params.yaml` now only has the parameters concerning operational nodes (eg. DWA settings).
+  - To set up a test environment, write a `scenario_*.yaml` and place into `params/`. Then to choose a scenario, do **two** things:
+    1. Set `scenario_file_dir` in `spawn_bots.launch.py` to the appropriate file
+    2. When running `goal_creation` also specify the same file: eg.
+      - `ros2 run multirobot_control goal_creation --ros-args --params-file "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/scenario_swap.yaml"`
+  - For now we have two scenarios, `scenario_random` and `scenario_swap`. See those for examples on how to create a randomised / deterministic set of waypoints for each robot.
+  - Some other ideas for test scenarios:
+    - [x] Swap position (perhaps on the same x-coordinate/axis)
+    - [ ] Hold position (one robot has reached its goal but another robot needs to pass through its current position)
+    - [ ] Standardised goal sets for different robots
+    - [x] Parameterised interface for choosing test environments
+  - Some QOL things would be an ability to select the test environments in programatically, perhaps using a `click` interface like with the Formula Student launch file.
 
 ---
 
@@ -241,9 +254,4 @@
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
   - [ ] There is a real chance that more than 2 robots come in proxmity
 - [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
-- [ ] Come up with test environments
-  - [ ] Swap position (perhaps on the same x-coordinate/axis)
-  - [ ] Hold position (one robot has reached its goal but another robot needs to pass through its current position)
-  - [ ] Standardised goal sets for different robots
-  - [ ] Parameterised interface for choosing test environments
 - [ ] Tips on report, what should be done in terms of references, report structure etc?
