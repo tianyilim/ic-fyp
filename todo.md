@@ -229,8 +229,10 @@
 
 ### Sat 28/05/22
 - QOL change: Set RViz programatically based on the number of robots in the simulation.
-- Add in `use_sim_time=true` for all nodes, hopefully fixing timing issues as number of robots scale.
-- Use `create_rate` in the RRT and DWA nodes to create `Rate` objects that handle sleeping actions in ROS time (instead of relying on `time.sleep`)
+- [x] Performance issues with multiple robots running on the same computer, check if there is any 'sim time' setting instead of using wall clock time, if `time.sleep` affects anything?
+  - Add in `use_sim_time=true` for all nodes, hopefully fixing timing issues as number of robots scale.
+  - Use `create_rate` in the RRT and DWA nodes to create `Rate` objects that handle sleeping actions in ROS time (instead of relying on `time.sleep`)
+- DWA stall detection now also considers moving away from other robots (in addition to away from obstacles)
 
 ---
 
@@ -238,7 +240,6 @@
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
   - [ ] There is a real chance that more than 2 robots come in proxmity
-  - [ ] Performance issues with multiple robots running on the same computer, check if there is any 'sim time' setting instead of using wall clock time, if `time.sleep` affects anything?
 - [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
 - [ ] Come up with test environments
   - [ ] Swap position (perhaps on the same x-coordinate/axis)

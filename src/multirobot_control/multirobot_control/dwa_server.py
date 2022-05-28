@@ -22,7 +22,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from multirobot_control.map_params import OBSTACLE_ARRAY
-from multirobot_control.math_utils import dist_to_aabb
+from multirobot_control.math_utils import dist_to_aabb, get_point_on_connecting_line
 
 import time
 import numpy as np
@@ -203,43 +203,66 @@ class DWAActionServer(Node):
                 local_goal_x = self.goal_x
                 local_goal_y = self.goal_y
                 
+                goal_poses = [] # A collection of poses that are made of vectors away from potential obstacles
+
+                for robot_x, robot_y in self.other_robots:
+                    # Calculate a path away from the robots that are too close
+                    if self.distToGoal( self._x, self._y, robot_x, robot_y ) < (self.params['inter_robot_dist']*self.params['robot_radius']):
+                        self.get_logger().info(f"Robot too close to other robot. Moving away from it.")
+                        self_pos = np.array((self._x, self._y))
+                        robot_pos = np.array((robot_x, robot_y))
+                        goal_poses.append( get_point_on_connecting_line(robot_pos, self_pos, (self.params['inter_robot_dist']*self.params['robot_radius'])) )
+
                 for obstacle in OBSTACLE_ARRAY:
                     dist_to_obstacle, closest_point = dist_to_aabb(self._x, self._y, obstacle, get_closest_point=True)
                     if dist_to_obstacle < 1.5*self.params['robot_radius']:
                         # Set local goal to be twice the robot radius away from the closest point at a right angle.
-                        # Take advantage of AABB - one axis of robot and closest point coords are the same
-                        # Degenerates into 4 cases:
                         
                         self.get_logger().info(f"Robot too close to obstacle. Planning away from it.")
 
-                        # X same
-                        if np.allclose(self._x, closest_point[0], atol=1e-3):
-                            local_goal_x = self._x
-                            if self._y > closest_point[1]:  # robot above obstacle
-                                local_goal_y = closest_point[1] + self.params['robot_radius']*1.5
-                            else:                           # robot below obstacle
-                                local_goal_y = closest_point[1] - self.params['robot_radius']*1.5
-                        # Y same
-                        elif np.allclose(self._y, closest_point[1], atol=1e-3):
-                            local_goal_y = self._y
-                            if self._x > closest_point[0]:  # robot right of obstacle
-                                local_goal_x = closest_point[0] + self.params['robot_radius']*1.5
-                            else:                           # robot left of obstacle
-                                local_goal_x = closest_point[0] - self.params['robot_radius']*1.5
-                        # Catch error
-                        else:
-                            assert False, f"Closest point on AABB not on the same axis as robot loc.\nRobot at {self._x:.2f},{self._y:.2f}, Closest Point at {closest_point[0]:.2f},{closest_point[1]:.2f}"
+                        self_pos = np.array((self._x, self._y))
+                        robot_pos = np.array((closest_point[0], closest_point[1]))
+                        goal_poses.append( get_point_on_connecting_line(robot_pos, self_pos, self.params['robot_radius']*1.5) )
+    
+                        # Take advantage of AABB - one axis of robot and closest point coords are the same
+                        # Degenerates into 4 cases:
+                        # # X same
+                        # if np.allclose(self._x, closest_point[0], atol=1e-3):
+                        #     local_goal_x = self._x
+                        #     if self._y > closest_point[1]:  # robot above obstacle
+                        #         local_goal_y = closest_point[1] + self.params['robot_radius']*1.5
+                        #     else:                           # robot below obstacle
+                        #         local_goal_y = closest_point[1] - self.params['robot_radius']*1.5
+                        # # Y same
+                        # elif np.allclose(self._y, closest_point[1], atol=1e-3):
+                        #     local_goal_y = self._y
+                        #     if self._x > closest_point[0]:  # robot right of obstacle
+                        #         local_goal_x = closest_point[0] + self.params['robot_radius']*1.5
+                        #     else:                           # robot left of obstacle
+                        #         local_goal_x = closest_point[0] - self.params['robot_radius']*1.5
+                        # # Catch error
+                        # else:
+                        #     assert False, f"Closest point on AABB not on the same axis as robot loc.\nRobot at {self._x:.2f},{self._y:.2f}, Closest Point at {closest_point[0]:.2f},{closest_point[1]:.2f}"
                         
+                # Overwrite the goal vector by taking the mean of all proposed vectors
+                if len(goal_poses) > 0:
+                    goal_pose = np.mean(np.array(goal_poses), axis=0)
+                    local_goal_x = goal_pose[0]
+                    local_goal_y = goal_pose[1]
+
                 # If we are not too close to an obstacle, move toward the goal on an arc
                 goal_hdg = np.arctan2(local_goal_y-self._y, local_goal_x-self._x)
                 hdg_diff = goal_hdg - self._yaw
                 # Sine and Cosine of the heading diff informs our proposed vector, 
                 # So long we use the same hypotenuse (choose the linear speed limit so 
                 # it's not possible to exceed it)
-                # We don't want the acceleration to be very great, so we limit the
-                # max linear speed limit by dividing by 1.5
-                lin_twist = (self.params['linear_speed_limit']/1.5)*np.cos(hdg_diff)
-                ang_twist = (self.params['linear_speed_limit']/1.5)*np.sin(hdg_diff)
+                # We cap the linear and angular speed limit so they are not exceeded
+                lin_twist = min(
+                    (self.params['linear_speed_limit'])*np.cos(hdg_diff),
+                     self.params['linear_speed_limit'])
+                ang_twist = min(
+                    (self.params['linear_speed_limit'])*np.sin(hdg_diff),
+                     self.params['linear_speed_limit'])
 
                 # We also discretize the values to one of the steps of the planner.
                 self._linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])

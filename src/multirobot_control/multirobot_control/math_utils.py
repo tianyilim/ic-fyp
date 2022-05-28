@@ -118,3 +118,13 @@ def get_intersection(a0: np.ndarray, a1: np.ndarray, b0: np.ndarray, b1: np.ndar
         return t_int
     else:
         return None # no intersection
+
+def get_point_on_connecting_line(line_start:np.ndarray, line_end:np.ndarray, dist:float) -> np.ndarray:
+    '''
+    Given two points that make up a line, `line_start` and `line_end`, calculate the x,y
+    coordinates of the point on the line a distance `dist` away from line_start.
+    '''
+    line = line_end-line_start
+    line /= np.linalg.norm(line)
+
+    return line_start + line*dist
