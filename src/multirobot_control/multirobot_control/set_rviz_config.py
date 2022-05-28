@@ -19,7 +19,6 @@ def set_rviz_config(rviz_src:str, rviz_dest:str, config_path:str) -> None:
     non_robot_cfg = []
     for elem in d['Visualization Manager']['Displays']:
         # Hardcoded to 'Robot1 {description}'
-        print(elem['Name'])
         if 'Robot' in elem['Name']:
             robot_cfg_collection.append(elem)
         else:
