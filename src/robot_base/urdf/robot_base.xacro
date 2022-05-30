@@ -18,24 +18,22 @@
 
   <!-- ++++++++++++++++++++++++++++++++++ base link ++++++++++++++++++++++++++++++++++ -->
   <link name="$(arg prefix)_base_link">
-    <xacro:box_inertia m="10.0" w="${2*}" h="${chassis_y}" d="${chassis_z}"/>
+    <xacro:box_inertia m="5.0" w="${2*(wheelgap)+wheeldiam}" h="${chassis_y-2*(wheelwidth+wheelgap)}" d="${chassis_z}"/>
     <visual>
       <geometry>
-        <box size="${chassis_x} ${chassis_y} ${chassis_z}"/>
+        <box size="${2*(wheelgap)+wheeldiam} ${chassis_y-2*(wheelwidth+wheelgap)} ${chassis_z}"/>
       </geometry>
       <material name="blue"/>
     </visual>
     <collision>
       <geometry>
-        <box size="${chassis_x} ${chassis_y} ${chassis_z}"/>
+        <box size="${2*(wheelgap)+wheeldiam} ${chassis_y-2*(wheelwidth+wheelgap)} ${chassis_z}"/>
       </geometry>
     </collision>
   </link>
 
   <joint name="$(arg prefix)_base_link_joint" type="fixed">
     <origin xyz="0 0 ${chassis_z/2+chassis_height}" rpy="0 0 0" />
-    <!-- <parent link="base_footprint"/>
-    <child link="base_link" /> -->
     <parent link="$(arg prefix)_base_footprint"/>
     <child link="$(arg prefix)_base_link" />
   </joint>
@@ -43,6 +41,57 @@
   <gazebo reference="$(arg prefix)_base_link">
     <material>Gazebo/Red</material>
   </gazebo>
+
+  <!-- +++++++++++++++++++++++++++++++++++ bumpers +++++++++++++++++++++++++++++++++++ -->
+  <link name="$(arg prefix)_front_bumper">
+    <xacro:box_inertia m="2.5" w="${(chassis_x-wheeldiam)/2-wheelgap}" h="${chassis_y}" d="${chassis_z}"/>
+    <visual>
+      <geometry>
+        <box size="${(chassis_x-wheeldiam)/2-wheelgap} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${(chassis_x-wheeldiam)/2-wheelgap} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <gazebo reference="$(arg prefix)_front_bumper">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <link name="$(arg prefix)_rear_bumper">
+    <xacro:box_inertia m="2.5" w="${(chassis_x-wheeldiam)/2-wheelgap}" h="${chassis_y}" d="${chassis_z}"/>
+    <visual>
+      <geometry>
+        <box size="${(chassis_x-wheeldiam)/2-wheelgap} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${(chassis_x-wheeldiam)/2-wheelgap} ${chassis_y} ${chassis_z}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <gazebo reference="$(arg prefix)_rear_bumper">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <joint name="$(arg prefix)_front_bumper_joint" type="fixed">
+    <origin xyz="${chassis_x/4+wheeldiam/4+wheelgap/2} 0 0" rpy="0 0 0" />
+    <parent link="$(arg prefix)_base_link"/>
+    <child link="$(arg prefix)_front_bumper" />
+  </joint>
+
+  <joint name="$(arg prefix)_rear_bumper_joint" type="fixed">
+    <origin xyz="-${chassis_x/4+wheeldiam/4+wheelgap/2} 0 0" rpy="0 0 0" />
+    <parent link="$(arg prefix)_base_link"/>
+    <child link="$(arg prefix)_rear_bumper" />
+  </joint>
 
   <!-- +++++++++++++++++++++++++++++++++++ Wheels ++++++++++++++++++++++++++++++++++++ -->
   <xacro:macro name="wheel" params="suffix reflect">
@@ -71,9 +120,9 @@
       <axis xyz="0 1 0" rpy="0 0 0" />
       <parent link="$(arg prefix)_base_link"/>
       <child link="$(arg prefix)_${suffix}_wheel"/>
-      <!-- (y) Places the wheel such that it is on the outside of the chassis -->
+      <!-- (y) Places the wheel such that it is on the inside of the chassis -->
       <!-- (z) Places the wheel such that chassis is `chassis_height` above the ground -->
-      <origin xyz="0 ${((chassis_y+wheelwidth)/2 + wheelgap)*reflect} ${wheeldiam/2 - chassis_z/2 - chassis_height}" rpy="0 0 0"/>
+      <origin xyz="0 ${((chassis_y-wheelwidth)/2)*reflect} ${wheeldiam/2 - chassis_z/2 - chassis_height}" rpy="0 0 0"/>
     </joint>
   </xacro:macro>
 

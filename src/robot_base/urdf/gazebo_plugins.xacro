@@ -18,7 +18,7 @@
       <update_rate>100</update_rate>
       <left_joint>$(arg prefix)_left_wheel_joint</left_joint>
       <right_joint>$(arg prefix)_right_wheel_joint</right_joint>
-      <wheel_separation>${chassis_y+wheelwidth+2*wheelgap}</wheel_separation>
+      <wheel_separation>${chassis_y-wheelwidth}</wheel_separation>
       <wheel_diameter>${wheeldiam}</wheel_diameter>
       <!-- Maximum torque which the wheels can produce, in Nm, defaults to 5 Nm -->
       <max_wheel_torque>20</max_wheel_torque>

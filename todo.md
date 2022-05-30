@@ -247,6 +247,9 @@
     - [x] Parameterised interface for choosing test environments
   - Some QOL things would be an ability to select the test environments in programatically, perhaps using a `click` interface like with the Formula Student launch file.
 
+### Mon 30/05/22
+- [ ] Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
+- 
 ---
 
 - [ ] Set up multi robot joint planner
@@ -254,4 +257,5 @@
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
   - [ ] There is a real chance that more than 2 robots come in proxmity
 - [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
+- [ ] Something to set heading goals, so robots face the goal with some certainty
 - [ ] Tips on report, what should be done in terms of references, report structure etc?
