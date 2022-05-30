@@ -248,7 +248,7 @@
   - Some QOL things would be an ability to select the test environments in programatically, perhaps using a `click` interface like with the Formula Student launch file.
 
 ### Mon 30/05/22
-- [ ] Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
+- Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
 - 
 ---
 

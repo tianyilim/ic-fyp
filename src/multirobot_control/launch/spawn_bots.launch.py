@@ -286,17 +286,19 @@ def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
         links = root.findall('gazebo')
         for elem in links:
             # Use short-circuit eval to only get things with 'reference' attrib
-            if 'reference' in elem.attrib and 'base_link' in elem.attrib['reference']:
+            if 'reference' in elem.attrib and \
+                ('base_link' in elem.attrib['reference'] or \
+                 'bumper' in elem.attrib['reference']):
                 # print(elem.find('material').text)
                 elem.find('material').text = color
 
         links = root.findall('link')
         for elem in links:
-            if 'name' in elem.attrib and 'base_link' in elem.attrib['name']:
+            if 'name' in elem.attrib and \
+                ('base_link' in elem.attrib['name'] or \
+                 'bumper' in elem.attrib['name']):
                 material = elem.find('visual').find('material')
                 material.attrib['name'] = color_rviz
-
-                break
 
     # Save file for reference
     output_dir = os.path.join(os.getcwd(), "tmp")
