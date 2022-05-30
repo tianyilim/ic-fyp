@@ -266,8 +266,13 @@
 - Implement status / metric checking services on DWA and RRT servers:
   - [x] `get_dwa_server_status`
     - Also shifted all action server status tracking to `planner_status.py`; this should have the same ordering as `GetPlannerStatus.srv`
-  - [ ] `getNumRRTWaypointsLeft`
-  - [ ] `getTotalRRTManhattanDist`
+  - [x] `get_num_remaining_waypoints`
+    - Created a new service type called `GetIntValue.srv`, returns an Int32 value with no need for a request.
+  - [x] `get_total_manhattan_dist`
+
+### Tue 31/05/22
+- [ ] Revert back to `spin_callback` in RRT server as using sleep directly in `execute_callback` leads to poor performance.
+
 ---
 
 - [ ] Set up multi robot joint planner

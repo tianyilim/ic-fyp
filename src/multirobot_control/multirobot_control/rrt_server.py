@@ -17,6 +17,7 @@ from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
+from planner_action_interfaces.srv import GetIntValue
 
 from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
@@ -115,6 +116,10 @@ class RRTStarActionServer(Node):
 
         # Rate object to poll for DWA status
         self._dwa_wait_rate = self.create_rate(10)
+
+        # Services 
+        self._srv_num_remaining_waypoints = self.create_service(GetIntValue, 'get_num_remaining_waypoints', self._srv_num_remaining_waypoints_callback)
+        self._srv_total_manhattan_dist = self.create_service(GetIntValue, 'get_total_manhattan_dist', self._srv_total_manhattan_dist_callback)
 
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
@@ -517,6 +522,32 @@ class RRTStarActionServer(Node):
     def param_set_callback(self, future):
         resp = future.result()
         self.get_logger().info(f"Set distance threshold {resp.results[0].successful}")
+
+    # Services
+    def _srv_num_remaining_waypoints_callback(self, _, response):
+        '''
+        Returns the number of remaining RRT waypoints.
+        '''
+        response.data = Int32(data=len(self.path))
+        self.get_logger().info(f'Return {len(self.path)} to get_num_remaining_waypoints srv call')
+
+        return response
+
+    def _srv_total_manhattan_dist_callback(self, _, response):
+        '''
+        Returns the total manhattan distance of elements along the path.
+        '''
+        dist = 0
+        if len(self.path) > 1:
+            for idx in range(1, len(self.path)):
+                dist += np.linalg.norm(
+                    np.array(self.path[idx-1]) - \
+                    np.array(self.path[idx]) )
+
+        response.data = Int32(data=dist)
+        self.get_logger().info(f'Return {dist} to get_total_manhattan_dist srv call')
+
+        return response
 
 def main(args=None):
     rclpy.init(args=args)

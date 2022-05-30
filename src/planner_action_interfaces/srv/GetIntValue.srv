@@ -1,0 +1,3 @@
+# Simple service for a response with an integer payload.
+---
+int32 data
