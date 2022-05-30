@@ -18,7 +18,7 @@
 
   <!-- ++++++++++++++++++++++++++++++++++ base link ++++++++++++++++++++++++++++++++++ -->
   <link name="$(arg prefix)_base_link">
-    <xacro:box_inertia m="10.0" w="${chassis_x}" h="${chassis_y}" d="${chassis_z}"/>
+    <xacro:box_inertia m="10.0" w="${2*}" h="${chassis_y}" d="${chassis_z}"/>
     <visual>
       <geometry>
         <box size="${chassis_x} ${chassis_y} ${chassis_z}"/>
