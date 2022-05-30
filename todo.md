@@ -250,10 +250,11 @@
 ### Mon 30/05/22
 - Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
 - Dynamic replanning/reassignment for RRT waypoints -> Pre-req for more complex (and unpredictable) DWA movements
-  - [ ] Line of Sight check to current waypoint
-  - [ ] Ability to cancel DWA action
-  - [ ] Check for line of sight to the current waypoint. If that is lost, abort and replan
-  - [ ] Check if there are other waypoints that are within line of sight (and within a certain radius). If so, skip preceeding waypoints to get to that one.
+  - [x] Line of Sight check to current waypoint
+  - [x] Ability to cancel DWA action
+  - [x] Check for line of sight to the current waypoint. If that is lost, abort and replan
+  - [x] Check if there are other waypoints that are within line of sight (and within a certain radius). If so, skip preceeding waypoints to get to that one.
+- Also removed `spin_callback` in RRT server, using sleep directly in the main `execute_callback` node instead. Not sure if that helps or harms the performance...
 - Ideas for joint DWA metrics and implementation:
   - Sum(?) of scores for distance to goal - don't care about orientation for now, cos we are more concerned about getting past each other
   - Orientation of robot towards each other (don't want robots to be on a colliding trajectory)

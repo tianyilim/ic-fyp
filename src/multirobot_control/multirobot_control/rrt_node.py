@@ -150,6 +150,38 @@ class RRT:
                 plt.draw()
                 plt.pause(0.001)
 
+    def reset_planner(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float]):
+        '''
+        Resets planner to go to a new start/goal pos while keeping the same settings.
+        '''
+        if self.logger is None:
+            print(f"Resetting RRT* Planner.")
+        else:
+            self.logger.warn(f"Resetting RRT* Planner.")
+
+        # Check if start node is valid
+        self.start = np.array(start_pos)
+        start_collision = self.check_collision(self.start, use_safety_radius=True)
+        if start_collision[0] is False:
+            self.start = start_collision[1]
+            if self.logger is None:
+                print(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+            else:
+                self.logger.warn(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+        self.node_list = [self.Node(self.start, None, 0)]
+
+        # Check if goal node is valid
+        self.goal = np.array(goal_pos)
+        goal_collision = self.check_collision(self.goal, use_safety_radius=False)
+        if goal_collision[0] is False:
+            self.goal = goal_collision[1]
+            if self.logger is None:
+                print(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+            else:
+                self.logger.warn(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+
+        self.goal_node = self.Node(self.goal, None, np.inf)
+
     def explore_one_step(self):
         '''
         Performs one instance of exploration.

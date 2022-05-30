@@ -2,6 +2,7 @@
 Create a DWA node.
 '''
 
+from yaml import serialize
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -30,9 +31,10 @@ from enum import Enum, auto
 from typing import List, Tuple
 
 class DWAServerStatus(Enum):
-    STATUS_BUSY = auto()
-    STATUS_FREE = auto()
-
+    STATUS_BUSY = auto()        # Currently executing for one robot
+    STATUS_FREE = auto()        # Not performing any action
+    STATUS_DEFERRED = auto()    # Deferring to another DWA server
+    STATUS_BUSY_MULTI = auto()  # Planning for two robots
 
 class DWAActionServer(Node):
 
@@ -43,7 +45,7 @@ class DWAActionServer(Node):
             self,
             LocalPlanner,
             'dwa',
-            self.execute_callback)
+            self.execute_callback, cancel_callback=self.cancel_callback)
         
         self.declare_parameters(
             namespace='',
@@ -277,6 +279,7 @@ class DWAActionServer(Node):
         ''' Executes the DWA action. '''
 
         self._planner_state = DWAServerStatus.STATUS_BUSY
+        
 
         feedback_msg = LocalPlanner.Feedback()
 
@@ -427,6 +430,22 @@ class DWAActionServer(Node):
         result.final_position.z = 0.0
         result.robot_name = String(data=self.get_namespace())
         return result
+
+    def cancel_callback(self, cancelRequest):
+        # ? When will we need to check if goal cannot be cancelled?
+        
+        self.get_logger().info(f"Cancel requested, stopping {self.get_namespace()}.")
+
+        # Stop the robot
+        self._planner_state = DWAServerStatus.STATUS_FREE
+        self._linear_twist = 0.0
+        self._angular_twist = 0.0
+        self.cmd_vel_pub.publish( Twist(
+            linear=Vector3(x=self._linear_twist, y=0.0, z=0.0), 
+            angular=Vector3(x=0.0, y=0.0, z=self._angular_twist)
+        ) )
+
+        return rclpy.action.server.CancelResponse.ACCEPT
 
     # Helper functions
     def rankPose(self, end_pose, linear_twist, angular_twist):
