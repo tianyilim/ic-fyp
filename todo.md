@@ -249,7 +249,22 @@
 
 ### Mon 30/05/22
 - Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
-- 
+- Dynamic replanning/reassignment for RRT waypoints -> Pre-req for more complex (and unpredictable) DWA movements
+  - [ ] Line of Sight check to current waypoint
+  - [ ] Ability to cancel DWA action
+  - [ ] Check for line of sight to the current waypoint. If that is lost, abort and replan
+  - [ ] Check if there are other waypoints that are within line of sight (and within a certain radius). If so, skip preceeding waypoints to get to that one.
+- Ideas for joint DWA metrics and implementation:
+  - Sum(?) of scores for distance to goal - don't care about orientation for now, cos we are more concerned about getting past each other
+  - Orientation of robot towards each other (don't want robots to be on a colliding trajectory)
+  - In addition to the regular DWA metrics:
+    - Distance to each other and obstacles (required to avoid collision)
+  - Cap the joint DWA speed and remove the safety radius so that robots are more able to maneuver around the tight spaces.
+- This form of joint DWA will only work so long two robots can pass through
+- Implement status / metric checking services on DWA and RRT servers:
+  - [ ] `getDWAServerStatus`
+  - [ ] `getNumRRTWaypointsLeft`
+  - [ ] `getTotalRRTManhattanDist`
 ---
 
 - [ ] Set up multi robot joint planner
