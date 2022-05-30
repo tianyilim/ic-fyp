@@ -1,0 +1,10 @@
+
+---
+
+# Get planner status based on the following enum.
+
+int8 PLANNER_EXEC = 0
+int8 PLANNER_PLAN = 1
+int8 PLANNER_READY = 2
+
+int8 planner_status

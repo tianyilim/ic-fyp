@@ -249,6 +249,7 @@
 
 ### Mon 30/05/22
 - Modified robot URDF to get wheels to fit within the robot base instead of jutting out.
+- Also reduced total robot chassis weight from 10kg to 4kg (what kind of 50x50cm robot is 10kg?!)
 - Dynamic replanning/reassignment for RRT waypoints -> Pre-req for more complex (and unpredictable) DWA movements
   - [x] Line of Sight check to current waypoint
   - [x] Ability to cancel DWA action
@@ -263,7 +264,8 @@
   - Cap the joint DWA speed and remove the safety radius so that robots are more able to maneuver around the tight spaces.
 - This form of joint DWA will only work so long two robots can pass through
 - Implement status / metric checking services on DWA and RRT servers:
-  - [ ] `getDWAServerStatus`
+  - [x] `get_dwa_server_status`
+    - Also shifted all action server status tracking to `planner_status.py`; this should have the same ordering as `GetPlannerStatus.srv`
   - [ ] `getNumRRTWaypointsLeft`
   - [ ] `getTotalRRTManhattanDist`
 ---

@@ -31,16 +31,12 @@ from multirobot_control.map_params import OBSTACLE_ARRAY, OBSTACLE_BOUND, OBS_WI
 from multirobot_control.rrt_node import RRT as RRTPlanner
 from multirobot_control.colour_palette import colour_palette_rviz
 from multirobot_control.math_utils import check_line_of_sight
+from multirobot_control.planner_status import PlannerStatus
 
 import time
 import numpy as np
 from typing import List, Tuple
 from enum import Enum, auto
-
-class PlannerStatus(Enum):
-    PLANNER_EXEC = auto()
-    PLANNER_PLAN = auto()
-    PLANNER_READY = auto()
 
 class RRTStarActionServer(Node):
     def __init__(self) -> None:
@@ -236,7 +232,7 @@ class RRTStarActionServer(Node):
                 
                 self.goal_future = self._action_client.send_goal_async(local_goal)
                 self.goal_future.add_done_callback(self.local_planner_done_callback)
-                
+
             # Check if there is line of sight to current goal
             # Check distance to goal
             elif self.local_planner_status==PlannerStatus.PLANNER_EXEC:

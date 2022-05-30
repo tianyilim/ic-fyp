@@ -14,8 +14,9 @@ from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
+from planner_action_interfaces.srv import GetPlannerStatus
 
-from std_msgs.msg import Bool, String, Header
+from std_msgs.msg import Bool, String, Header, Int8
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 from visualization_msgs.msg import MarkerArray, Marker
@@ -24,17 +25,12 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from multirobot_control.map_params import OBSTACLE_ARRAY
 from multirobot_control.math_utils import dist_to_aabb, get_point_on_connecting_line
+from multirobot_control.planner_status import PlannerStatus
 
 import time
 import numpy as np
 from enum import Enum, auto
 from typing import List, Tuple
-
-class DWAServerStatus(Enum):
-    STATUS_BUSY = auto()        # Currently executing for one robot
-    STATUS_FREE = auto()        # Not performing any action
-    STATUS_DEFERRED = auto()    # Deferring to another DWA server
-    STATUS_BUSY_MULTI = auto()  # Planning for two robots
 
 class DWAActionServer(Node):
 
@@ -83,7 +79,7 @@ class DWAActionServer(Node):
         self._angular_twist = 0.0
 
         self._planned_pose = None
-        self._planner_state = DWAServerStatus.STATUS_FREE
+        self._planner_state = PlannerStatus.PLANNER_READY
 
         # Distance accumulator
         self._dist_travelled = 0.0
@@ -139,6 +135,9 @@ class DWAActionServer(Node):
         # Wait item to implement DWA node
         self._dwa_wait_rate = self.create_rate(1/self.params['action_duration'])
 
+        # Service to check for server status
+        self._srv_dwa_status = self.create_service(GetPlannerStatus, 'get_dwa_server_status', self._srv_dwa_status_callback)
+
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
         # Accumulate distance travelled
@@ -176,7 +175,7 @@ class DWAActionServer(Node):
         Sends out planned position if DWA server is BUSY (a action is currently executing).
         Else, sends the current position.
         '''
-        if self._planner_state == DWAServerStatus.STATUS_BUSY:
+        if self._planner_state == PlannerStatus.PLANNER_EXEC:
             # If an action is currently being executed=
             self.planned_pos_pub.publish(PointStamped(
                 header=Header(frame_id=self.get_namespace()),
@@ -200,7 +199,7 @@ class DWAActionServer(Node):
         - Else, propose a random vector (break out of local minima)
         '''
 
-        if self._planner_state == DWAServerStatus.STATUS_BUSY:
+        if self._planner_state == PlannerStatus.PLANNER_EXEC:
             if self._dist_travelled < self.params['stall_dist_thresh']:
                 local_goal_x = self.goal_x
                 local_goal_y = self.goal_y
@@ -278,7 +277,7 @@ class DWAActionServer(Node):
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''
 
-        self._planner_state = DWAServerStatus.STATUS_BUSY
+        self._planner_state = PlannerStatus.PLANNER_EXEC
         
 
         feedback_msg = LocalPlanner.Feedback()
@@ -415,7 +414,7 @@ class DWAActionServer(Node):
         self.cmd_vel_pub.publish(cmd_vel)
 
         # Set planner status back to free so that corret planned messages are recieved
-        self._planner_state = DWAServerStatus.STATUS_FREE
+        self._planner_state = PlannerStatus.PLANNER_READY
 
         # After DWA reaches goal
         goal_handle.succeed()
@@ -437,7 +436,7 @@ class DWAActionServer(Node):
         self.get_logger().info(f"Cancel requested, stopping {self.get_namespace()}.")
 
         # Stop the robot
-        self._planner_state = DWAServerStatus.STATUS_FREE
+        self._planner_state = PlannerStatus.PLANNER_READY
         self._linear_twist = 0.0
         self._angular_twist = 0.0
         self.cmd_vel_pub.publish( Twist(
@@ -656,6 +655,13 @@ class DWAActionServer(Node):
         marker.lifetime = Duration(seconds=period_sec, nanoseconds=period_nanosec).to_msg()
 
         return marker
+
+    # Service handlers
+    def _srv_dwa_status_callback(self, _, response):
+        response.planner_status = Int8(data=int(self._planner_state))
+        self.get_logger().info(f'Return {int(self._planner_state)} to dwa_status srv call')
+
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
