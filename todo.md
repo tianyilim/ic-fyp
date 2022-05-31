@@ -272,6 +272,13 @@
 
 ### Tue 31/05/22
 - [x] Revert back to `spin_callback` in RRT server as using sleep directly in `execute_callback` leads to poor performance.
+- [ ] Make a **new node** for this variant of DWA, selectable from the launchfile.
+- [ ] Create function for robot priority selection (must be deterministic, no handshaking)
+- [ ] Query DWA server status in RRT planner instead of handling "manually" in code
+- [ ] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
+- [ ] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints) and `waypoint_idx`
+- [ ] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
+- [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine
 
 ---
 
