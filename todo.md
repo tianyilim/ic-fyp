@@ -271,7 +271,7 @@
   - [x] `get_total_manhattan_dist`
 
 ### Tue 31/05/22
-- [ ] Revert back to `spin_callback` in RRT server as using sleep directly in `execute_callback` leads to poor performance.
+- [x] Revert back to `spin_callback` in RRT server as using sleep directly in `execute_callback` leads to poor performance.
 
 ---
 
