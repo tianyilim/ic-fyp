@@ -30,7 +30,7 @@ from multirobot_control.planner_status import PlannerStatus
 import time
 import numpy as np
 from enum import Enum, auto
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 class DWAActionServer(Node):
 
@@ -108,7 +108,7 @@ class DWAActionServer(Node):
         }
         
         # other robots on the map
-        self.other_robots = []
+        self.other_robots:Dict[str, Tuple[float,float]] = {} 
 
         # Subscribe to Odom (which has ground truth)
         self.state_sub = self.create_subscription(Odometry, 'odom', \
@@ -163,12 +163,13 @@ class DWAActionServer(Node):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         
         # print(msg)
-        self.other_robots = []
-        for pose in msg.positions:
-            self.get_logger().debug("[handle_other_robots] appending x:{:.2f} y:{:.2f}".format(pose.x, pose.y))
-            self.other_robots.append(
-                (pose.x, pose.y)
-            )
+        self.other_robots = {}
+        for idx in range(len(msg.positions)):
+            pose = msg.positions[idx]
+            name = msg.names[idx]
+            self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
+
+            self.other_robots[name] = (pose.x, pose.y)
     
     def planned_pos_timer_callback(self):
         ''' 
@@ -206,7 +207,8 @@ class DWAActionServer(Node):
                 
                 goal_poses = [] # A collection of poses that are made of vectors away from potential obstacles
 
-                for robot_x, robot_y in self.other_robots:
+                for robot_name in self.other_robots.keys():
+                    robot_x, robot_y = self.other_robots[robot_name]
                     # Calculate a path away from the robots that are too close
                     if self.distToGoal( self._x, self._y, robot_x, robot_y ) < (self.params['inter_robot_dist']*self.params['robot_radius']):
                         self.get_logger().info(f"Robot too close to other robot. Moving away from it.")
@@ -516,7 +518,8 @@ class DWAActionServer(Node):
                 obstacle_acc += obstacle_cost
                 score += obstacle_cost # obstacle cost is negative
 
-        for x, y in self.other_robots:
+        for robot_name in self.other_robots.keys():
+            x, y = self.other_robots[robot_name]
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             if dist_to_robot < 2*self.params['robot_radius']:
                 self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
