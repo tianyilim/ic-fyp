@@ -1,8 +1,10 @@
-from enum import Enum, auto
+from enum import IntEnum, auto
 
 # Make sure this is the same order as `planner_action_interfaces.srv.GetPlannerStatus.srv`
 
-class PlannerStatus(Enum):
-    PLANNER_EXEC = auto()
-    PLANNER_PLAN = auto()
-    PLANNER_READY = auto()
+class PlannerStatus(IntEnum):
+    PLANNER_EXEC = 0
+    PLANNER_PLAN = 1
+    PLANNER_READY = 2
+    PLANNER_DEFERRED = 3
+    PLANNER_EXEC_JOINT = 4
