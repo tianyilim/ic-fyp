@@ -272,12 +272,19 @@
 
 ### Tue 31/05/22
 - [x] Revert back to `spin_callback` in RRT server as using sleep directly in `execute_callback` leads to poor performance.
-- [ ] Make a **new node** for this variant of DWA, selectable from the launchfile.
-- [ ] Create function for robot priority selection (must be deterministic, no handshaking)
+- [x] Make a **new node** for this variant of DWA, selectable from the launchfile.
+  - This node is called `dwa_multirobot` and its action is called `dwa_multirobot`. 
+- [x] Create function for robot priority selection (must be deterministic, no handshaking)
 - [ ] Query DWA server status in RRT planner instead of handling "manually" in code
-- [ ] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
-- [ ] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints) and `waypoint_idx`
+  - This is published with the `planner_action_interfaces.msg.PlannerStatus` msg type on the `dwa_status` topic whenever a state change occurs.
+  - [x] Change the original DWA server to follow this model
+  - [ ] Check if DWA server is `PlannerStatus.PLANNER_READY` before starting to give any commands. Currently calling service to check the status never returns
+- [x] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
+- [x] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints), `waypoint_idx`, and Manhattan distance remaining.
+- [ ] Goal arbitration in DWA server
+- [ ] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
 - [ ] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
+- [ ] Service to update RRT server with result of goal arbitration in DWA server
 - [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine
 
 ---
@@ -288,4 +295,5 @@
   - [ ] There is a real chance that more than 2 robots come in proxmity
 - [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
 - [ ] Something to set heading goals, so robots face the goal with some certainty
+- [ ] Think about how to get both implementations of `dwa_server` to inherit from the same class so there is less repetition?
 - [ ] Tips on report, what should be done in terms of references, report structure etc?

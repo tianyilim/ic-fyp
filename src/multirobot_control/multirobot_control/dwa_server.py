@@ -2,7 +2,6 @@
 Create a DWA node.
 '''
 
-from yaml import serialize
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -14,6 +13,7 @@ from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
+from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
 from planner_action_interfaces.srv import GetPlannerStatus
 
 from std_msgs.msg import Bool, String, Header, Int8
@@ -27,9 +27,7 @@ from multirobot_control.map_params import OBSTACLE_ARRAY
 from multirobot_control.math_utils import dist_to_aabb, get_point_on_connecting_line
 from multirobot_control.planner_status import PlannerStatus
 
-import time
 import numpy as np
-from enum import Enum, auto
 from typing import Dict, List, Tuple
 
 class DWAActionServer(Node):
@@ -138,6 +136,11 @@ class DWAActionServer(Node):
         # Service to check for server status
         self._srv_dwa_status = self.create_service(GetPlannerStatus, 'get_dwa_server_status', self._srv_dwa_status_callback)
 
+        # Publish status changes 
+        self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, 'dwa_status', 10)
+
+        self.get_logger().info("DWA server startup complete.")
+
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
         # Accumulate distance travelled
@@ -166,7 +169,7 @@ class DWAActionServer(Node):
         self.other_robots = {}
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]
-            name = msg.names[idx]
+            name = msg.names[idx].data
             self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
 
             self.other_robots[name] = (pose.x, pose.y)
@@ -280,7 +283,7 @@ class DWAActionServer(Node):
         ''' Executes the DWA action. '''
 
         self._planner_state = PlannerStatus.PLANNER_EXEC
-        
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
 
         feedback_msg = LocalPlanner.Feedback()
 
@@ -417,6 +420,7 @@ class DWAActionServer(Node):
 
         # Set planner status back to free so that corret planned messages are recieved
         self._planner_state = PlannerStatus.PLANNER_READY
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
 
         # After DWA reaches goal
         goal_handle.succeed()
@@ -439,6 +443,8 @@ class DWAActionServer(Node):
 
         # Stop the robot
         self._planner_state = PlannerStatus.PLANNER_READY
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
+
         self._linear_twist = 0.0
         self._angular_twist = 0.0
         self.cmd_vel_pub.publish( Twist(
@@ -661,8 +667,9 @@ class DWAActionServer(Node):
 
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
-        response.planner_status = Int8(data=int(self._planner_state))
-        self.get_logger().info(f'Return {int(self._planner_state)} to dwa_status srv call')
+        self.get_logger().info(f'enter dwa status callback: {self._planner_state} {int(self._planner_state)}')
+        response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
+        self.get_logger().info(f'Return {response.planner_status} to dwa_status srv call')
 
         return response
 
@@ -683,10 +690,6 @@ def main(args=None):
             dwa_action_server.destroy_node()
     finally:
         rclpy.shutdown()
-
-
-    # rclpy.spin(dwa_action_server)
-
 
 if __name__ == '__main__':
     main()
