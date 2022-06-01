@@ -74,6 +74,7 @@ def generate_launch_description():
     # urdf = LaunchConfiguration('urdf')
     headless_config = LaunchConfiguration('headless')
     log_level = LaunchConfiguration('log_level')
+    rviz = LaunchConfiguration('rviz')
 
     # Ensure all logs come out in order
     stdout_linebuf_envvar = SetEnvironmentVariable(
@@ -122,6 +123,12 @@ def generate_launch_description():
         'log_level',
         default_value='info',
         description="Log level of nodes"
+    )
+
+    declare_rviz_cmd = DeclareLaunchArgument(
+        'rviz',
+        default_value='true',
+        description="Whether or not to launch RViz."
     )
 
     # Launch commands
@@ -217,6 +224,7 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         arguments=['-d',  rviz_file_dir, '--ros-args', '--log-level', 'info'],
+        condition=IfCondition(rviz)
         # output='screen'
     )
 
@@ -234,6 +242,8 @@ def generate_launch_description():
     # ld.add_action(declare_urdf_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_rviz_cmd)
+    
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(gazebo_cmd),
