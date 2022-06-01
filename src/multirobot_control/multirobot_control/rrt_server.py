@@ -101,27 +101,15 @@ class RRTStarActionServer(Node):
         
         # on initialization, we need to get this from the Action server. 
         # We should not assume that this is READY on node `init`
-        self.local_planner_status = PlannerStatus.PLANNER_READY
+        self.local_planner_status = None
         # For some reason this does not work.
         self._local_planner_state_query_cli = self.create_client(GetPlannerStatus, f"{self._action_server_name}/get_dwa_server_status")
-        '''
+        
         while not self._local_planner_state_query_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Service not availble, trying again...")
         self._local_planner_state_future = self._local_planner_state_query_cli.call_async(GetPlannerStatus.Request())
-        # self._local_planner_state_future.add_done_callback(self._get_local_planner_state_callback)
-        
-        # while not self._local_planner_state_future.done():
-        #     self.get_logger().info("Waiting for Local Planner to return status...")
-
-        try:
-            response = self._local_planner_state_future.result()
-        except Exception as e:
-            self.get_logger().info('Service call failed %r' % (e,))
-        else:
-            self.get_logger().info(f"result: {response}")
-
-        self.get_logger().info(f"Local planner status {self.local_planner_status}")
-        '''
+        self._local_planner_state_future.add_done_callback(self._get_local_planner_state_callback)
+        # This will return in its own time.
 
         self.goal_marker_topic = self.get_namespace() + '/goals'
         self.path_marker_topic = self.get_namespace() + '/waypoints'
@@ -562,8 +550,8 @@ class RRTStarActionServer(Node):
         self.local_planner_status = PlannerStatus(msg.data)
         self.get_logger().info(f"{self.get_namespace()}: {self.local_planner_status.name}")
 
-    def _get_local_planner_state_callback(self, _, response):
-        self.get_logger().info(f"{self.get_namespace()} srv callback: {response}")
+    def _get_local_planner_state_callback(self, future):
+        response = future.result()
         self.local_planner_status = PlannerStatus(response.planner_status.data)
         self.get_logger().info(f"{self.get_namespace()} srv callback: {self.local_planner_status.name}")
 
