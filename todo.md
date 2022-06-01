@@ -275,7 +275,7 @@
 - [x] Make a **new node** for this variant of DWA, selectable from the launchfile.
   - This node is called `dwa_multirobot` and its action is called `dwa_multirobot`. 
 - [x] Create function for robot priority selection (must be deterministic, no handshaking)
-- [ ] Query DWA server status in RRT planner instead of handling "manually" in code
+- [x] Query DWA server status in RRT planner instead of handling "manually" in code
   - This is published with the `planner_action_interfaces.msg.PlannerStatus` msg type on the `dwa_status` topic whenever a state change occurs.
   - [x] Change the original DWA server to follow this model
   - [ ] Check if DWA server is `PlannerStatus.PLANNER_READY` before starting to give any commands. Currently calling service to check the status never returns

@@ -17,7 +17,8 @@ from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
-from planner_action_interfaces.srv import GetIntValue
+from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
+from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus
 
 from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
@@ -62,27 +63,11 @@ class RRTStarActionServer(Node):
                 ('rrt_max_extend_length', 0.5),     # How far each RRT node is away from the previous
                 ('rrt_connect_circle_dist', 1.0),   # How far away nodes must be to be considered for rewiring in RRT*
                 ('rrt_debug_plot', False),          # Debug plot RRT in MatPlotLib
-                ('robot_num', -1),                  # Assign goal colour in Rviz
+                ('robot_num', -1),                  # Assign goal colour in Rviz,
+                ('local_planner', 'dwa_action_server')
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
-
-        # state variables (update from Odom)
-        self._x = 0.0
-        self._y = 0.0
-        self._rpy = (0.0, 0.0, 0.0)
-        self._yaw = 0.0
-
-        # Saved map of the workspace
-        self._RRT = None
-        # Path from start to goal
-        self.path = []
-        self.global_planner_status = PlannerStatus.PLANNER_READY
-        self.local_planner_status = PlannerStatus.PLANNER_READY
-
-        self.goal_marker_topic = self.get_namespace() + '/goals'
-        self.path_marker_topic = self.get_namespace() + '/waypoints'
-        self.path_marker_ids = []
 
         # Parameters
         self.params = {
@@ -96,15 +81,62 @@ class RRTStarActionServer(Node):
             "rrt_max_extend_length" :   self.get_parameter("rrt_max_extend_length").value,
             "rrt_connect_circle_dist" : self.get_parameter("rrt_connect_circle_dist").value,
             "rrt_debug_plot" :          self.get_parameter("rrt_debug_plot").value,
+            "local_planner" :          self.get_parameter("local_planner").value,
         }
+
+        self._action_server_name = f"{self.get_namespace()}/{self.params['local_planner']}"
+
+        # state variables (update from Odom)
+        self._x = 0.0
+        self._y = 0.0
+        self._rpy = (0.0, 0.0, 0.0)
+        self._yaw = 0.0
+
+        # Saved map of the workspace
+        self._RRT = None
+        # Path from start to goal
+        self.path = []
+        self.waypoint_idx = 0
+        self.global_planner_status = PlannerStatus.PLANNER_READY
+        
+        # on initialization, we need to get this from the Action server. 
+        # We should not assume that this is READY on node `init`
+        self.local_planner_status = PlannerStatus.PLANNER_READY
+        # For some reason this does not work.
+        self._local_planner_state_query_cli = self.create_client(GetPlannerStatus, f"{self._action_server_name}/get_dwa_server_status")
+        '''
+        while not self._local_planner_state_query_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("Service not availble, trying again...")
+        self._local_planner_state_future = self._local_planner_state_query_cli.call_async(GetPlannerStatus.Request())
+        # self._local_planner_state_future.add_done_callback(self._get_local_planner_state_callback)
+        
+        # while not self._local_planner_state_future.done():
+        #     self.get_logger().info("Waiting for Local Planner to return status...")
+
+        try:
+            response = self._local_planner_state_future.result()
+        except Exception as e:
+            self.get_logger().info('Service call failed %r' % (e,))
+        else:
+            self.get_logger().info(f"result: {response}")
+
+        self.get_logger().info(f"Local planner status {self.local_planner_status}")
+        '''
+
+        self.goal_marker_topic = self.get_namespace() + '/goals'
+        self.path_marker_topic = self.get_namespace() + '/waypoints'
+        self.path_marker_ids = []
 
         self.robot_num = self.get_parameter('robot_num').value
     
         # Service client
-        self.dist_thresh_client = self.create_client(SetParameters, self.get_namespace()+'/dwa_action_server/set_parameters')
+        self.dist_thresh_client = self.create_client(SetParameters, self._action_server_name+'/set_parameters')
 
-        # DWA client (or other local planner) -> TODO make this into a parameter
-        self._action_client = ActionClient(self, LocalPlanner, 'dwa')
+        # DWA client (or other local planner)
+        self._local_planner = ActionClient(self, LocalPlanner, self.params['local_planner'])
+
+        # Listen to and query for DWA client's state
+        self._local_planner_state_sub = self.create_subscription(PlannerStatusMsg, self._action_server_name+'/dwa_status', self._local_planner_state_callback, 10)
 
         # Subscribe to odom which tells us robot pose
         self.state_sub = self.create_subscription(Odometry, 'odom', \
@@ -121,8 +153,9 @@ class RRTStarActionServer(Node):
         self.create_timer(0.1, self.spin_callback)
 
         # Services 
-        self._srv_num_remaining_waypoints = self.create_service(GetIntValue, 'get_num_remaining_waypoints', self._srv_num_remaining_waypoints_callback)
-        self._srv_total_manhattan_dist = self.create_service(GetIntValue, 'get_total_manhattan_dist', self._srv_total_manhattan_dist_callback)
+        self._srv_num_remaining_waypoints = self.create_service(GetIntValue, f'{self.get_name()}/get_num_remaining_waypoints', self._srv_num_remaining_waypoints_callback)
+        self._srv_total_manhattan_dist = self.create_service(GetFloatValue, f'{self.get_name()}/get_total_manhattan_dist', self._srv_total_manhattan_dist_callback)
+        self._srv_rrt_waypoints = self.create_service(GetRRTWaypoints, f'{self.get_name()}/get_rrt_waypoints', self._srv_rrt_waypoints_callback)
 
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
@@ -165,14 +198,12 @@ class RRTStarActionServer(Node):
 
         while self.global_planner_status != PlannerStatus.PLANNER_READY:
             # This busy-waiting takes cpu time i think, not allowing other threads to join
-            # self._action_client.wait_for_server()   # Wait for local planner to be done
+            # self._local_planner.wait_for_server()   # Wait for local planner to be done
             # Printing lets it do stuff but definitely not ideal
-            # self.get_logger().info(f"Waiting for server: {self._action_client.wait_for_server()}")
+            # self.get_logger().info(f"Waiting for server: {self._local_planner.wait_for_server()}")
 
             self._dwa_wait_rate.sleep()  # sleep to give other threads a chance
 
-        self.global_planner_status = PlannerStatus.PLANNER_READY
-        
         goal_handle.succeed()
         self.get_logger().info("{} reached goal at X: {:.2f} Y: {:.2f}".format(
             self.get_namespace(), self.goal_x, self.goal_y
@@ -195,7 +226,7 @@ class RRTStarActionServer(Node):
         # Call the local planner action repeatedly for each waypoint until goal reached.
         # Only send a new goal when the local planner is done with its previous goal
 
-        # Check if (re)planning needs to be done
+       # Check if (re)planning needs to be done
         if self.global_planner_status == PlannerStatus.PLANNER_PLAN:
             # Find a suitable path through the workspace (and save it for future use).
             rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
@@ -209,7 +240,7 @@ class RRTStarActionServer(Node):
                                     connect_circle_dist=self.params['rrt_connect_circle_dist'],
                                     debug_plot=self.params['rrt_debug_plot'],
                                     logger=self.get_logger()    )
-
+ 
             # set distance thresh while RRT computation is done
             srv = SetParameters.Request()
             srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
@@ -239,8 +270,6 @@ class RRTStarActionServer(Node):
                 ))]
                 resp_future = self.dist_thresh_client.call_async(srv)
                 resp_future.add_done_callback(self.param_set_callback)
-            
-            self.local_planner_status = PlannerStatus.PLANNER_EXEC
 
             # check if there are goals within line of sight (that can be skipped)
             path_idx = 0
@@ -250,26 +279,26 @@ class RRTStarActionServer(Node):
                 if (np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[idx]))) < 1.5):
                     if check_line_of_sight( (self._x, self._y), self.path[idx], OBSTACLE_ARRAY):
                         path_idx = idx
+                        self.get_logger().info(f"Skipping waypoint for waypoint idx {path_idx}")
+                        
+                        # Pop off all previous waypoints on self.path
+                        self.path = self.path[path_idx:]
+                        
+                        # Get rid of all relevant path goals
+                        for _ in range(path_idx):
+                            self.remove_path_marker_by_idx(self.waypoint_idx)
+                            self.waypoint_idx += 1
                 else:
                     break   # assume all subsequent waypoints are further (and out of range)
 
-            self.get_logger().info(f"Skipping waypoint for waypoint idx {path_idx}")
-            # Pop off all previous waypoints on self.path
-            self.path = self.path[path_idx:]
-            # Get rid of all relevant path goals
-            for _ in range(path_idx):
-                self.remove_path_marker_by_idx(self.waypoint_idx)
-                self.waypoint_idx += 1
             # Send new goal
-            self.local_planner_status = PlannerStatus.PLANNER_EXEC
             self.get_logger().info(f"Going to waypoint at {self.path[0][0]:.2f}, {self.path[0][1]:.2f}. {len(self.path)} segments left.")
             local_goal = LocalPlanner.Goal()
             local_goal.goal_position = Point(x=self.path[0][0], y=self.path[0][1], z=0.0)
             
-            self.goal_future = self._action_client.send_goal_async(local_goal)
+            self.goal_future = self._local_planner.send_goal_async(local_goal)
             self.goal_future.add_done_callback(self.local_planner_done_callback)
 
-        
         # Replan if we are too far away or if there is no line of sight to the current goal.
         elif self.local_planner_status==PlannerStatus.PLANNER_EXEC:
             if (not check_line_of_sight( (self._x, self._y), self.path[0], OBSTACLE_ARRAY ))\
@@ -278,7 +307,7 @@ class RRTStarActionServer(Node):
                 try:
                     self.cancel_future = self.goal_handle.cancel_goal_async()
                     self.cancel_future.add_done_callback(self.local_planner_cancel_callback)
-                    self.local_planner_status = PlannerStatus.PLANNER_PLAN # Waiting for cancellation
+                    # self.local_planner_status = PlannerStatus.PLANNER_PLAN # Waiting for cancellation
                     # replan
                     self.global_planner_status = PlannerStatus.PLANNER_PLAN
                     self.get_logger().info("Current waypoint unviable. Aborting DWA goal and replanning.")
@@ -296,7 +325,6 @@ class RRTStarActionServer(Node):
             # TODO: Respond to goal rejected by attempting to send another goal.
             # If goal cannot be completed in ~TIMEOUT seconds, reject goal too?
             self.get_logger().info('Local Planner goal rejected')
-            self.local_planner_status = PlannerStatus.PLANNER_READY
             return
 
         self.get_logger().debug('Local Planner goal accepted')
@@ -320,13 +348,11 @@ class RRTStarActionServer(Node):
         self.remove_path_marker_by_idx(self.waypoint_idx)
         self.waypoint_idx += 1
 
-        self.local_planner_status = PlannerStatus.PLANNER_READY
         self.get_logger().info(f"Robot {robot_name} has {len(self.path)} waypoints left.")
 
     def local_planner_cancel_callback(self, future):
         res = future.result()
         self.get_logger().info(f"Local planner cancel response: {res.return_code==0}")
-        self.local_planner_status = PlannerStatus.PLANNER_READY
 
     def action_feedback_cb(self, feedback):
         '''
@@ -532,30 +558,64 @@ class RRTStarActionServer(Node):
         resp = future.result()
         self.get_logger().info(f"Set distance threshold {resp.results[0].successful}")
 
+    def _local_planner_state_callback(self, msg):
+        self.local_planner_status = PlannerStatus(msg.data)
+        self.get_logger().info(f"{self.get_namespace()}: {self.local_planner_status.name}")
+
+    def _get_local_planner_state_callback(self, _, response):
+        self.get_logger().info(f"{self.get_namespace()} srv callback: {response}")
+        self.local_planner_status = PlannerStatus(response.planner_status.data)
+        self.get_logger().info(f"{self.get_namespace()} srv callback: {self.local_planner_status.name}")
+
     # Services
     def _srv_num_remaining_waypoints_callback(self, _, response):
         '''
         Returns the number of remaining RRT waypoints.
         '''
-        response.data = Int32(data=len(self.path))
         self.get_logger().info(f'Return {len(self.path)} to get_num_remaining_waypoints srv call')
+        response.data = Int32(data=len(self.path))
 
         return response
 
+    def _get_total_manhattan_dist(self):
+        dist = 0.0
+        if len(self.path) > 1:
+            dist += np.linalg.norm(
+                np.array((self._x, self._y)) - \
+                np.array(self.path[0]) )
+            if len(self.path) > 2:
+                for idx in range(1, len(self.path)):
+                    dist += np.linalg.norm(
+                        np.array(self.path[idx-1]) - \
+                        np.array(self.path[idx]) )
+        return dist
+
     def _srv_total_manhattan_dist_callback(self, _, response):
         '''
-        Returns the total manhattan distance of elements along the path.
+        Returns the total manhattan distance of remaining elements along the path.
         '''
-        dist = 0
-        if len(self.path) > 1:
-            for idx in range(1, len(self.path)):
-                dist += np.linalg.norm(
-                    np.array(self.path[idx-1]) - \
-                    np.array(self.path[idx]) )
-
-        response.data = Int32(data=dist)
+        dist = self._get_total_manhattan_dist()
         self.get_logger().info(f'Return {dist} to get_total_manhattan_dist srv call')
+        response.data = Float64(data=dist)
 
+        return response
+
+    def _srv_rrt_waypoints_callback(self, _, response):
+        '''
+        Returns information about the current path.
+        '''
+        dist = self._get_total_manhattan_dist()
+        
+        waypoints = []
+        if len(self.path) > 0:
+            for x,y in self.path:
+                waypoints.append(Point(x=float(x), y=float(y), z=0.0))
+
+        self.get_logger().info(f'Return {dist}, {self.waypoint_idx}, {waypoints} to get_rrt_waypoints srv call')
+        response.remaining_dist = Float64(data=dist)
+        response.waypoint_idx = Int32(data=self.waypoint_idx)
+        response.waypoints = waypoints
+        
         return response
 
 def main(args=None):

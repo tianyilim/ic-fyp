@@ -1,5 +1,5 @@
 ---
 # Returns information about the RRT waypoints left.
-int32 remaining_dist
-int32 waypoint_idx
+std_msgs/Float64 remaining_dist
+std_msgs/Int32 waypoint_idx
 geometry_msgs/Point[] waypoints

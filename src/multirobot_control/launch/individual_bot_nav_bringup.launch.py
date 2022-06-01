@@ -204,8 +204,8 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     
     ld.add_action(start_static_transform_cmd)
-    ld.add_action(start_rrt_cmd)
     ld.add_action(start_dwa_cmd)
+    ld.add_action(start_rrt_cmd)
 
     # ld.add_action(start_gt_cmd)
     # ld.add_action(start_localization_cmd)

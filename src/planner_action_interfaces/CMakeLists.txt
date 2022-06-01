@@ -31,6 +31,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/OtherRobotLocations.msg"
   "msg/PlannerStatus.msg"
   "srv/GetIntValue.srv"
+  "srv/GetFloatValue.srv"
   "srv/GetPlannerStatus.srv"
   "srv/GetRRTWaypoints.srv"
   DEPENDENCIES geometry_msgs

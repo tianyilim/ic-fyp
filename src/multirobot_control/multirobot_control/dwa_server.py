@@ -38,7 +38,7 @@ class DWAActionServer(Node):
         self._action_server = ActionServer(
             self,
             LocalPlanner,
-            'dwa',
+            'dwa_action_server',    # NAME THIS THE SAME AS NODE NAME
             self.execute_callback, cancel_callback=self.cancel_callback)
         
         self.declare_parameters(
@@ -134,10 +134,11 @@ class DWAActionServer(Node):
         self._dwa_wait_rate = self.create_rate(1/self.params['action_duration'])
 
         # Service to check for server status
-        self._srv_dwa_status = self.create_service(GetPlannerStatus, 'get_dwa_server_status', self._srv_dwa_status_callback)
+        self._srv_dwa_status = self.create_service(GetPlannerStatus, f'{self.get_name()}/get_dwa_server_status', self._srv_dwa_status_callback)
 
         # Publish status changes 
-        self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, 'dwa_status', 10)
+        self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, f'{self.get_name()}/dwa_status', 10)
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
 
         self.get_logger().info("DWA server startup complete.")
 
@@ -667,9 +668,8 @@ class DWAActionServer(Node):
 
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
-        self.get_logger().info(f'enter dwa status callback: {self._planner_state} {int(self._planner_state)}')
+        self.get_logger().info(f'enter dwa status callback: {self._planner_state.name}:{int(self._planner_state)}')
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
-        self.get_logger().info(f'Return {response.planner_status} to dwa_status srv call')
 
         return response
 
