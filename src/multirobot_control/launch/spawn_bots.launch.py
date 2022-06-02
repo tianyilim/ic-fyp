@@ -47,7 +47,27 @@ def generate_launch_description():
     os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
 
     params_file_dir = os.path.join(bringup_dir, 'params', 'planner_params.yaml')
-    scenario_file_dir = os.path.join(bringup_dir, 'params', 'scenario_swap.yaml')   # Change this for different runs.
+    scenario_root_dir = os.path.join(bringup_dir, 'params')
+
+    # Not sure why a list comprehension doesn't work
+    scenario_choices = []
+    for f in os.listdir(scenario_root_dir):
+        fullname = os.path.join(scenario_root_dir, f)
+        if os.path.isfile(fullname) and 'scenario' in os.path.basename(f):
+            scenario_choices.append(fullname)
+
+    while True:
+        for i, choice in enumerate(scenario_choices):
+            print(f"[{i}] Scenario: {choice.split('/')[-1]}")
+        choice_idx = int(input("Choose scenario file index: "))
+
+        if choice_idx >= 0 and choice_idx < len(scenario_choices):
+            break
+
+    # scenario_file_dir = os.path.join(bringup_dir, 'params', 'scenario_swap.yaml')   # Change this for different runs.
+    scenario_file_dir = scenario_choices[choice_idx]
+    print(f"Chose index [{choice_idx}] Scenario: {scenario_choices[choice_idx]}")
+
     rviz_ref_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')
     rviz_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config_.rviz')
 

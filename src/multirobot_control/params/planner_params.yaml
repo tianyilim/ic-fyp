@@ -16,7 +16,7 @@
     dist_method : "L2"
     inter_robot_dist : 3.0
     orientation_ub_deg : 180.0
-    orientation_lb_deg : 5.0
+    orientation_lb_deg : 20.0
     angular_K : 1.0 # the max proportion of dist_to_goal that angular contributes
     goal_K : 10.0
     obstacle_K: 1.0

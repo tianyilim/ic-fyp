@@ -1,0 +1,18 @@
+/**:
+  ros__parameters:
+    robot_list: ["robot1"]
+    robot_starting_x: [-5.5]
+    robot_starting_y: [1.15]
+    robot_starting_theta: [0.0]
+
+    total_goals: 1
+    watchdog_timeout_s: 120
+    result_folder: "result"
+    params_filepath: "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml"
+
+    # Format: String like 
+    # [ [r1g1,r1g2,...r1gN], 
+    #   [r2g1,...r2gN],
+    #   ... 
+    #   [rMg1,...rMgN] ]
+    goal_array: "[[(0.0, 1.15), (0.0, -1.15), (-5.5, -1.15), (-5.5, 1.15)]]"

@@ -278,14 +278,19 @@
 - [x] Query DWA server status in RRT planner instead of handling "manually" in code
   - This is published with the `planner_action_interfaces.msg.PlannerStatus` msg type on the `dwa_status` topic whenever a state change occurs.
   - [x] Change the original DWA server to follow this model
-  - [ ] Check if DWA server is `PlannerStatus.PLANNER_READY` before starting to give any commands. Currently calling service to check the status never returns
+  - [x] Check if DWA server is `PlannerStatus.PLANNER_READY` before starting to give any commands. Currently calling service to check the status never returns
 - [x] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
 - [x] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints), `waypoint_idx`, and Manhattan distance remaining.
 - [ ] Goal arbitration in DWA server
 - [ ] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
-- [ ] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
+- [x] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
 - [ ] Service to update RRT server with result of goal arbitration in DWA server
 - [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine
+
+### Thu 02/05/22
+- Fixed lots of stuff from [Tues/Wed](#tue-310522)
+- QOL change: select scenario file from `spawn_bots_launch` file
+- 
 
 ---
 
