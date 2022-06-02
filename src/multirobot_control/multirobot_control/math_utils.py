@@ -129,6 +129,7 @@ def get_point_on_connecting_line(line_start:np.ndarray, line_end:np.ndarray, dis
 
     return line_start + line*dist
 
+"""
 def check_line_of_sight(line_start:Tuple[float,float], line_end:Tuple[float,float], 
                         obstacles:List[Tuple[float,float,float,float]]) -> bool:
     '''
@@ -154,5 +155,86 @@ def check_line_of_sight(line_start:Tuple[float,float], line_end:Tuple[float,floa
             continue
         else:
             return False
+
+    return True
+"""
+
+def check_line_of_sight(line_start: Tuple[float,float], line_end: Tuple[float,float], 
+            obstacles:List[Tuple[float,float,float,float]], 
+            safety_radius:float=0.1, robot_radius:float=0.35,
+            waypoint:bool=True):
+    '''
+    Checks if proposed line from start to end will come close to any bounding box.
+    
+    - First we 'inflate' each bounding box (easy to do; as they are all axis-aligned).
+    - Then we obtain 4 equations of lines for each side of the BB
+    - Then we calculate the intersection point between the two lines (either solve for x or y)
+
+    Args:
+    - line_start, line_end: 2d coords of line endpoints
+    - Waypoint(bool) if the current node is at a start or end point, we relax the collision rules.
+        Else it is a waypoint, and the typical safety radius rules apply.
+
+    Returns:
+    - The closest intersection point to line_start, and the x,y coordinates of the offending obstacle
+    - True otherwise
+    '''
+
+    line_start = np.array(line_start)
+    line_end = np.array(line_end)
+
+    for (x0, y0, x1, y1) in obstacles:
+        # Inflate obstacles by safety radius + robot_radius.
+        # The AABBs are 'inflated' like this:
+        #   __________
+        #  /.        .\ where the dots are the orignal coordinates
+        # |           | of the AABB.
+        # \.________./
+        # This allows the robots to navigate around the narrow corridors of shelves.
+
+        if waypoint==True:
+            inflate_dist = safety_radius + robot_radius
+        else:
+            inflate_dist = robot_radius
+            # inflate_dist = 0.0
+
+        x0_ = x0-inflate_dist
+        y0_ = y0-inflate_dist
+        x1_ = x1+inflate_dist
+        y1_ = y1+inflate_dist
+        # 8 corners of inflated AABB
+        c1 = np.array((x0, y0_))
+        c2 = np.array((x0_, y0))
+        c3 = np.array((x0_, y1))
+        c4 = np.array((x0, y1_))
+        c5 = np.array((x1, y1_))
+        c6 = np.array((x1_, y1))
+        c7 = np.array((x1_, y0))
+        c8 = np.array((x1, y0_))
+        
+        # If all are False -> no intersection, valid line extension
+        i1 = get_intersection( line_start, line_end, c1, c2 )
+        i2 = get_intersection( line_start, line_end, c2, c3 )
+        i3 = get_intersection( line_start, line_end, c3, c4 )
+        i4 = get_intersection( line_start, line_end, c4, c5 )
+        i5 = get_intersection( line_start, line_end, c5, c6 )
+        i6 = get_intersection( line_start, line_end, c6, c7 )
+        i7 = get_intersection( line_start, line_end, c7, c8 )
+        i8 = get_intersection( line_start, line_end, c8, c1 )
+
+        if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
+        or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
+            # Return closest point of intersection
+            intersection_list = [i1,i2,i3,i4,i5,i6,i7,i8]
+            valid_i = [i for i in intersection_list if i is not None]
+            min_dist = np.inf
+            closest_intersection = valid_i[0]
+            for intersection in valid_i:
+                dist = np.linalg.norm(line_start-intersection)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_intersection = intersection
+
+            return (closest_intersection, (x0_+x1_)/2, (y0_+y1_)/2)
 
     return True
