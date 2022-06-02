@@ -1,0 +1,12 @@
+# Set value for RRT waypoint.
+# Use the defined boolean values to choose between editing the waypoint_idx or the
+# current waypoint's coordinates.
+
+bool EDIT_WAYPOINT_IDX = 1
+bool EDIT_WAYPOINT_COORDS = 0
+bool sel_waypoint_idx
+
+std_msgs/Int32 waypoint_idx
+geometry_msgs/Point waypoint
+---
+bool success

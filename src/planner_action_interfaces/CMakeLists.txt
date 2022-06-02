@@ -34,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFloatValue.srv"
   "srv/GetPlannerStatus.srv"
   "srv/GetRRTWaypoints.srv"
+  "srv/SetRRTWaypoint.srv"
   DEPENDENCIES geometry_msgs
 )
 

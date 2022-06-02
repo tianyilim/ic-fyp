@@ -18,7 +18,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
-from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus
+from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus, SetRRTWaypoint
 
 from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
@@ -150,9 +150,10 @@ class RRTStarActionServer(Node):
         self.create_timer(0.1, self.spin_callback)
 
         # Services 
-        self._srv_num_remaining_waypoints = self.create_service(GetIntValue, f'{self.get_name()}/get_num_remaining_waypoints', self._srv_num_remaining_waypoints_callback)
-        self._srv_total_manhattan_dist = self.create_service(GetFloatValue, f'{self.get_name()}/get_total_manhattan_dist', self._srv_total_manhattan_dist_callback)
-        self._srv_rrt_waypoints = self.create_service(GetRRTWaypoints, f'{self.get_name()}/get_rrt_waypoints', self._srv_rrt_waypoints_callback)
+        self._srv_get_num_remaining_waypoints = self.create_service(GetIntValue, f'{self.get_name()}/get_num_remaining_waypoints', self._srv_get_num_remaining_waypoints_callback)
+        self._srv_get_total_manhattan_dist = self.create_service(GetFloatValue, f'{self.get_name()}/get_total_manhattan_dist', self._srv_get_total_manhattan_dist_callback)
+        self._srv_get_rrt_waypoints = self.create_service(GetRRTWaypoints, f'{self.get_name()}/get_rrt_waypoints', self._srv_get_rrt_waypoints_callback)
+        self._srv_set_rrt_waypoint = self.create_service(SetRRTWaypoint, f'{self.get_name()}/set_rrt_waypoint', self._srv_set_rrt_waypoint_callback)
 
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
@@ -582,7 +583,7 @@ class RRTStarActionServer(Node):
         self.get_logger().info(f"{self.get_namespace()} srv callback: {self.local_planner_status.name}")
 
     # Services
-    def _srv_num_remaining_waypoints_callback(self, _, response):
+    def _srv_get_num_remaining_waypoints_callback(self, _, response):
         '''
         Returns the number of remaining RRT waypoints.
         '''
@@ -609,7 +610,7 @@ class RRTStarActionServer(Node):
                         np.array(self.path[idx]) )
         return dist
 
-    def _srv_total_manhattan_dist_callback(self, _, response) -> GetFloatValue.Response:
+    def _srv_get_total_manhattan_dist_callback(self, _, response) -> GetFloatValue.Response:
         '''
         Service call to expose `_get_total_manhattan_dist` to other nodes.
         '''
@@ -619,7 +620,7 @@ class RRTStarActionServer(Node):
 
         return response
 
-    def _srv_rrt_waypoints_callback(self, _, response):
+    def _srv_get_rrt_waypoints_callback(self, _, response):
         '''
         Returns information about the current path.
         '''
@@ -635,6 +636,22 @@ class RRTStarActionServer(Node):
         response.waypoint_idx = Int32(data=self.waypoint_idx)
         response.waypoints = waypoints
         
+        return response
+
+    def _srv_set_rrt_waypoint_callback(self, request, response):
+        '''
+        Handles a request to change either the current RRT waypoint or the waypoint_idx.
+        '''
+
+        # TODO implement logic for these
+        if request.sel_waypoint_idx==SetRRTWaypoint.EDIT_WAYPOINT_IDX:
+            # Modify waypoint index
+            request.waypoint_idx
+        else:
+            request.waypoint
+
+        # Perform bounds checking
+        response.success = True
         return response
 
 def main(args=None):
