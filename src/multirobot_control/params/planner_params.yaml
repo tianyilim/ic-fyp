@@ -32,6 +32,7 @@
     rrt_debug_plot : false
     waypoint_skip: true
     waypoint_replan: false
+    local_planner: 'dwa_action_server'
 
     # Typically for odom_distribution node
     odom_dist_thresh: 2.0

@@ -1,7 +1,6 @@
 '''
 Create a DWA node.
 '''
-
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -30,15 +29,13 @@ from multirobot_control.planner_status import PlannerStatus
 import numpy as np
 from typing import Dict, List, Tuple
 
-class DWAActionServer(Node):
+class DWABaseNode(Node):
 
-    def __init__(self):
+    def __init__(self, impl_name:str):
 
-        super().__init__('dwa_action_server')
+        super().__init__(impl_name)
         self._action_server = ActionServer(
-            self,
-            LocalPlanner,
-            'dwa_action_server',    # NAME THIS THE SAME AS NODE NAME
+            self, LocalPlanner, impl_name,      # Action Server should be the same name as node name.
             self.execute_callback, cancel_callback=self.cancel_callback)
         
         self.declare_parameters(
@@ -77,7 +74,6 @@ class DWAActionServer(Node):
         self._angular_twist = 0.0
 
         self._planned_pose = None
-        self._planner_state = PlannerStatus.PLANNER_READY
 
         # Distance accumulator
         self._dist_travelled = 0.0
@@ -138,9 +134,7 @@ class DWAActionServer(Node):
 
         # Publish status changes 
         self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, f'{self.get_name()}/dwa_status', 10)
-        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
-
-        self.get_logger().info("DWA server startup complete.")
+        self.set_planner_state(PlannerStatus.PLANNER_READY)
 
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
@@ -165,7 +159,6 @@ class DWAActionServer(Node):
 
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
-        
         # print(msg)
         self.other_robots = {}
         for idx in range(len(msg.positions)):
@@ -177,7 +170,7 @@ class DWAActionServer(Node):
     
     def planned_pos_timer_callback(self):
         ''' 
-        Sends out planned position if DWA server is BUSY (a action is currently executing).
+        Sends out planned position if DWA server is EXEC (a action is currently executing).
         Else, sends the current position.
         '''
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
@@ -230,27 +223,7 @@ class DWAActionServer(Node):
                         self_pos = np.array((self._x, self._y))
                         robot_pos = np.array((closest_point[0], closest_point[1]))
                         goal_poses.append( get_point_on_connecting_line(robot_pos, self_pos, self.params['robot_radius']*1.5) )
-    
-                        # Take advantage of AABB - one axis of robot and closest point coords are the same
-                        # Degenerates into 4 cases:
-                        # # X same
-                        # if np.allclose(self._x, closest_point[0], atol=1e-3):
-                        #     local_goal_x = self._x
-                        #     if self._y > closest_point[1]:  # robot above obstacle
-                        #         local_goal_y = closest_point[1] + self.params['robot_radius']*1.5
-                        #     else:                           # robot below obstacle
-                        #         local_goal_y = closest_point[1] - self.params['robot_radius']*1.5
-                        # # Y same
-                        # elif np.allclose(self._y, closest_point[1], atol=1e-3):
-                        #     local_goal_y = self._y
-                        #     if self._x > closest_point[0]:  # robot right of obstacle
-                        #         local_goal_x = closest_point[0] + self.params['robot_radius']*1.5
-                        #     else:                           # robot left of obstacle
-                        #         local_goal_x = closest_point[0] - self.params['robot_radius']*1.5
-                        # # Catch error
-                        # else:
-                        #     assert False, f"Closest point on AABB not on the same axis as robot loc.\nRobot at {self._x:.2f},{self._y:.2f}, Closest Point at {closest_point[0]:.2f},{closest_point[1]:.2f}"
-                        
+
                 # Overwrite the goal vector by taking the mean of all proposed vectors
                 if len(goal_poses) > 0:
                     goal_pose = np.mean(np.array(goal_poses), axis=0)
@@ -283,10 +256,7 @@ class DWAActionServer(Node):
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''
 
-        self._planner_state = PlannerStatus.PLANNER_EXEC
-        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
-
-        feedback_msg = LocalPlanner.Feedback()
+        self.set_planner_state(PlannerStatus.PLANNER_EXEC)
 
         # Actual DWA algorithm here
         self.goal_x = goal_handle.request.goal_position.x
@@ -369,22 +339,15 @@ class DWAActionServer(Node):
                 self._linear_twist = 0.0
                 self._angular_twist = 0.0
 
-            # Apply proposed velocity for a specified time
-            cmd_vel = Twist(
-                linear=Vector3(x=self._linear_twist, y=0.0, z=0.0), 
-                angular=Vector3(x=0.0, y=0.0, z=self._angular_twist)
-            )
-            self.cmd_vel_pub.publish(cmd_vel)
+            self.publish_cmd_vel(self._linear_twist, self._angular_twist)
 
             # Publish feedback
+            feedback_msg = LocalPlanner.Feedback()
             feedback_msg.robot_name = String(data=self.get_namespace())
             feedback_msg.current_pose.position.x = self._x
             feedback_msg.current_pose.position.y = self._y
             feedback_msg.current_pose.position.z = 0.0
-            
-            curr_quaternion = quaternion_from_euler(
-                0, 0, self._yaw
-            )
+            curr_quaternion = quaternion_from_euler(0, 0, self._yaw)
             feedback_msg.current_pose.orientation.x = curr_quaternion[0]
             feedback_msg.current_pose.orientation.y = curr_quaternion[1]
             feedback_msg.current_pose.orientation.z = curr_quaternion[2]
@@ -397,31 +360,16 @@ class DWAActionServer(Node):
                 self._linear_twist, self._angular_twist ))
 
             # Sleep for awhile before applying the next motion
-            '''
-            start_time = self.get_clock().now()
-            while True:
-                curr_time = self.get_clock().now()
-                s_diff = (curr_time.nanoseconds - start_time.nanoseconds) * 1e9
-                
-                if s_diff > self.params['action_duration']:
-                    break
-            '''
             self._dwa_wait_rate.sleep()
-
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
             
         # Ensure robot is stopped
         self._linear_twist = 0.0
         self._angular_twist = 0.0
-        cmd_vel = Twist(
-            linear=Vector3(x=self._linear_twist, y=0.0, z=0.0), 
-            angular=Vector3(x=0.0, y=0.0, z=self._angular_twist)
-        )
-        self.cmd_vel_pub.publish(cmd_vel)
-
+        self.publish_cmd_vel(self._linear_twist, self._angular_twist)
+        
         # Set planner status back to free so that corret planned messages are recieved
-        self._planner_state = PlannerStatus.PLANNER_READY
-        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
+        self.set_planner_state(PlannerStatus.PLANNER_READY)
 
         # After DWA reaches goal
         goal_handle.succeed()
@@ -439,19 +387,14 @@ class DWAActionServer(Node):
 
     def cancel_callback(self, cancelRequest):
         # ? When will we need to check if goal cannot be cancelled?
-        
         self.get_logger().info(f"Cancel requested, stopping {self.get_namespace()}.")
 
         # Stop the robot
-        self._planner_state = PlannerStatus.PLANNER_READY
-        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
+        self.set_planner_state(PlannerStatus.PLANNER_READY)
 
         self._linear_twist = 0.0
         self._angular_twist = 0.0
-        self.cmd_vel_pub.publish( Twist(
-            linear=Vector3(x=self._linear_twist, y=0.0, z=0.0), 
-            angular=Vector3(x=0.0, y=0.0, z=self._angular_twist)
-        ) )
+        self.publish_cmd_vel(self._linear_twist, self._angular_twist)
 
         return rclpy.action.server.CancelResponse.ACCEPT
 
@@ -666,18 +609,28 @@ class DWAActionServer(Node):
 
         return marker
 
+    def set_planner_state(self, state:PlannerStatus) -> None:
+        self._planner_state = state
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
+
+    def publish_cmd_vel(self, lin_vel:float, ang_vel:float) -> None:
+        cmd_vel = Twist(
+            linear=Vector3(x=lin_vel, y=0.0, z=0.0), 
+            angular=Vector3(x=0.0, y=0.0, z=ang_vel)
+        )
+        self.cmd_vel_pub.publish(cmd_vel)
+
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
         self.get_logger().info(f'enter dwa status callback: {self._planner_state.name}:{int(self._planner_state)}')
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
 
         return response
-
 def main(args=None):
     rclpy.init(args=args)
 
     try:
-        dwa_action_server = DWAActionServer()
+        dwa_action_server = DWABaseNode('dwa_action_server')
         # MultiThreadedExecutor lets us listen to the current location while also doing 
         # Action Server stuff
         executor = MultiThreadedExecutor()

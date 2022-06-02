@@ -294,6 +294,7 @@
 - Remove dynamic replanning and waypoint skipping for now. 
   - [ ] Fix bugs in `waypoint_replan`. Has some things that still need to be thought through.
   - [x] Put as parameters.
+- Refactor `dwa_server` to act as the "base class". The multirobot case can then inherit from the base class and overwrite some of its functions.
 
 ---
 
