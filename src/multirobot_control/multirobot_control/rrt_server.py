@@ -270,31 +270,32 @@ class RRTStarActionServer(Node):
                 resp_future = self.dist_thresh_client.call_async(srv)
                 resp_future.add_done_callback(self.param_set_callback)
 
-            # check if there are goals within line of sight (that can be skipped)
-            if self.params['waypoint_skip']:
-                prev_idx = self.waypoint_idx
-
-                # iterate over all next waypoints within a certain radius. If there is something
-                # within distance and within line of sight then we can assign the goal to that one.
-                for idx in range(self.waypoint_idx+1, len(self.path)):
-                    if (np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[idx]))) < 1.5):
-                        if check_line_of_sight( (self._x, self._y), self.path[idx], OBSTACLE_ARRAY,
-                            safety_radius=self.params["safety_thresh"], 
-                            robot_radius=self.params["robot_radius"], waypoint=False
-                        )==True:
-                            self.waypoint_idx = idx
-                    else:
-                        break   # assume all subsequent waypoints are further (and out of range)
-                
-                if self.waypoint_idx != prev_idx:
-                    self.get_logger().info(f"FFW waypoint from {prev_idx} to {self.waypoint_idx}")
-
-                # Get rid of all relevant path goals
-                for i in range(prev_idx, self.waypoint_idx):
-                    self.remove_path_marker_by_idx(i)
-
             # Send new goal
             if not self._sent_goal:
+                # check if there are goals within line of sight (that can be skipped)
+                if self.params['waypoint_skip']:
+                    prev_idx = self.waypoint_idx
+
+                    # iterate over all next waypoints within a certain radius. If there is something
+                    # within distance and within line of sight then we can assign the goal to that one.
+                    # Also never skip over the last goal.
+                    for idx in range(self.waypoint_idx+1, len(self.path)-1):
+                        if (np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[idx]))) < 1.5):
+                            if check_line_of_sight( (self._x, self._y), self.path[idx], OBSTACLE_ARRAY,
+                                safety_radius=self.params["safety_thresh"], 
+                                robot_radius=self.params["robot_radius"], waypoint=True
+                            )==True:
+                                self.waypoint_idx = idx
+                        else:
+                            break   # assume all subsequent waypoints are further (and out of range)
+                    
+                    if self.waypoint_idx != prev_idx:
+                        self.get_logger().info(f"FFW waypoint from {prev_idx+1} to {self.waypoint_idx+1}")
+
+                        # Get rid of all relevant path goals
+                        for i in range(prev_idx, self.waypoint_idx):
+                            self.remove_path_marker_by_idx(i)
+
                 self.get_logger().info(f"Going to waypoint at {self.path[self.waypoint_idx][0]:.2f}, {self.path[self.waypoint_idx][1]:.2f}. Waypoint {1+self.waypoint_idx}/{len(self.path)}.")
             
                 local_goal = LocalPlanner.Goal()
@@ -339,7 +340,6 @@ class RRTStarActionServer(Node):
             return
 
         self.get_logger().info(f'Local Planner accepted waypoint {1+self.waypoint_idx}/{len(self.path)}')
-        self._sent_goal = False
         self.result_future = self.goal_handle.get_result_async()
         self.result_future.add_done_callback(self.local_planner_get_result_callback)
 
@@ -359,6 +359,9 @@ class RRTStarActionServer(Node):
         self.remove_path_marker_by_idx(self.waypoint_idx)
         # Update indexing
         self.waypoint_idx += 1
+
+        # local planner is ready for another goal
+        self._sent_goal = False
 
     def local_planner_cancel_callback(self, future):
         res = future.result()
