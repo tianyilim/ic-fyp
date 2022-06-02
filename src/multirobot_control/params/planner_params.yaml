@@ -30,6 +30,8 @@
     rrt_max_extend_length : 1.5
     rrt_connect_circle_dist : 1.5
     rrt_debug_plot : false
+    waypoint_skip: true
+    waypoint_replan: false
 
     # Typically for odom_distribution node
     odom_dist_thresh: 2.0

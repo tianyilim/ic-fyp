@@ -64,7 +64,9 @@ class RRTStarActionServer(Node):
                 ('rrt_connect_circle_dist', 1.0),   # How far away nodes must be to be considered for rewiring in RRT*
                 ('rrt_debug_plot', False),          # Debug plot RRT in MatPlotLib
                 ('robot_num', -1),                  # Assign goal colour in Rviz,
-                ('local_planner', 'dwa_action_server')
+                ('local_planner', 'dwa_action_server'),
+                ('waypoint_skip', False),
+                ('waypoint_replan', False),
             ])
 
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -81,7 +83,9 @@ class RRTStarActionServer(Node):
             "rrt_max_extend_length" :   self.get_parameter("rrt_max_extend_length").value,
             "rrt_connect_circle_dist" : self.get_parameter("rrt_connect_circle_dist").value,
             "rrt_debug_plot" :          self.get_parameter("rrt_debug_plot").value,
-            "local_planner" :          self.get_parameter("local_planner").value,
+            "local_planner" :           self.get_parameter("local_planner").value,
+            "waypoint_skip" :           self.get_parameter("waypoint_skip").value,
+            "waypoint_replan" :         self.get_parameter("waypoint_replan").value,
         }
 
         self._action_server_name = f"{self.get_namespace()}/{self.params['local_planner']}"
@@ -99,6 +103,7 @@ class RRTStarActionServer(Node):
         self.waypoint_idx = 0
         self.global_planner_status = PlannerStatus.PLANNER_READY
         self._sent_goal = False     # sync flag
+        self._cancel_goal = False   # sync flag
         
         # on initialization, we need to get this from the Action server. 
         # We should not assume that this is READY on node `init`
@@ -234,6 +239,7 @@ class RRTStarActionServer(Node):
                                     logger=self.get_logger()    )
  
             # set distance thresh while RRT computation is done
+            self.get_logger().info(f"Setting dist_thresh to {self.params['dist_thresh_hi']}")
             srv = SetParameters.Request()
             srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
                 type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
@@ -254,8 +260,9 @@ class RRTStarActionServer(Node):
 
         # If local planner is ready for a new goal, send the next one in the queue
         if (len(self.path)-self.waypoint_idx) > 0 and self.local_planner_status==PlannerStatus.PLANNER_READY:
-            # set distance thresh
-            if len(self.path) == 1:
+            # set distance thresh if we are on the last waypoint
+            if self.waypoint_idx+1 == len(self.path):
+                self.get_logger().info(f"Setting dist_thresh to {self.params['dist_thresh_lo']}")
                 srv = SetParameters.Request()
                 srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
                     type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_lo']
@@ -263,26 +270,28 @@ class RRTStarActionServer(Node):
                 resp_future = self.dist_thresh_client.call_async(srv)
                 resp_future.add_done_callback(self.param_set_callback)
 
-            '''
             # check if there are goals within line of sight (that can be skipped)
-            prev_idx = self.waypoint_idx
+            if self.params['waypoint_skip']:
+                prev_idx = self.waypoint_idx
 
-            # iterate over all next waypoints within a certain radius. If there is something
-            # within distance and within line of sight then we can assign the goal to that one.
-            for idx in range(self.waypoint_idx+1, len(self.path)):
-                if (np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[idx]))) < 1.5):
-                    if check_line_of_sight( (self._x, self._y), self.path[idx], OBSTACLE_ARRAY):
-                        self.waypoint_idx = idx
-                else:
-                    break   # assume all subsequent waypoints are further (and out of range)
-            
-            if self.waypoint_idx != prev_idx:
-                self.get_logger().info(f"FFW waypoint from {prev_idx} to {self.waypoint_idx}")
+                # iterate over all next waypoints within a certain radius. If there is something
+                # within distance and within line of sight then we can assign the goal to that one.
+                for idx in range(self.waypoint_idx+1, len(self.path)):
+                    if (np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[idx]))) < 1.5):
+                        if check_line_of_sight( (self._x, self._y), self.path[idx], OBSTACLE_ARRAY,
+                            safety_radius=self.params["safety_thresh"], 
+                            robot_radius=self.params["robot_radius"], waypoint=False
+                        )==True:
+                            self.waypoint_idx = idx
+                    else:
+                        break   # assume all subsequent waypoints are further (and out of range)
+                
+                if self.waypoint_idx != prev_idx:
+                    self.get_logger().info(f"FFW waypoint from {prev_idx} to {self.waypoint_idx}")
 
-            # Get rid of all relevant path goals
-            for i in range(prev_idx, self.waypoint_idx):
-                self.remove_path_marker_by_idx(i)
-            '''
+                # Get rid of all relevant path goals
+                for i in range(prev_idx, self.waypoint_idx):
+                    self.remove_path_marker_by_idx(i)
 
             # Send new goal
             if not self._sent_goal:
@@ -298,19 +307,23 @@ class RRTStarActionServer(Node):
 
         # Replan if we are too far away or if there is no line of sight to the current goal.
         elif self.local_planner_status==PlannerStatus.PLANNER_EXEC:
-            dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[self.waypoint_idx])))
-            line_of_sight = check_line_of_sight( (self._x, self._y), self.path[self.waypoint_idx], OBSTACLE_ARRAY )
-            
-            if (not line_of_sight) or (dist_to_goal > 2.0):
-                # abort current goal if a current goal handle exists.
-                try:
-                    self.cancel_future = self.goal_handle.cancel_goal_async()
-                    self.cancel_future.add_done_callback(self.local_planner_cancel_callback)
-                    # replan
-                    self.global_planner_status = PlannerStatus.PLANNER_PLAN
-                    self.get_logger().warn(f"Current waypoint unviable. LoS: {line_of_sight}. Pos:{self._x:.2f},{self._y:.2f} Goal:{self.path[self.waypoint_idx][0]:.2f},{self.path[self.waypoint_idx][1]:.2f} Dist to goal: {dist_to_goal:.2f}.")
-                except NameError:
-                    self.get_logger().info("No current goal handle. Not cancelling any goal.")
+            if self.params['waypoint_replan']:
+                dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((self.path[self.waypoint_idx])))
+                line_of_sight = check_line_of_sight( (self._x, self._y), self.path[self.waypoint_idx], OBSTACLE_ARRAY, 
+                    safety_radius=self.params["safety_thresh"], 
+                    robot_radius=self.params["robot_radius"], waypoint=False )
+                
+                if self._cancel_goal==False and ( (line_of_sight!=True) or (dist_to_goal > 2.0) ):
+                    # abort current goal if a current goal handle exists.
+                    try:
+                        self.cancel_future = self.goal_handle.cancel_goal_async()
+                        self.cancel_future.add_done_callback(self.local_planner_cancel_callback)
+                        self._cancel_goal = True    # ensure this doesn't happen too often
+                        # replan
+                        self.global_planner_status = PlannerStatus.PLANNER_PLAN
+                        self.get_logger().warn(f"Current waypoint unviable. LoS: {line_of_sight}. Pos:{self._x:.2f},{self._y:.2f} Goal:{self.path[self.waypoint_idx][0]:.2f},{self.path[self.waypoint_idx][1]:.2f} Dist to goal: {dist_to_goal:.2f}.")
+                    except NameError:
+                        self.get_logger().info("No current goal handle. Not cancelling any goal.")
 
         # Global planner is ready only when we are done executing all waypoints
         if len(self.path) == self.waypoint_idx and self.global_planner_status == PlannerStatus.PLANNER_EXEC:
@@ -349,6 +362,7 @@ class RRTStarActionServer(Node):
 
     def local_planner_cancel_callback(self, future):
         res = future.result()
+        self._cancel_goal = False
         self.get_logger().info(f"Local planner cancel response: {res.return_code==0}")
 
     def action_feedback_cb(self, feedback):
@@ -486,7 +500,7 @@ class RRTStarActionServer(Node):
 
         # Type of marker
         marker.type = Marker.CUBE
-        marker.action = Marker.DELETE
+        marker.action = Marker.DELETEALL
 
         self.vis_waypoint_pub.publish(marker)
 

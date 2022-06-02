@@ -290,7 +290,10 @@
 ### Thu 02/05/22
 - Fixed lots of stuff from [Tues/Wed](#tue-310522)
 - QOL change: select scenario file from `spawn_bots_launch` file
-- 
+- All `check_line_of_sight` uses the inflation method originally used in `rrt_node` (moved to `math_utils`)
+- Remove dynamic replanning and waypoint skipping for now. 
+  - [ ] Fix bugs in `waypoint_replan`. Has some things that still need to be thought through.
+  - [x] Put as parameters.
 
 ---
 
