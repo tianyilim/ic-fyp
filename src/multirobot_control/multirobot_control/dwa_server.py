@@ -62,7 +62,7 @@ class DWABaseNode(Node):
                 ('stall_dist_thresh', 0.1),
             ])
 
-        self.add_on_set_parameters_callback(self.parameter_callback)
+        self.add_on_set_parameters_callback(self._set_parameter_callback)
 
         # state variables
         self._x = 0.0
@@ -511,7 +511,7 @@ class DWABaseNode(Node):
 
     def distToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''
-        Returns distance to goal based the `method`.
+        Returns distance to goal (or other x,y coordinate) based the `method`.
         `'L2'`: Calculates the L2 norm
         '''
 
@@ -524,14 +524,14 @@ class DWABaseNode(Node):
             raise NotImplementedError("distance function {} not implemented yet".format(method))
 
     def closeToGoal(self, curr_x, curr_y, goal_x, goal_y):
-        '''Returns True if we are `thresh` away from the goal'''
+        '''Returns True if we are `self.params['dist_thresh']` away from the goal'''
         
         if self.distToGoal(curr_x, curr_y, goal_x, goal_y) < self.params['dist_thresh']:
             return True
         else:
             return False
 
-    def parameter_callback(self, params):
+    def _set_parameter_callback(self, params):
         for param in params:
             if param.name == 'pub_freq':
                 if param.type_==Parameter.Type.DOUBLE or param.type_==Parameter.Type.INTEGER:
@@ -557,6 +557,18 @@ class DWABaseNode(Node):
         return SetParametersResult(successful=True)
 
     def marker_from_traj(self, idx: int, score: float, end_pose: Tuple[float, float, float]) -> Marker :
+        '''
+        Returns a `Marker` object from the proposed trajectory.
+
+        Args:
+        - idx: An index uniquely identifying the proposed trajectory
+        - score: Trajectory's score from `rankPose`
+        - end_pose: Tuple of (x, y, yaw) - only x, y are used to determine the shape of the marker
+
+        Returns:
+        - `Marker` arrow object to be passed on to a MarkerArray and subsequently published.
+        '''
+
         marker = Marker()
         # header stamp
         marker.header.frame_id = "/map"             # Set relative to global frame
@@ -604,7 +616,7 @@ class DWABaseNode(Node):
 
         # Duration of marker, set to be the update rate of the 
         # controller so we don't have to delete objects
-        period = self.params['action_duration']*1.1
+        period = self.params['action_duration']
         period_sec = int( np.round(period) )
         period_nanosec = int( (period-period_sec)*1e9 )
         marker.lifetime = Duration(seconds=period_sec, nanoseconds=period_nanosec).to_msg()
@@ -628,6 +640,7 @@ class DWABaseNode(Node):
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
 
         return response
+
 def main(args=None):
     rclpy.init(args=args)
 
