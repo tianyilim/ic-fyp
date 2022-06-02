@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from typing import Tuple, List
 
-from multirobot_control.math_utils import dist_to_aabb, check_line_of_sight
+from multirobot_control.math_utils import dist_to_aabb, check_line_of_sight, check_collision
 
 class RRT:
     class Node:
@@ -407,6 +407,8 @@ class RRT:
 
     def check_collision(self, pos:Tuple[float, float], use_safety_radius:bool=True):
         '''
+        Wrapper around math_utils.check_collision.
+
         Args:
         - pos (x,y)
         - use_safety_radius: If safety radius is to be added to the inflation radius.
@@ -419,21 +421,7 @@ class RRT:
         Returns a valid point that lies outside an obstacle. This assumes that the proposed
         point only collides with one obstacle (probably a valid assumption)
         '''
-        eff_safety_radius = (self.robot_radius + self.safety_radius) if use_safety_radius else self.robot_radius
-
-        for obstacle in self.obstacle_list:
-            obstacle_expanded = (
-                obstacle[0] - eff_safety_radius,
-                obstacle[1] - eff_safety_radius,
-                obstacle[2] + eff_safety_radius,
-                obstacle[3] + eff_safety_radius
-            )
-            obs_dist, closest_point = dist_to_aabb(pos[0], pos[1], obstacle_expanded, get_closest_point=True)
-            # Use copysign here because there is the possibility of -0.0 being returned
-            if np.copysign(1, obs_dist) < 0:
-                return False, closest_point
-
-        return True, pos
+        return check_collision(pos, self.obstacle_list, self.safety_radius, self.robot_radius, use_safety_radius)
 
     @staticmethod
     def get_nearest_node(node_list, pos:np.ndarray):

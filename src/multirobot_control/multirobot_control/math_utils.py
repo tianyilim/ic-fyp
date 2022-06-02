@@ -238,3 +238,35 @@ def check_line_of_sight(line_start: Tuple[float,float], line_end: Tuple[float,fl
             return (closest_intersection, (x0_+x1_)/2, (y0_+y1_)/2)
 
     return True
+
+def check_collision(pos:Tuple[float, float], obstacles:List[Tuple[float,float,float,float]],
+    safety_radius:float=0.1, robot_radius:float=0.35,
+    use_safety_radius:bool=True):
+    '''
+    Args:
+    - pos (x,y)
+    - use_safety_radius: If safety radius is to be added to the inflation radius.
+
+    Checks proposed point (x,y) if it will collide with any of the obstacles.
+    
+    First inflates obstacles by the safety radius, and returns false if 
+    the proposed point lies within the expanded obstacle (a would-be collision)
+
+    Returns a valid point that lies outside an obstacle. This assumes that the proposed
+    point only collides with one obstacle (probably a valid assumption)
+    '''
+    eff_safety_radius = (robot_radius + safety_radius) if use_safety_radius else robot_radius
+
+    for obstacle in obstacles:
+        obstacle_expanded = (
+            obstacle[0] - eff_safety_radius,
+            obstacle[1] - eff_safety_radius,
+            obstacle[2] + eff_safety_radius,
+            obstacle[3] + eff_safety_radius
+        )
+        obs_dist, closest_point = dist_to_aabb(pos[0], pos[1], obstacle_expanded, get_closest_point=True)
+        # Use copysign here because there is the possibility of -0.0 being returned
+        if np.copysign(1, obs_dist) < 0:
+            return False, closest_point
+
+    return True, pos

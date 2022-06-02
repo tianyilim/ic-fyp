@@ -284,7 +284,7 @@
 - [ ] Goal arbitration in DWA server
 - [x] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
 - [x] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
-- [ ] Service to update RRT server with result of goal arbitration in DWA server
+- [x] Service to update RRT server with result of goal arbitration in DWA server
   - Created a new service type `SetRRTWaypoint.srv` that allows either the waypoint index of the RRT path or the waypoint coordinates to be modified, and created the infrastructure in the RRT server.
 - [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine
 

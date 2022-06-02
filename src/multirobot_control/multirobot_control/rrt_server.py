@@ -6,6 +6,8 @@ By design choice, each robot calculates its own navigation tree, as it shows tha
 algorithim can be run in a distributed manner.
 '''
 
+from multiprocessing.connection import wait
+import re
 import rclpy
 from rclpy.action import ActionServer, ActionClient
 from rclpy.executors import MultiThreadedExecutor
@@ -32,7 +34,7 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 from multirobot_control.map_params import OBSTACLE_ARRAY, OBSTACLE_BOUND, OBS_WIDTH, OBS_HEIGHT, GOAL_Y_OFFSET
 from multirobot_control.rrt_node import RRT as RRTPlanner
 from multirobot_control.colour_palette import colour_palette_rviz
-from multirobot_control.math_utils import check_line_of_sight
+from multirobot_control.math_utils import check_line_of_sight, check_collision
 from multirobot_control.planner_status import PlannerStatus
 
 import time
@@ -116,9 +118,6 @@ class RRTStarActionServer(Node):
             time.sleep(1)
         self._local_planner_state_future = self._local_planner_state_query_cli.call_async(GetPlannerStatus.Request())
         self._local_planner_state_future.add_done_callback(self._get_local_planner_state_callback)
-        # while self.local_planner_status == None:
-        #     self.get_logger().info("Waiting for service to return...")
-        #     time.sleep(1)
 
         self.goal_marker_topic = self.get_namespace() + '/goals'
         self.path_marker_topic = self.get_namespace() + '/waypoints'
@@ -446,49 +445,56 @@ class RRTStarActionServer(Node):
 
         self.vis_goal_pub.publish(marker)
 
+    def _spawn_waypoint_marker(self, idx:int, pos:Tuple[float, float]):
+        marker = Marker()
+        # header stamp
+        marker.header.frame_id = "/map"             # Set relative to global frame
+        marker.header.stamp = self.get_clock().now().to_msg()
+
+        # namespace and id
+        marker.ns = self.path_marker_topic
+        marker.id = idx
+
+        # Type of marker
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+
+        # Position of marker
+        marker.pose.position.x = float(pos[0])
+        marker.pose.position.y = float(pos[1])
+        marker.pose.position.z = -0.05
+        marker.pose.orientation.x = 0.0
+        marker.pose.orientation.y = 0.0
+        marker.pose.orientation.z = 0.0
+        marker.pose.orientation.w = 1.0
+
+        # Set the scale of the marker
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+
+        # Set the color -- be sure to set alpha to something non-zero!
+        color = colour_palette_rviz[self.robot_num]
+        marker.color.r = color[0]
+        marker.color.g = color[1]
+        marker.color.b = color[2]
+        marker.color.a = 0.8
+
+        # Duration of marker
+        marker.lifetime = Duration().to_msg()
+
+        self.vis_waypoint_pub.publish(marker)
+
+    def _modify_waypoint_marker_by_idx(self, idx:int, pos:Tuple[float,float]):
+        self.remove_path_marker_by_idx(idx)
+        self._spawn_waypoint_marker(idx, pos)
+    
     def display_path_marker(self) -> None:
         '''
         Displays a list of waypoints that the robot will follow using its local planner.
         '''
         for i, (x, y) in enumerate(self.path):
-            marker = Marker()
-            # header stamp
-            marker.header.frame_id = "/map"             # Set relative to global frame
-            marker.header.stamp = self.get_clock().now().to_msg()
-
-            # namespace and id
-            marker.ns = self.path_marker_topic
-            marker.id = i
-
-            # Type of marker
-            marker.type = Marker.CUBE
-            marker.action = Marker.ADD
-
-            # Position of marker
-            marker.pose.position.x = float(x)
-            marker.pose.position.y = float(y)
-            marker.pose.position.z = -0.05
-            marker.pose.orientation.x = 0.0
-            marker.pose.orientation.y = 0.0
-            marker.pose.orientation.z = 0.0
-            marker.pose.orientation.w = 1.0
-
-            # Set the scale of the marker
-            marker.scale.x = 0.1
-            marker.scale.y = 0.1
-            marker.scale.z = 0.1
-
-            # Set the color -- be sure to set alpha to something non-zero!
-            color = colour_palette_rviz[self.robot_num]
-            marker.color.r = color[0]
-            marker.color.g = color[1]
-            marker.color.b = color[2]
-            marker.color.a = 0.8
-
-            # Duration of marker
-            marker.lifetime = Duration().to_msg()
-
-            self.vis_waypoint_pub.publish(marker)
+            self._spawn_waypoint_marker(i, (x,y))
 
     def remove_path_marker(self) -> Marker:
         '''
@@ -643,15 +649,52 @@ class RRTStarActionServer(Node):
         Handles a request to change either the current RRT waypoint or the waypoint_idx.
         '''
 
-        # TODO implement logic for these
         if request.sel_waypoint_idx==SetRRTWaypoint.EDIT_WAYPOINT_IDX:
-            # Modify waypoint index
-            request.waypoint_idx
+            req_waypoint_idx = request.waypoint_idx.data
+            if req_waypoint_idx < len(self.path):
+                self.get_logger().info(f"Setting current RRT waypoint to {req_waypoint_idx+1}/{len(self.path)}.")
+                res = True
+                
+                if req_waypoint_idx < self.waypoint_idx:
+                    # If waypoint is before current self.waypoint_idx, then respawn previous markers.
+                    for i in range(req_waypoint_idx, self.waypoint_idx):
+                        self.get_logger().info(f"Respawning waypoint {i}")
+                        self._spawn_waypoint_marker(i, self.path[i])
+
+                elif req_waypoint_idx > self.waypoint_idx:
+                    # If waypoint is after current self.waypoint_idx, then remove markers
+                    # until the correct one is reached.
+                    for i in range(self.waypoint_idx, req_waypoint_idx):
+                        self.get_logger().info(f"Removing waypoint {i}")
+                        self.remove_path_marker_by_idx(i)
+
+                self.waypoint_idx = req_waypoint_idx
+            else:
+                self.get_logger().warn(f"Requested RRT waypoint {req_waypoint_idx+1} out of range. Ignoring.")
+                res = False
         else:
-            request.waypoint
+            req_waypoint_x = request.waypoint.x
+            req_waypoint_y = request.waypoint.y
+
+            # Check if waypoint is within reason. If not, reject it
+            # we use safety radius=False because we want the extra 'breathing room'.
+            if check_collision((req_waypoint_x, req_waypoint_y), OBSTACLE_ARRAY, 
+            self.params['safety_thresh'], self.params['robot_radius'],
+            use_safety_radius=False )[0]:
+                res = True
+                self.get_logger().info(f"Moved current RRT waypoint from {self.path[self.waypoint_idx][0]:.2f},{self.path[self.waypoint_idx][1]:.2f} to {req_waypoint_x:.2f},{req_waypoint_y:.2f}.")
+                # If waypoint is within reason, modify the current waypoint marker.
+                self._modify_waypoint_marker_by_idx(self.waypoint_idx, (req_waypoint_x, req_waypoint_y))
+                
+                self.path[self.waypoint_idx] = (req_waypoint_x, req_waypoint_y)
+
+            else:
+                self.get_logger().warn(f"Requested RRT waypoint coordinates {req_waypoint_x:.2f},{req_waypoint_y:.2f} invalid. Ignoring.")
+                res = False
+
 
         # Perform bounds checking
-        response.success = True
+        response.success = res
         return response
 
 def main(args=None):
