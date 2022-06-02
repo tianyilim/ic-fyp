@@ -282,7 +282,7 @@
 - [x] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
 - [x] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints), `waypoint_idx`, and Manhattan distance remaining.
 - [ ] Goal arbitration in DWA server
-- [ ] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
+- [x] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
 - [x] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
 - [ ] Service to update RRT server with result of goal arbitration in DWA server
 - [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine

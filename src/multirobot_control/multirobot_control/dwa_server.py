@@ -113,21 +113,20 @@ class DWABaseNode(Node):
             'otherRobotLocations', self.handle_other_robot_state, 10)
 
         # Publish to cmd_vel
-        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         # Publish predicted movement
-        self.planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
+        self._planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
         self.vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
 
         # Timer callback for planned position
-        timer_period = 1 / self.params['pub_freq']
-        self.planned_pos_timer = self.create_timer(timer_period, self.planned_pos_timer_callback)
+        self.planned_pos_timer = self.create_timer(1/self.params['pub_freq'], self.planned_pos_timer_callback)
 
         # Timer callback for stall detection
-        timer_period = self.params['stall_det_period']
-        self.stall_detection_timer = self.create_timer(timer_period, self.stall_detection_callback)
+        self.stall_detection_timer = self.create_timer(self.params['stall_det_period'], self.stall_detection_callback)
 
         # Wait item to implement DWA node
         self._dwa_wait_rate = self.create_rate(1/self.params['action_duration'])
+        self._dwa_action_timer = self.create_timer(self.params['action_duration'], self.dwa_action_callback)
 
         # Service to check for server status
         self._srv_dwa_status = self.create_service(GetPlannerStatus, f'{self.get_name()}/get_dwa_server_status', self._srv_dwa_status_callback)
@@ -175,14 +174,14 @@ class DWABaseNode(Node):
         '''
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
             # If an action is currently being executed=
-            self.planned_pos_pub.publish(PointStamped(
+            self._planned_pos_pub.publish(PointStamped(
                 header=Header(frame_id=self.get_namespace()),
                 point=Point(
                     x=self._planned_pose[0], y=self._planned_pose[1], z=0.0
                 )))
         else:
             # No action executed, send current x and y values
-            self.planned_pos_pub.publish(PointStamped(
+            self._planned_pos_pub.publish(PointStamped(
                 header=Header(frame_id=self.get_namespace()),
                 point=Point(
                     x=self._x, y=self._y, z=0.0
@@ -255,16 +254,61 @@ class DWABaseNode(Node):
 
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''
-
         self.set_planner_state(PlannerStatus.PLANNER_EXEC)
 
-        # Actual DWA algorithm here
         self.goal_x = goal_handle.request.goal_position.x
         self.goal_y = goal_handle.request.goal_position.y
 
         self.get_logger().info('{} moving towards goal ({:.2f}, {:.2f})'.format(self.get_namespace(), self.goal_x, self.goal_y))
 
-        while not self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
+        while not self._planner_state == PlannerStatus.PLANNER_READY:
+            # Publish feedback
+            feedback_msg = LocalPlanner.Feedback()
+            feedback_msg.robot_name = String(data=self.get_namespace())
+            feedback_msg.current_pose.position.x = self._x
+            feedback_msg.current_pose.position.y = self._y
+            feedback_msg.current_pose.position.z = 0.0
+            curr_quaternion = quaternion_from_euler(0, 0, self._yaw)
+            feedback_msg.current_pose.orientation.x = curr_quaternion[0]
+            feedback_msg.current_pose.orientation.y = curr_quaternion[1]
+            feedback_msg.current_pose.orientation.z = curr_quaternion[2]
+            feedback_msg.current_pose.orientation.w = curr_quaternion[3]
+            goal_handle.publish_feedback(feedback_msg)
+
+            self._dwa_wait_rate.sleep()
+        
+        # Set planner status back to free so that corret planned messages are recieved
+        # self.set_planner_state(PlannerStatus.PLANNER_READY)
+
+        # After DWA reaches goal
+        goal_handle.succeed()
+        self.get_logger().info("{} reached goal ({:.2f}, {:.2f}), currently at ({:.2f}, {:.2f})".format(
+            self.get_namespace(), self.goal_x, self.goal_y, self._x, self._y
+        ))
+
+        result = LocalPlanner.Result()
+        result.success = Bool(data=True)
+        result.final_position.x = self._x
+        result.final_position.y = self._y
+        result.final_position.z = 0.0
+        result.robot_name = String(data=self.get_namespace())
+        return result
+
+    def cancel_callback(self, cancelRequest):
+        # ? When will we need to check if goal cannot be cancelled?
+        self.get_logger().info(f"Cancel requested, stopping {self.get_namespace()}.")
+
+        # Stop the robot
+        self.set_planner_state(PlannerStatus.PLANNER_READY)
+
+        self._linear_twist = 0.0
+        self._angular_twist = 0.0
+        self.publish_cmd_vel(self._linear_twist, self._angular_twist)
+
+        return rclpy.action.server.CancelResponse.ACCEPT
+
+    def dwa_action_callback(self):
+        if self._planner_state == PlannerStatus.PLANNER_EXEC:
             # Enumerate possible actions, checking for bounds
             possible_linear = [ self._linear_twist ]
             if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']:
@@ -340,63 +384,21 @@ class DWABaseNode(Node):
                 self._angular_twist = 0.0
 
             self.publish_cmd_vel(self._linear_twist, self._angular_twist)
-
-            # Publish feedback
-            feedback_msg = LocalPlanner.Feedback()
-            feedback_msg.robot_name = String(data=self.get_namespace())
-            feedback_msg.current_pose.position.x = self._x
-            feedback_msg.current_pose.position.y = self._y
-            feedback_msg.current_pose.position.z = 0.0
-            curr_quaternion = quaternion_from_euler(0, 0, self._yaw)
-            feedback_msg.current_pose.orientation.x = curr_quaternion[0]
-            feedback_msg.current_pose.orientation.y = curr_quaternion[1]
-            feedback_msg.current_pose.orientation.z = curr_quaternion[2]
-            feedback_msg.current_pose.orientation.w = curr_quaternion[3]
-            goal_handle.publish_feedback(feedback_msg)
             
             self.get_logger().debug('{} Curr X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
                 self.get_namespace(),
                 self._x, self._y, np.degrees(self._yaw), 
                 self._linear_twist, self._angular_twist ))
 
-            # Sleep for awhile before applying the next motion
-            self._dwa_wait_rate.sleep()
+            if self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
+                # Ensure robot is stopped
+                self._linear_twist = 0.0
+                self._angular_twist = 0.0
+                self.publish_cmd_vel(self._linear_twist, self._angular_twist)
+                
+                self.set_planner_state(PlannerStatus.PLANNER_READY)
+
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
-            
-        # Ensure robot is stopped
-        self._linear_twist = 0.0
-        self._angular_twist = 0.0
-        self.publish_cmd_vel(self._linear_twist, self._angular_twist)
-        
-        # Set planner status back to free so that corret planned messages are recieved
-        self.set_planner_state(PlannerStatus.PLANNER_READY)
-
-        # After DWA reaches goal
-        goal_handle.succeed()
-        self.get_logger().info("{} reached goal ({:.2f}, {:.2f}), currently at ({:.2f}, {:.2f})".format(
-            self.get_namespace(), self.goal_x, self.goal_y, self._x, self._y
-        ))
-
-        result = LocalPlanner.Result()
-        result.success = Bool(data=True)
-        result.final_position.x = self._x
-        result.final_position.y = self._y
-        result.final_position.z = 0.0
-        result.robot_name = String(data=self.get_namespace())
-        return result
-
-    def cancel_callback(self, cancelRequest):
-        # ? When will we need to check if goal cannot be cancelled?
-        self.get_logger().info(f"Cancel requested, stopping {self.get_namespace()}.")
-
-        # Stop the robot
-        self.set_planner_state(PlannerStatus.PLANNER_READY)
-
-        self._linear_twist = 0.0
-        self._angular_twist = 0.0
-        self.publish_cmd_vel(self._linear_twist, self._angular_twist)
-
-        return rclpy.action.server.CancelResponse.ACCEPT
 
     # Helper functions
     def rankPose(self, end_pose, linear_twist, angular_twist):
@@ -618,7 +620,7 @@ class DWABaseNode(Node):
             linear=Vector3(x=lin_vel, y=0.0, z=0.0), 
             angular=Vector3(x=0.0, y=0.0, z=ang_vel)
         )
-        self.cmd_vel_pub.publish(cmd_vel)
+        self._cmd_vel_pub.publish(cmd_vel)
 
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
