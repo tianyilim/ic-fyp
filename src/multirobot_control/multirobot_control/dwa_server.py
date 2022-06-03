@@ -158,7 +158,6 @@ class DWABaseNode(Node):
 
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
-        # print(msg)
         self.other_robots = {}
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]

@@ -2,10 +2,6 @@
 Launch file for the navigation stack of an individual robot
 '''
 import os
-from re import S
-from tracemalloc import start
-
-from click import launch
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -38,6 +34,7 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
     robot_num = LaunchConfiguration('robot_num')
     log_level = LaunchConfiguration('log_level')
+    local_planner = LaunchConfiguration('local_planner')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -106,6 +103,12 @@ def generate_launch_description():
         description="Log level of nodes"
     )
 
+    declare_local_planner_cmd = DeclareLaunchArgument(
+        'local_planner',
+        default_value='dwa_action_server',
+        description="Local planner name"
+    )
+
     start_gt_cmd = Node(
         package='multirobot_control',
         executable='gt_odom',
@@ -145,13 +148,24 @@ def generate_launch_description():
         arguments=['--robot_num', robot_num, '--ros-args', '--log-level', log_level]
     )
 
-    start_dwa_cmd = Node(
+    start_dwa_server_cmd = Node(
         package='multirobot_control',
         executable='dwa_server',
         namespace=namespace,
         output='screen',
         parameters=[{"use_sim_time": use_sim_time}, params_file],
-        arguments=['--ros-args', '--log-level', log_level]
+        arguments=['--ros-args', '--log-level', log_level],
+        condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_action_server"']))
+    )
+
+    start_dwa_multirobot_cmd = Node(
+        package='multirobot_control',
+        executable='dwa_multirobot',
+        namespace=namespace,
+        output='screen',
+        parameters=[{"use_sim_time": use_sim_time}, params_file],
+        arguments=['--ros-args', '--log-level', log_level],
+        condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_multirobot_server"']))
     )
 
     # Launch localization to give map -> transform
@@ -204,7 +218,8 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     
     ld.add_action(start_static_transform_cmd)
-    ld.add_action(start_dwa_cmd)
+    ld.add_action(start_dwa_server_cmd)
+    ld.add_action(start_dwa_multirobot_cmd)
     ld.add_action(start_rrt_cmd)
 
     # ld.add_action(start_gt_cmd)

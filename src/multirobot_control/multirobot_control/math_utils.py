@@ -129,36 +129,6 @@ def get_point_on_connecting_line(line_start:np.ndarray, line_end:np.ndarray, dis
 
     return line_start + line*dist
 
-"""
-def check_line_of_sight(line_start:Tuple[float,float], line_end:Tuple[float,float], 
-                        obstacles:List[Tuple[float,float,float,float]]) -> bool:
-    '''
-    Checks if a line from `line_start` to `line_end` is blocked by any Axis-Aligned 
-    Bounding Box modelled by `obstacles`.
-
-    Returns `True` if there is a line of sight to any obstacle, and `False` otherwise.
-    '''
-    line_start_np = np.array(line_start)
-    line_end_np = np.array(line_end)
-    for x0, y0, x1, y1 in obstacles:
-        p1 = np.array((x0,y0))  # The 4 corners of the bounding box
-        p2 = np.array((x0,y1))
-        p3 = np.array((x1,y1))
-        p4 = np.array((x1,y0))
-
-        i1 = get_intersection(line_start_np, line_end_np, p1, p2)
-        i2 = get_intersection(line_start_np, line_end_np, p2, p3)
-        i3 = get_intersection(line_start_np, line_end_np, p3, p4)
-        i4 = get_intersection(line_start_np, line_end_np, p4, p1)
-        
-        if i1 is None and i2 is None and i3 is None and i4 is None:
-            continue
-        else:
-            return False
-
-    return True
-"""
-
 def check_line_of_sight(line_start: Tuple[float,float], line_end: Tuple[float,float], 
             obstacles:List[Tuple[float,float,float,float]], 
             safety_radius:float=0.1, robot_radius:float=0.35,

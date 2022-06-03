@@ -75,6 +75,8 @@ def generate_launch_description():
 
     with open(scenario_file_dir, 'r') as pf:
         scenario_configs = yaml.safe_load(pf)
+    with open(params_file_dir, 'r') as f:
+        param_configs = yaml.safe_load(f)
 
     robots = []
     for idx in range(len(scenario_configs['/**']['ros__parameters']['robot_list'])):
@@ -218,6 +220,7 @@ def generate_launch_description():
                     'yaw_pose': TextSubstitution(text=str(robot['yaw_pose'])),
                     'robot_num': str(i),  # To tag robots' colours
                     'autostart': 'true',
+                    'local_planner': param_configs['/**']['ros__parameters']['local_planner'],
                     'log_level': log_level
                 }.items()
             )

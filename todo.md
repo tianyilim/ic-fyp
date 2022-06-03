@@ -297,6 +297,10 @@
   - [x] Put as parameters.
 - Refactor `dwa_server` to act as the "base class". The multirobot case can then inherit from the base class and overwrite some of its functions.
 
+### Fri 03/05/22
+- Add in option in `planner_params.yaml` to choose between `dwa_action_server` and `dwa_multirobot_server`.
+- Launch file will launch the appropriate server (but fail silently if something is not met)
+
 ---
 
 - [ ] Set up multi robot joint planner
