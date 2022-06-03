@@ -60,6 +60,11 @@ class DWAMultirobotServer(DWABaseNode):
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         
+        # TODO move the state querying into odom_distribution.
+        # Because everything is callback-based, it should return fairly quickly.
+        # Should not loop in this callback but rather wait till the next iteration...
+        # Or have a megaloop running somewhere.
+
         self.other_robots = {}
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]
@@ -71,15 +76,19 @@ class DWAMultirobotServer(DWABaseNode):
         # Check if we need to go undergo a state transition
         # Look for the closest robot
         if len(self.other_robots) > 0:
+            
+            min_dist = np.inf
+            min_dist_robot_name = list(self.other_robots.keys())[0]
+            for key in self.other_robots.keys():
+                x,y = self.other_robots[key]
+                dist = np.linalg.norm(np.array((x,y)) - np.array((self._x, self._y)) )
+                if dist < min_dist:
+                    min_dist = dist
+                    min_dist_robot_name = key
+            
+            self.get_logger().info(f'Closest robot to {self.get_name()}: {min_dist_robot_name}, dist:{min_dist:.2f}')
+
             if self._planner_state == PlannerStatus.PLANNER_EXEC or self._planner_state == PlannerStatus.PLANNER_READY:
-                min_dist = np.inf
-                min_dist_robot_name = list(self.other_robots.keys())[0]
-                for key in self.other_robots.keys():
-                    x,y = self.other_robots[key]
-                    dist = np.linalg.norm(np.array((x,y)) - np.array((self._x, self._y)) )
-                    if dist < min_dist:
-                        min_dist = dist
-                        min_dist_robot_name = key
                 
                 # Check if the robot is within joint planning distance.
                 # ? Currently there is no option for this. This can be done by tuning the
@@ -87,15 +96,25 @@ class DWAMultirobotServer(DWABaseNode):
 
                 # min_dist_robot_name is the robot closest to this one.
                 other_robot_state = None
-                other_robot_state_cli = self.create_client(GetPlannerStatus, f"/{min_dist_robot_name}/{self.get_name()}/get_dwa_server_status")
+                robot_svc = f"/{min_dist_robot_name}/{self.get_name()}/get_dwa_server_status"
+                other_robot_state_cli = self.create_client(GetPlannerStatus, robot_svc)
+                while not other_robot_state_cli.wait_for_service(timeout_sec=1.0):
+                    self.get_logger().info(f"{robot_svc} not availble, trying again...")
                 other_robot_state_future = other_robot_state_cli.call_async(GetPlannerStatus.Request())    # is in the enum
                 other_robot_state_future.add_done_callback(self._get_other_robot_state_callback)
-                # Wait for the service to complete
-                while other_robot_state == None: self._delay_10_hz.sleep()
-                other_robot_state = self._other_robot_state
+                
+                # Wait for the service to complete (not possible?)
+                
+                # while other_robot_state == None: 
+                #     self._delay_10_hz.sleep()
+                #     self.get_logger().info(f"Waiting for other_robot_state service")
+                
+                other_robot_state = self.other_robot_state
+
+                self.get_logger().info(f"curr status: {self._planner_state.name}, target status: {self.other_robot_state.name}")
 
                 if self._planner_state == PlannerStatus.PLANNER_EXEC:
-                    if other_robot_state == PlannerStatus.PLANNER_EXEC:
+                    if self.other_robot_state == PlannerStatus.PLANNER_EXEC:
                         self._prev_planner_state = self._planner_state
                         
                         # Get current robot's manhattan distance
@@ -119,8 +138,12 @@ class DWAMultirobotServer(DWABaseNode):
                             f'/{min_dist_robot_name}/rrt_star_action_server/set_rrt_waypoint')
 
                         # Wait for service to complete
-                        while self._curr_manhattan_dist == None: self._delay_10_hz.sleep()
-                        while self._target_manhattan_dist == None: self._delay_10_hz.sleep()
+                        # while self._curr_manhattan_dist == None: 
+                        #     self._delay_10_hz.sleep()
+                        #     self.get_logger().info(f"Waiting for curr_rrt_waypoints service")
+                        # while self._target_manhattan_dist == None: 
+                        #     self._delay_10_hz.sleep()
+                        #     self.get_logger().info(f"Waiting for target_rrt_waypoints service")
                         
                         # priority based on the shorter distance to the goal.
                         if self._curr_manhattan_dist < self._target_manhattan_dist:
@@ -145,14 +168,14 @@ class DWAMultirobotServer(DWABaseNode):
 
                         self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}")
 
-                    if other_robot_state == PlannerStatus.PLANNER_READY:
+                    if self.other_robot_state == PlannerStatus.PLANNER_READY:
                         self._prev_planner_state = self._planner_state
                         self.set_planner_state(PlannerStatus.PLANNER_EXEC_JOINT)
                         self._joint_plan_target = f"/{min_dist_robot_name}"
                         self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}.")
 
                 if self._planner_state == PlannerStatus.PLANNER_READY:
-                    if other_robot_state == PlannerStatus.PLANNER_EXEC:
+                    if self.other_robot_state == PlannerStatus.PLANNER_EXEC:
                         self._prev_planner_state = self._planner_state
                         self.set_planner_state(PlannerStatus.PLANNER_DEFERRED)
                         self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}.")
