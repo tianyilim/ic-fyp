@@ -278,8 +278,7 @@ class DWABaseNode(Node):
 
             self._dwa_wait_rate.sleep()
         
-        # Set planner status back to free so that corret planned messages are recieved
-        # self.set_planner_state(PlannerStatus.PLANNER_READY)
+        # Set planner status back to free so that correct planned messages are recieved
 
         # After DWA reaches goal
         goal_handle.succeed()
@@ -637,7 +636,7 @@ class DWABaseNode(Node):
 
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
-        self.get_logger().info(f'enter dwa status callback: {self._planner_state.name}:{int(self._planner_state)}')
+        self.get_logger().debug(f'enter dwa status callback: {self._planner_state.name}:{int(self._planner_state)}')
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
 
         return response

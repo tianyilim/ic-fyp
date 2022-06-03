@@ -281,7 +281,7 @@
   - [x] Check if DWA server is `PlannerStatus.PLANNER_READY` before starting to give any commands. Currently calling service to check the status never returns
 - [x] New states for `deferred` and `exec_joint` in `planner_status.py` and `GetPlannerStatus.srv`
 - [x] Create `GetWaypoints.srv` service that returns a `Point` array (with waypoints), `waypoint_idx`, and Manhattan distance remaining.
-- [ ] Goal arbitration in DWA server
+- [x] Goal arbitration in DWA server
 - [x] Change the DWA server to a structure similar to the RRT server: `execute_callback` polls for state to change back to `PlannerStatus.PLANNER_READY` before returning. Furthermore, if the node goes from `PLANNER_READY -> PLANNER_DEFERRED -> PLANNER_EXEC`, it will still be able to reach its original goal.
 - [x] RRT server not to `pop` off stuff from the waypoint array but to use `waypoint_idx` instead so that the joint DWA planner will always have a waypoint within line of sight
 - [x] Service to update RRT server with result of goal arbitration in DWA server
@@ -301,6 +301,10 @@
 - Add in option in `planner_params.yaml` to choose between `dwa_action_server` and `dwa_multirobot_server`.
 - Launch file will launch the appropriate server (but fail silently if something is not met)
 - `odom_distribution` only starts listening to stuff from `odom` when the robot has finished spawning (gets a message on `{namespace}/finished_spawning`)
+- Goal arbitration in DWA server was added, implemented by attempting to connect the current waypoint to the future waypoint.
+  - Take a look at `dwa_multirobot_server/get_collision_free_waypoint`
+- [ ] Rethink how the status of each server should be retrieved. Perhaps the centralised node can take care of it but this architectural choice detracts from a truly "distributed" computation.
+  - An idea would be moving the computation in `dwa_multirobot_server/handle_other_robot_state` into a separate mega-loop/timer callback. This allows for polling to happen somehow (allowing us to call `while not ... ready() : ...`)
 
 ---
 
