@@ -300,6 +300,7 @@
 ### Fri 03/05/22
 - Add in option in `planner_params.yaml` to choose between `dwa_action_server` and `dwa_multirobot_server`.
 - Launch file will launch the appropriate server (but fail silently if something is not met)
+- `odom_distribution` only starts listening to stuff from `odom` when the robot has finished spawning (gets a message on `{namespace}/finished_spawning`)
 
 ---
 

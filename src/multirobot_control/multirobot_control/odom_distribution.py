@@ -33,7 +33,9 @@ class OdomDistribution(Node):
         self.add_on_set_parameters_callback(self.parameter_callback)
 
         self.robot_locs = {}                # Collection of robot poses
+        self.robot_done = {}
         self.odom_subscriptions = []        # Collection of subscription objects
+        self.start_subscriptions = []
         self.planned_pos_subscriptions = [] 
         self.odom_publications = []         # Collection of publisher objects
         
@@ -46,8 +48,17 @@ class OdomDistribution(Node):
             dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot, Point(x=0.0, y=0.0, z=0.0))
             self.robot_locs[robot] = dummyPoint
             self.robot_locs[index] = dummyPoint
+
             # We use a dict because otherwise subscribing to many robots' locations will become tough
             # but we index with both names (for topics) and indices
+            
+            # This flag is cleared when we get the signal from `spawn_single_bot`
+            self.robot_done[robot] = False
+
+            self.start_subscriptions.append(
+                self.create_subscription(String, robot+'/finished_spawning', \
+                self.handle_fin_spawning, 10)
+            )
 
             self.odom_subscriptions.append(
                 self.create_subscription(Odometry, robot+'/odom', \
@@ -69,79 +80,84 @@ class OdomDistribution(Node):
 
 
     def timer_callback(self):
-        # Calculate the NN for each pair of robots
-        # This is represented as a symmetric matrix to prevent extra calculation.
-        num_robots = len(self.get_parameter("robot_list").value)
+        # Check if the values for all robots are valid
+        if all(self.robot_done.values()):
+            # Calculate the NN for each pair of robots
+            # This is represented as a symmetric matrix to prevent extra calculation.
+            num_robots = len(self.get_parameter("robot_list").value)
 
-        distances = np.zeros(( num_robots, num_robots ))
+            distances = np.zeros(( num_robots, num_robots ))
 
-        for curr_idx in range( num_robots ):
-            curr_x = self.robot_locs[curr_idx][0].x
-            curr_y = self.robot_locs[curr_idx][0].y
+            for curr_idx in range( num_robots ):
+                curr_x = self.robot_locs[curr_idx][0].x
+                curr_y = self.robot_locs[curr_idx][0].y
 
-            for other_idx in range( num_robots ):
-                if curr_idx == other_idx \
-                or distances[curr_idx, other_idx] != 0:
-                    # Don't need to calculate distance between the same element
-                    # Or the distance between stuff that has already been calculated
-                    continue
-                
-                other_x = self.robot_locs[other_idx][0].x
-                other_y = self.robot_locs[other_idx][0].y
-
-                # print(curr_x, curr_y, other_x, other_y)
-
-                # Symmetric matrix. For some reason `hypot` needs to be indexed
-                
-                distances[curr_idx, other_idx] = np.hypot((curr_x-other_x), (curr_y-other_y))
-                distances[other_idx, curr_idx] = distances[curr_idx, other_idx]
-
-                # print("Dist between robot {} (x:{:.2f} y:{:.2f}) and {} (x:{:.2f} y:{:.2f}): {:.2f}".format(
-                #     curr_idx+1, curr_x, curr_y, 
-                #     other_idx+1, other_x, other_y,
-                #     distances[curr_idx, other_idx]
-                # ))
-
-        # Filter for distances not on the diagonal
-        np.fill_diagonal(distances, 1e9)    # large to avoid filter below
-        i_index, j_index = np.nonzero( distances <= self.get_parameter("odom_dist_thresh").value )
-        # We know the matrix is symmetrical so this cuts down our search space
-        i_index = np.split(i_index, 2)[0]
-        j_index = np.split(j_index, 2)[0]
-
-        # Iterate through
-        for robot_idx in range(num_robots):
-            # Publish relevant info for each robot
-            message = OtherRobotLocations()
-            robot_names = []
-            robot_poses = []
-
-            # We only want the robots where i_index!=j_index (handled earlier where we removed diagonals)
-            # We compare if i or j is a match, and use it to get the other pair (as we have removed duplicates)
-            for idx in range(len(i_index)):
-                i = i_index[idx]
-                j = j_index[idx]
-                if  i==robot_idx:
-                    robot_names.append(String(data=self.robot_locs[j][1]))
-                    # THIS SHOULD BE PLANNED_POS, but needs fixing
-                    # robot_poses.append(self.robot_locs[j][0])
-                    robot_poses.append(self.robot_locs[j][2])
+                for other_idx in range( num_robots ):
+                    if curr_idx == other_idx \
+                    or distances[curr_idx, other_idx] != 0:
+                        # Don't need to calculate distance between the same element
+                        # Or the distance between stuff that has already been calculated
+                        continue
                     
-                elif j==robot_idx:
-                    robot_names.append(String(data=self.robot_locs[i][1]))
-                    # robot_poses.append(self.robot_locs[i][0])
-                    robot_poses.append(self.robot_locs[i][2])
+                    other_x = self.robot_locs[other_idx][0].x
+                    other_y = self.robot_locs[other_idx][0].y
+
+                    # print(curr_x, curr_y, other_x, other_y)
+
+                    # Symmetric matrix. For some reason `hypot` needs to be indexed
                     
+                    distances[curr_idx, other_idx] = np.hypot((curr_x-other_x), (curr_y-other_y))
+                    distances[other_idx, curr_idx] = distances[curr_idx, other_idx]
 
-            message.names = robot_names
-            message.positions = robot_poses
+                    # print("Dist between robot {} (x:{:.2f} y:{:.2f}) and {} (x:{:.2f} y:{:.2f}): {:.2f}".format(
+                    #     curr_idx+1, curr_x, curr_y, 
+                    #     other_idx+1, other_x, other_y,
+                    #     distances[curr_idx, other_idx]
+                    # ))
 
-            self.get_logger().debug("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
-                robot_idx, self.robot_locs[robot_idx][1],
-                robot_names, robot_poses
-            ))
+            # Filter for distances not on the diagonal
+            np.fill_diagonal(distances, 1e9)    # large to avoid filter below
+            i_index, j_index = np.nonzero( distances <= self.get_parameter("odom_dist_thresh").value )
+            # We know the matrix is symmetrical so this cuts down our search space
+            i_index = np.split(i_index, 2)[0]
+            j_index = np.split(j_index, 2)[0]
 
-            self.odom_publications[robot_idx].publish(message)
+            # Iterate through
+            for robot_idx in range(num_robots):
+                # Publish relevant info for each robot
+                message = OtherRobotLocations()
+                robot_names = []
+                robot_poses = []
+
+                # We only want the robots where i_index!=j_index (handled earlier where we removed diagonals)
+                # We compare if i or j is a match, and use it to get the other pair (as we have removed duplicates)
+                for idx in range(len(i_index)):
+                    i = i_index[idx]
+                    j = j_index[idx]
+                    if  i==robot_idx:
+                        robot_names.append(String(data=self.robot_locs[j][1]))
+                        # THIS SHOULD BE PLANNED_POS, but needs fixing
+                        # robot_poses.append(self.robot_locs[j][0])
+                        robot_poses.append(self.robot_locs[j][2])
+                        
+                    elif j==robot_idx:
+                        robot_names.append(String(data=self.robot_locs[i][1]))
+                        # robot_poses.append(self.robot_locs[i][0])
+                        robot_poses.append(self.robot_locs[i][2])
+                        
+
+                message.names = robot_names
+                message.positions = robot_poses
+
+                self.get_logger().debug("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
+                    robot_idx, self.robot_locs[robot_idx][1],
+                    robot_names, robot_poses
+                ))
+
+                self.odom_publications[robot_idx].publish(message)
+            
+            else:
+                self.get_logger().info("Not all robots done spawning. Waiting...", once=True)
 
 
     def handle_odom(self, msg):
@@ -177,6 +193,13 @@ class OdomDistribution(Node):
             robot_id, self.robot_locs[robot_id][2].x, 
             self.robot_locs[robot_id][2].y, self.robot_locs[robot_id][2].z
         ))
+
+    def handle_fin_spawning(self, msg):
+        robot_id = msg.data
+        self.get_logger().debug(f"{robot_id} is done spawning.")
+        self.robot_done[robot_id] = True
+
+        pass
 
     def parameter_callback(self, params):
         # type/bounds check on pub_freq (don't modify robot_list)

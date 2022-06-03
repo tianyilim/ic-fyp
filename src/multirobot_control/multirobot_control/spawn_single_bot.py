@@ -26,6 +26,9 @@ import rclpy
 
 from tf_transformations import quaternion_from_euler
 
+from std_msgs.msg import String
+import time
+
 # The dictionary containing the palette of robots--> gazebo colors
 
 def main():
@@ -104,6 +107,13 @@ def main():
             f'exception while calling service: {future.exception()!r}')
 
     node.get_logger().info('Done! Shutting down node.')
+
+    fin_pub = node.create_publisher(String, f'/{args.robot_namespace}/finished_spawning', 10)
+    while fin_pub.get_subscription_count() < 1:
+        node.get_logger().warn("Please create a subscriber to spawn_single_bot/fin_pub.", once=True)
+        time.sleep(1)
+    fin_pub.publish(String(data=f"{args.robot_namespace}"))
+
     node.destroy_node()
     rclpy.shutdown()
 

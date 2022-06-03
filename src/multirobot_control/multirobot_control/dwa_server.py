@@ -135,6 +135,8 @@ class DWABaseNode(Node):
         self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, f'{self.get_name()}/dwa_status', 10)
         self.set_planner_state(PlannerStatus.PLANNER_READY)
 
+        self.get_logger().info(f"{self.get_namespace()}/{self.get_name()} ready.")
+
     def handle_odom(self, msg):
         '''Handle incoming data on `odom` by updating private variables'''
         # Accumulate distance travelled
