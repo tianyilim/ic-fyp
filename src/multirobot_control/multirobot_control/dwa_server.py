@@ -13,7 +13,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
-from planner_action_interfaces.srv import GetPlannerStatus
+from planner_action_interfaces.srv import GetPlannerStatus, GetRRTWaypoints
 
 from std_msgs.msg import Bool, String, Header, Int8
 from nav_msgs.msg import Odometry
@@ -161,12 +161,20 @@ class DWABaseNode(Node):
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         self.other_robots = {}
+        self.closest_robot = None
+        closest_dist = np.inf
+
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]
             name = msg.names[idx].data
             self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
 
             self.other_robots[name] = (pose.x, pose.y)
+
+            dist = np.linalg.norm( np.array((pose.x, pose.y))-np.array((self._x, self._y)) )
+            if dist < closest_dist:
+                closest_dist = dist
+                self.closest_robot = name
     
     def planned_pos_timer_callback(self):
         ''' 
@@ -276,8 +284,26 @@ class DWABaseNode(Node):
             feedback_msg.current_pose.orientation.w = curr_quaternion[3]
             goal_handle.publish_feedback(feedback_msg)
 
+            # Stop the robot
+            if self._planner_state == PlannerStatus.PLANNER_ABORT:
+                goal_handle.abort()
+
+                self._linear_twist = 0.0
+                self._angular_twist = 0.0
+                self.publish_cmd_vel(0.0, 0.0)
+
+                result = LocalPlanner.Result()
+                
+                result.success = Bool(data=False)
+                result.final_position.x = self._x
+                result.final_position.y = self._y
+                result.final_position.z = 0.0
+                result.robot_name = String(data=self.get_namespace())
+
+                self.set_planner_state(PlannerStatus.PLANNER_READY)
+                return result
+
             self._dwa_wait_rate.sleep()
-        
         # Set planner status back to free so that correct planned messages are recieved
 
         # After DWA reaches goal
@@ -686,6 +712,32 @@ class DWABaseNode(Node):
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
 
         return response
+
+    @staticmethod
+    def _parse_get_rrt_response(response:GetRRTWaypoints.Response):
+        '''Parses the response from the RRT server about the current list of waypoints.
+        Converts the Point List into a list of x,y values for pythonic interpretation.'''
+        manhattan_dist = response.remaining_dist.data
+        waypoint_idx = response.waypoint_idx.data
+        path = []
+        for point in response.waypoints:
+            path.append((point.x, point.y))
+            
+        return manhattan_dist, waypoint_idx, path
+
+    def _get_curr_rrt_dist_callback(self, future):
+        '''Response from the current RRT server about the waypoints.'''
+        response = future.result()
+        self._curr_manhattan_dist, self._curr_waypoint_idx , self._curr_path = \
+            self._parse_get_rrt_response(response)
+        self.get_logger().debug(f"Curr RRT srv callback: Manhattan Dist: {self._curr_manhattan_dist:.2f}, Curr waypt idx: {self._curr_waypoint_idx}\n{self._curr_path}")
+
+    def _get_target_rrt_dist_callback(self, future):
+        '''Response from the target RRT server about the waypoints.'''
+        response = future.result()
+        self._target_manhattan_dist, self._target_waypoint_idx , self._target_path = \
+            self._parse_get_rrt_response(response)
+        self.get_logger().debug(f"Target RRT srv callback: Manhattan Dist: {self._target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
 
 def main(args=None):
     rclpy.init(args=args)

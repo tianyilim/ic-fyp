@@ -314,6 +314,10 @@
 - [ ] Collaborative part of code needs further thought - currently it's not much better than the regular DWA node.
 - Create a new DWA variant, `dwa_replan` which aims to replan if a collision is detected between robots.
 
+- Use `self.closest_robot`, no need to calculate again in `dwa_multirobot`
+
+- Add an `ABORTED` state to the planner
+
 ---
 
 - [ ] Set up multi robot joint planner
