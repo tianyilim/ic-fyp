@@ -310,6 +310,7 @@
 - Changed up system architecture for `dwa_multirobot`, using a `_main_loop` that runs at 10Hz to check for the locations of other robots, and run state transition.
 - Move creating subscribers to `odom` / publishers to `cmd_vel` into a modified version of `set_planner_state`.
 - Plumbing for publishing the relevant values to `odom_distribution`, even if it's not fully done up yet.
+- Setup a service to set goal within DWA server, as well as its respective topic.
 
 ---
 
