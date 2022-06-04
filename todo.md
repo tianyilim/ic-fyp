@@ -303,8 +303,13 @@
 - `odom_distribution` only starts listening to stuff from `odom` when the robot has finished spawning (gets a message on `{namespace}/finished_spawning`)
 - Goal arbitration in DWA server was added, implemented by attempting to connect the current waypoint to the future waypoint.
   - Take a look at `dwa_multirobot_server/get_collision_free_waypoint`
-- [ ] Rethink how the status of each server should be retrieved. Perhaps the centralised node can take care of it but this architectural choice detracts from a truly "distributed" computation.
+- [x] Rethink how the status of each server should be retrieved. Perhaps the centralised node can take care of it but this architectural choice detracts from a truly "distributed" computation.
   - An idea would be moving the computation in `dwa_multirobot_server/handle_other_robot_state` into a separate mega-loop/timer callback. This allows for polling to happen somehow (allowing us to call `while not ... ready() : ...`)
+
+### Sat 04/05/22
+- Changed up system architecture for `dwa_multirobot`, using a `_main_loop` that runs at 10Hz to check for the locations of other robots, and run state transition.
+- Move creating subscribers to `odom` / publishers to `cmd_vel` into a modified version of `set_planner_state`.
+- Plumbing for publishing the relevant values to `odom_distribution`, even if it's not fully done up yet.
 
 ---
 

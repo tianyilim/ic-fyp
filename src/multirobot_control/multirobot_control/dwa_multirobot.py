@@ -56,7 +56,13 @@ class DWAMultirobotServer(DWABaseNode):
         self.params['rrt_max_extend_length'] = self.get_parameter('rrt_max_extend_length').value
 
         self._delay_10_hz = self.create_rate(10)
+        self._main_loop_timer = self.create_timer(0.1, self._main_loop)
 
+        self._other_robot_request = True
+        self._curr_rrt_request = True
+        self._target_rrt_request = True
+
+    """
     def handle_other_robot_state(self, msg):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         
@@ -64,7 +70,6 @@ class DWAMultirobotServer(DWABaseNode):
         # Because everything is callback-based, it should return fairly quickly.
         # Should not loop in this callback but rather wait till the next iteration...
         # Or have a megaloop running somewhere.
-
         self.other_robots = {}
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]
@@ -72,45 +77,50 @@ class DWAMultirobotServer(DWABaseNode):
             self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
 
             self.other_robots[name] = (pose.x, pose.y)
+    """
 
+    def _main_loop(self):
+        '''
+        Main loop for containing the logic for goal arbitration.
+        '''
         # Check if we need to go undergo a state transition
         # Look for the closest robot
         if len(self.other_robots) > 0:
-            
-            min_dist = np.inf
-            min_dist_robot_name = list(self.other_robots.keys())[0]
-            for key in self.other_robots.keys():
-                x,y = self.other_robots[key]
-                dist = np.linalg.norm(np.array((x,y)) - np.array((self._x, self._y)) )
-                if dist < min_dist:
-                    min_dist = dist
-                    min_dist_robot_name = key
-            
-            self.get_logger().info(f'Closest robot to {self.get_name()}: {min_dist_robot_name}, dist:{min_dist:.2f}')
-
             if self._planner_state == PlannerStatus.PLANNER_EXEC or self._planner_state == PlannerStatus.PLANNER_READY:
+                # only update this value when all below services return
+                if self._other_robot_request and self._curr_rrt_request and self._target_rrt_request:
+                    min_dist = np.inf
+                    self.min_dist_robot_name = list(self.other_robots.keys())[0]
+                    for key in self.other_robots.keys():
+                        x,y = self.other_robots[key]
+                        dist = np.linalg.norm(np.array((x,y)) - np.array((self._x, self._y)) )
+                        if dist < min_dist:
+                            min_dist = dist
+                            self.min_dist_robot_name = key
+                    self.get_logger().info(f'Closest robot to {self.get_name()}: {self.min_dist_robot_name}, dist:{min_dist:.2f}')
+                else:
+                    self.get_logger().info("Not running min_dist request, waiting for services to return.")
                 
                 # Check if the robot is within joint planning distance.
                 # ? Currently there is no option for this. This can be done by tuning the
                 # ? 'odom_dist_thresh' parameter.
 
-                # min_dist_robot_name is the robot closest to this one.
-                other_robot_state = None
-                robot_svc = f"/{min_dist_robot_name}/{self.get_name()}/get_dwa_server_status"
-                other_robot_state_cli = self.create_client(GetPlannerStatus, robot_svc)
-                while not other_robot_state_cli.wait_for_service(timeout_sec=1.0):
-                    self.get_logger().info(f"{robot_svc} not availble, trying again...")
-                other_robot_state_future = other_robot_state_cli.call_async(GetPlannerStatus.Request())    # is in the enum
-                other_robot_state_future.add_done_callback(self._get_other_robot_state_callback)
+                # Only call the service if it not been called before
+                # We reset the flag at the end of this if-block (when all services have returned)
+                if self._other_robot_request:
+                    # self.min_dist_robot_name is the robot closest to this one.
+                    robot_svc = f"/{self.min_dist_robot_name}/{self.get_name()}/get_dwa_server_status"
+                    self.other_robot_state = None
+                    self._other_robot_request = False
+                    other_robot_state_cli = self.create_client(GetPlannerStatus, robot_svc)
+                    other_robot_state_future = other_robot_state_cli.call_async(GetPlannerStatus.Request())    # is in the enum
+                    other_robot_state_future.add_done_callback(self._get_other_robot_state_callback)
                 
-                # Wait for the service to complete (not possible?)
+                # Wait for the service to complete. If no response yet, wait till next iteration of megaloop.
+                if self.other_robot_state == None:
+                    self.get_logger().info(f"Waiting for other_robot_state service")
+                    return
                 
-                # while other_robot_state == None: 
-                #     self._delay_10_hz.sleep()
-                #     self.get_logger().info(f"Waiting for other_robot_state service")
-                
-                other_robot_state = self.other_robot_state
-
                 self.get_logger().info(f"curr status: {self._planner_state.name}, target status: {self.other_robot_state.name}")
 
                 if self._planner_state == PlannerStatus.PLANNER_EXEC:
@@ -118,32 +128,31 @@ class DWAMultirobotServer(DWABaseNode):
                         self._prev_planner_state = self._planner_state
                         
                         # Get current robot's manhattan distance
-                        curr_rrt_waypoints_cli = self.create_client(GetRRTWaypoints, 
-                            f"{self.get_namespace()}/rrt_star_action_server/get_rrt_waypoints" )
-                        curr_rrt_waypoints_future = curr_rrt_waypoints_cli.call_async(GetRRTWaypoints.Request())
-                        curr_rrt_waypoints_future.add_done_callback(self._get_curr_rrt_dist_callback)
+                        if self._curr_rrt_request:
+                            self._curr_manhattan_dist = None
+                            self._curr_rrt_request = False
+                            curr_rrt_waypoints_cli = self.create_client(GetRRTWaypoints, 
+                                f"{self.get_namespace()}/rrt_star_action_server/get_rrt_waypoints" )
+                            curr_rrt_waypoints_future = curr_rrt_waypoints_cli.call_async(GetRRTWaypoints.Request())
+                            curr_rrt_waypoints_future.add_done_callback(self._get_curr_rrt_dist_callback)
                         
                         # Get target robot's manhattan distance
-                        target_rrt_waypoints_cli = self.create_client(GetRRTWaypoints, 
-                            f"/{min_dist_robot_name}/rrt_star_action_server/get_rrt_waypoints" )
-                        target_rrt_waypoints_future = target_rrt_waypoints_cli.call_async(GetRRTWaypoints.Request())
-                        target_rrt_waypoints_future.add_done_callback(self._get_target_rrt_dist_callback)
+                        if self._target_rrt_request:
+                            self._target_manhattan_dist = None
+                            self._target_rrt_request = False
+                            target_rrt_waypoints_cli = self.create_client(GetRRTWaypoints, 
+                                f"/{self.min_dist_robot_name}/rrt_star_action_server/get_rrt_waypoints" )
+                            target_rrt_waypoints_future = target_rrt_waypoints_cli.call_async(GetRRTWaypoints.Request())
+                            target_rrt_waypoints_future.add_done_callback(self._get_target_rrt_dist_callback)
 
-                        self._curr_manhattan_dist = None
-                        self._target_manhattan_dist = None
+                        if self._curr_manhattan_dist == None or self._target_manhattan_dist == None:
+                            self.get_logger().info(f"Waiting for curr_rrt_waypoints and target_rrt_waypoints services")
+                            return
 
                         self._set_curr_rrt_goal_cli = self.create_client(SetRRTWaypoint, 
                             f'{self.get_namespace()}/rrt_star_action_server/set_rrt_waypoint')
                         self._set_target_rrt_goal_cli = self.create_client(SetRRTWaypoint, 
-                            f'/{min_dist_robot_name}/rrt_star_action_server/set_rrt_waypoint')
-
-                        # Wait for service to complete
-                        # while self._curr_manhattan_dist == None: 
-                        #     self._delay_10_hz.sleep()
-                        #     self.get_logger().info(f"Waiting for curr_rrt_waypoints service")
-                        # while self._target_manhattan_dist == None: 
-                        #     self._delay_10_hz.sleep()
-                        #     self.get_logger().info(f"Waiting for target_rrt_waypoints service")
+                            f'/{self.min_dist_robot_name}/rrt_star_action_server/set_rrt_waypoint')
                         
                         # priority based on the shorter distance to the goal.
                         if self._curr_manhattan_dist < self._target_manhattan_dist:
@@ -164,31 +173,42 @@ class DWAMultirobotServer(DWABaseNode):
                                 self.set_target_waypoint_vals(target_idx, target_goal)
 
                         else:
+                            # Stop robot
                             self.set_planner_state(PlannerStatus.PLANNER_DEFERRED)
+                            self._linear_twist = 0.0
+                            self._angular_twist = 0.0
+                            self.publish_cmd_vel(self._linear_twist, self._angular_twist)
 
-                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}")
+                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state.name}->{self._planner_state.name}")
 
                     if self.other_robot_state == PlannerStatus.PLANNER_READY:
                         self._prev_planner_state = self._planner_state
                         self.set_planner_state(PlannerStatus.PLANNER_EXEC_JOINT)
-                        self._joint_plan_target = f"/{min_dist_robot_name}"
-                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}.")
+                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state.name}->{self._planner_state.name}.")
 
                 if self._planner_state == PlannerStatus.PLANNER_READY:
                     if self.other_robot_state == PlannerStatus.PLANNER_EXEC:
                         self._prev_planner_state = self._planner_state
                         self.set_planner_state(PlannerStatus.PLANNER_DEFERRED)
-                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state}->{self._planner_state}.")
+                        self.get_logger().info(f"{self.get_namespace()}: {self._prev_planner_state.name}->{self._planner_state.name}.")
+
+                self._other_robot_request = True
+                self._curr_rrt_request = True
+                self._target_rrt_request = True
         
         else:
+            self.get_logger().info("Not running goal arbitration, no robots nearby.", once=True)
+            self._other_robot_request = True
+            self._curr_rrt_request = True
+            self._target_rrt_request = True
+            
             # No robots in proximity.
             # Check if we need to transition back to regular PLANNER_EXEC or PLANNER_PLAN state
             if self._planner_state == PlannerStatus.PLANNER_DEFERRED \
             or self._planner_state == PlannerStatus.PLANNER_EXEC_JOINT:
                 # Restore state to previous state
-                self.get_logger().info(f"{self.get_namespace()}: {self._planner_state}->{self._prev_planner_state}.")
+                self.get_logger().info(f"{self.get_namespace()}: {self._planner_state.name}->{self._prev_planner_state.name}.")
                 self.set_planner_state(self._prev_planner_state)
-                self._joint_plan_target = None
 
                 # Set velocity to 0
                 self._linear_twist = 0.0
@@ -291,13 +311,13 @@ class DWAMultirobotServer(DWABaseNode):
 
         if curr_idx is not None:
             req = SetRRTWaypoint.Request()
-            req.sel_waypoint_idx = SetRRTWaypoint.EDIT_WAYPOINT_IDX
+            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_IDX
             req.waypoint_idx = Int32(data=curr_idx)
             self.get_logger().info(f"Modifying curr_waypoint idx from {self._curr_waypoint_idx} to {curr_idx}")
             self._curr_waypoint_idx = curr_idx
         elif curr_goal is not None:
             req = SetRRTWaypoint.Request()
-            req.sel_waypoint_idx = SetRRTWaypoint.EDIT_WAYPOINT_IDX
+            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_IDX
             req.waypoint = Point(x=curr_goal[0], y=curr_goal[1], z=0.0)
             self.get_logger().info(f"Modifying curr_waypoint from {self._curr_path[self._curr_waypoint_idx][0]:.2f},{self._curr_path[self._curr_waypoint_idx][1]:.2f} to {curr_goal[0]:.2f},{curr_goal[1]:.2f}")
             self._curr_path[self._curr_waypoint_idx] = curr_goal
@@ -459,6 +479,18 @@ class DWAMultirobotServer(DWABaseNode):
                 self.set_planner_state(PlannerStatus.PLANNER_READY)
 
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
+
+        elif self._planner_state == PlannerStatus.PLANNER_EXEC_JOINT:
+            self._linear_twist = 0.0
+            self._angular_twist = 0.0
+            self.publish_cmd_vel(self._linear_twist, self._angular_twist)
+
+            self._target_linear_twist = 0.0
+            self._target_angular_twist = 0.0
+            self.publish_target_cmd_vel(self._target_linear_twist, self._target_angular_twist)
+
+            self._planned_pose = (self._x, self._y)
+            self._joint_plan_target_planned_pose = (self._joint_plan_target_x, self._joint_plan_target_y)   # Current position
 
     def stall_detection_callback(self):
         '''
@@ -644,13 +676,13 @@ class DWAMultirobotServer(DWABaseNode):
 
     def _get_other_robot_state_callback(self, future):
         response = future.result()
-        self._other_robot_state = PlannerStatus(response.planner_status.data)
-        self.get_logger().info(f"Other_robot_state srv callback: {self._other_robot_state.name}")
+        self.other_robot_state = PlannerStatus(response.planner_status.data)
+        self.get_logger().info(f"Other_robot_state srv callback: {self.other_robot_state.name}")
 
     @staticmethod
     def _parse_get_rrt_response(response:GetRRTWaypoints.Response):
-        manhattan_dist = response.remaining_dist
-        waypoint_idx = response.waypoint_idx
+        manhattan_dist = response.remaining_dist.data
+        waypoint_idx = response.waypoint_idx.data
         path = []
         for point in response.waypoints:
             path.append((point.x, point.y))
@@ -661,13 +693,13 @@ class DWAMultirobotServer(DWABaseNode):
         response = future.result()
         self._curr_manhattan_dist, self._curr_waypoint_idx , self._curr_path = \
             self._parse_get_rrt_response(response)
-        self.get_logger().info(f"Curr RRT srv callback: Manhattan Dist: {self.__curr_manhattan_dist:.2f}, Curr waypt idx: {self._curr_waypoint_idx}\n{self._curr_path}")
+        self.get_logger().info(f"Curr RRT srv callback: Manhattan Dist: {self._curr_manhattan_dist:.2f}, Curr waypt idx: {self._curr_waypoint_idx}\n{self._curr_path}")
 
     def _get_target_rrt_dist_callback(self, future):
         response = future.result()
         self._target_manhattan_dist, self._target_waypoint_idx , self._target_path = \
             self._parse_get_rrt_response(response)
-        self.get_logger().info(f"Target RRT srv callback: Manhattan Dist: {self.__target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
+        self.get_logger().info(f"Target RRT srv callback: Manhattan Dist: {self._target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
 
     def _set_curr_rrt_goal_callback(self, future):
         response = future.result()
@@ -676,6 +708,48 @@ class DWAMultirobotServer(DWABaseNode):
     def _set_target_rrt_goal_callback(self, future):
         response = future.result()
         self.get_logger().info(f"Set Target RRT srv callback: {'success' if response.success else 'failure'}")
+
+    def set_planner_state(self, state: PlannerStatus) -> None:
+        self._planner_state = state
+        self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
+        if state == PlannerStatus.PLANNER_EXEC_JOINT:
+            self._joint_plan_target = f"/{self.min_dist_robot_name}"
+            self.get_logger().info(f"Subscribing to {self._joint_plan_target}/odom")
+            self._target_state_sub = self.create_subscription(Odometry, f"{self._joint_plan_target}/odom", 
+                    self._handle_target_odom_callback, qos_profile_sensor_data)
+
+            self.get_logger().info(f"Publishing to {self._joint_plan_target}/cmd_vel")
+            self._target_cmd_vel_pub = self.create_publisher(Twist, f"{self._joint_plan_target}/cmd_vel", 10)
+        else:
+            del self._joint_plan_target
+            try:
+                self._target_state_sub.destroy()
+                self._target_cmd_vel_pub.destroy()
+            except AttributeError:
+                pass
+
+    def publish_target_cmd_vel(self, lin_vel: float, ang_vel: float):
+        '''Publish a cmd_vel to the current dwa target node'''
+        cmd_vel = Twist(
+            linear=Vector3(x=lin_vel, y=0.0, z=0.0), 
+            angular=Vector3(x=0.0, y=0.0, z=ang_vel)
+        )
+        self._target_cmd_vel_pub.publish(cmd_vel)
+
+    def _handle_target_odom_callback(self, msg):
+        self._joint_plan_target_x = msg.pose.pose.position.x
+        self._joint_plan_target_y = msg.pose.pose.position.y
+        self._joint_plan_target_rpy = euler_from_quaternion([
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ])
+        self._joint_plan_target_yaw = self._rpy[2]
+
+        self.get_logger().debug("Joint Plan X:{} Y:{} Yaw:{}".format(
+            self._joint_plan_target_x, self._joint_plan_target_y, self._joint_plan_target_yaw ))
+        pass
 
 def main(args=None):
     rclpy.init(args=args)
