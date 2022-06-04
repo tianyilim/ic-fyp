@@ -348,7 +348,7 @@ class DWAMultirobotServer(DWABaseNode):
             
             # update externally
             (new_target_x, new_target_y) = self._target_path[self._target_waypoint_idx]
-            _change_goal_client = self.create_client(SetPoint, f'/{self._joint_plan_target}/{self.get_name()}/set_dwa_goal')
+            _change_goal_client = self.create_client(SetPoint, f'{self._joint_plan_target}/{self.get_name()}/set_dwa_goal')
             self._change_goal_client_future = _change_goal_client.call_async(
                 SetPoint.Request(new_goal=Point(x=new_target_x, y=new_target_y, z=0.0))
             )
@@ -391,18 +391,9 @@ class DWAMultirobotServer(DWABaseNode):
     def dwa_action_callback(self):
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
             # Enumerate possible actions, checking for bounds
-            possible_linear = [ self._linear_twist ]
-            if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']:
-                possible_linear.append(self._linear_twist + self.params['linear_step'])
-            if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']:
-                possible_linear.append(self._linear_twist - self.params['linear_step'])
-
-            possible_angular = [ self._angular_twist ]
-            if (self._angular_twist + self.params['angular_step']) <= self.params['angular_speed_limit']:
-                possible_angular.append(self._angular_twist + self.params['angular_step'])
-            if (self._angular_twist - self.params['angular_step']) >= -self.params['angular_speed_limit']:
-                possible_angular.append(self._angular_twist - self.params['angular_step'])
-
+            endpoints = self._list_possible_endpoints((self._x, self._y), self._yaw, 
+                self._linear_twist, self._angular_twist)
+            
             top_score = -np.inf
             top_pose = (self._x, self._y, self._yaw)
 
@@ -411,40 +402,25 @@ class DWAMultirobotServer(DWABaseNode):
             vis_idx = 0
             top_idx = 0
 
-            # Forward simulate actions based on dynamics model (?)
-            # Assumes that robot can instantly achieve the commanded velocity (might not be the case)
-            for linear_twist in possible_linear:
-                for angular_twist in possible_angular:
+            for endpoint in endpoints:
+                end_pose = (endpoint[0], endpoint[1], endpoint[2])
+                linear_twist = endpoint[3]
+                angular_twist = endpoint[4]
+                self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
+                score = self.rankPose(end_pose, linear_twist, angular_twist)
+
+                marker_vis = self.marker_from_traj(vis_idx, score, (self._x, self._y), end_pose)
+                vis_msg_array.append(marker_vis)
+
+                if score > top_score:
+                    top_score = score
+                    top_idx = vis_idx
+                    self._linear_twist = linear_twist
+                    self._angular_twist = angular_twist
                     
-                    # Rotation matrix for current angle
-                    effective_yaw = self._yaw + angular_twist*self.params['simulate_duration']
-                    c, s = np.cos(effective_yaw), np.sin(effective_yaw)
-                    R = np.array(((c, -s), (s, c)))
+                    top_pose = end_pose
 
-                    # displacement vector
-                    displacement = np.array([ linear_twist*self.params['simulate_duration'], 0 ])
-                    displacement = R @ displacement
-
-                    # Eventual position and orientation
-                    end_pose = displacement + np.array([self._x, self._y])
-                    end_pose = (end_pose[0], end_pose[1], effective_yaw)
-
-                    # Rank score
-                    self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
-                    score = self.rankPose(end_pose, linear_twist, angular_twist)
-
-                    marker_vis = self.marker_from_traj(vis_idx, score, end_pose)
-                    vis_msg_array.append(marker_vis)
-
-                    if score > top_score:
-                        top_score = score
-                        top_idx = vis_idx
-                        self._linear_twist = linear_twist
-                        self._angular_twist = angular_twist
-                        
-                        top_pose = end_pose
-
-                    vis_idx += 1
+                vis_idx += 1
             
             self.get_logger().debug(f"---- Chose Lin: {self._linear_twist:.2f} Ang {self._angular_twist:.2f} Idx {top_idx}/{len(vis_msg_array)} ----\n")
 
@@ -482,16 +458,86 @@ class DWAMultirobotServer(DWABaseNode):
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
 
         elif self._planner_state == PlannerStatus.PLANNER_EXEC_JOINT:
-            self._linear_twist = 0.0
-            self._angular_twist = 0.0
+            # Enumerate the possible velocities (jointly)
+            curr_endpoints = self._list_possible_endpoints((self._x, self._y), self._yaw, 
+                self._linear_twist, self._angular_twist)
+
+            target_endpoints = self._list_possible_endpoints(
+                (self._joint_plan_target_x, self._joint_plan_target_y), 
+                self._joint_plan_target_yaw, 
+                self._target_linear_twist, self._target_angular_twist)
+            
+            # Go through all possibilities
+            top_score = -np.inf
+            top_curr_pose = (self._x, self._y, self._yaw)
+            top_target_pose = (self._joint_plan_target_x, self._joint_plan_target_y, 
+                self._joint_plan_target_yaw)
+
+            # Variables for visualising trajectories in RViz
+            curr_vis_msg_array = []
+            curr_vis_idx = 0
+            curr_top_idx = 0
+            target_vis_msg_array = []
+            target_vis_idx = 0
+            target_top_idx = 0
+
+            for curr_endpoint in curr_endpoints:
+                for target_endpoint in target_endpoints:
+                    score = self.rankPoseJoint(
+                        (curr_endpoint[0], curr_endpoint[1], curr_endpoint[2]),
+                        curr_endpoint[3], curr_endpoint[4], 
+                        (target_endpoint[0], target_endpoint[1], target_endpoint[2]),
+                        target_endpoint[3], target_endpoint[4], 
+                    )
+
+                    marker_vis = self.marker_from_traj(curr_vis_idx, score,
+                        (self._x, self._y),
+                        (curr_endpoint[0], curr_endpoint[1], curr_endpoint[2]))
+                    curr_vis_msg_array.append(marker_vis)
+                    marker_vis = self.marker_from_traj(target_vis_idx, score,
+                        (self._joint_plan_target_x, self._joint_plan_target_y),
+                        (target_endpoint[0], target_endpoint[1], target_endpoint[2]))
+                    target_vis_msg_array.append(marker_vis)
+
+                    if score > top_score:
+                        top_score = score
+                        top_curr_pose = (curr_endpoint[0], curr_endpoint[1], curr_endpoint[2])
+                        top_target_pose = (target_endpoint[0], target_endpoint[1], target_endpoint[2])
+                        
+                        self._linear_twist = curr_endpoint[3]
+                        self._angular_twist = curr_endpoint[4]
+                        self._target_linear_twist = target_endpoint[3]
+                        self._target_angular_twist = target_endpoint[4]
+
+                        target_top_idx = target_vis_idx
+                        curr_top_idx = curr_vis_idx
+
+                    target_vis_idx += 1
+                curr_vis_idx += 1
+
+            # Label top score with color and publish it.
+            curr_vis_msg_array[curr_top_idx].color.r = 0.0
+            curr_vis_msg_array[curr_top_idx].color.g = 1.0
+            self.vis_planned_pos_pub.publish( MarkerArray(markers=curr_vis_msg_array) )
+            target_vis_msg_array[target_top_idx].color.r = 0.0
+            target_vis_msg_array[target_top_idx].color.g = 1.0
+            self.vis_planned_pos_pub.publish( MarkerArray(markers=target_vis_msg_array) )
+
+            if top_score <= -np.inf:
+                # Currently deadlock is handled by stopping the robot.
+                self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robots.", once=True)
+                self._linear_twist = 0.0
+                self._angular_twist = 0.0
+                self._target_linear_twist = 0.0
+                self._target_angular_twist = 0.0
+
             self.publish_cmd_vel(self._linear_twist, self._angular_twist)
-
-            self._target_linear_twist = 0.0
-            self._target_angular_twist = 0.0
             self.publish_target_cmd_vel(self._target_linear_twist, self._target_angular_twist)
+            self._planned_pose = (top_curr_pose[0], top_curr_pose[1])
+            self._joint_plan_target_planned_pose = (top_target_pose[0], top_target_pose[1])
 
-            self._planned_pose = (self._x, self._y)
-            self._joint_plan_target_planned_pose = (self._joint_plan_target_x, self._joint_plan_target_y)   # Current position
+            # TODO what if a goal is reached?
+            # TODO think of how to exit this state.
 
     def stall_detection_callback(self):
         '''
@@ -559,124 +605,17 @@ class DWAMultirobotServer(DWABaseNode):
         # Reset distance travelled accumulator
         self._dist_travelled = 0
 
-    # Helper functions
-    def rankPose(self, end_pose, linear_twist, angular_twist):
-        '''
-        The core of the DWA algorithm. Scores final positions based on different factors.
-
-        Add bonus to moving forward. Add cost for staying still.
-        '''
-
-        goal_K = self.params['goal_K']                              # P factor for proximity to goal
-        orientation_ub_deg = self.params['orientation_ub_deg']      # cutoff in deg for distance to goal
-        orientation_lb_deg = self.params['orientation_lb_deg']
-        orientation_K = self.params['angular_K']                    # Max proportion of orientation that this can take
-
-        safety_thresh_K = self.params['obstacle_K']
-        
-        # Staying still will have a cost of half of the best possible score.
-        # This should reduce the chance of the robot stalling far away from the goal.
-        if np.allclose(linear_twist, 0.0, atol=1e-3) and np.allclose(angular_twist, 0.0, atol=1e-3):
-            score = -(goal_K/self.params['dist_thresh'])/4
-        else:
-            score = 0
-
-        # Else, see how close it gets to the goal.
-        # Cap the score to the maximum cutoff value.
-        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], self.goal_x, self.goal_y)
-        # dist_plus = min( goal_K / dist_to_goal,
-        #                  goal_K / (self.params['dist_thresh']/2)
-        #                 )
-        '''
-        dist_plus = goal_K / dist_to_goal
-        '''
-        dist_plus = 0.0
-        if dist_to_goal < 1.0:
-            dist_plus = goal_K / dist_to_goal
-        else:
-            goal_lb = 1.5   # The distance at which there is a dist_plus of 0
-            dist_m = goal_K/(1.0-goal_lb)
-            dist_c = -dist_m*goal_lb
-            dist_plus = dist_m*dist_to_goal + dist_c
-
-        score += dist_plus
-
-        obstacle_acc = 0
-        # Check for collisions or close shaves
-        # OBSTACLE_ARRAY also handles the walls
-        od_min = 1e9
-        for obstacle in OBSTACLE_ARRAY:
-            dist_to_obstacle = dist_to_aabb(end_pose[0], end_pose[1], obstacle)
-            
-            # print(f"Dist to obstacle for end_pose x:{end_pose[0]:.2f} y:{end_pose[1]:.2f}" + \
-            #     f" is {dist_to_obstacle:.2f} for obstacle at x:{obstacle[0]:.2f} y:{obstacle[1]:.2f}")
-
-            if dist_to_obstacle < self.params['robot_radius']:
-                self.get_logger().debug(f"End pose ({end_pose[0]:.2f},{end_pose[1]:.2f},{np.degrees(end_pose[2]):.2f}) collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
-                score = -np.inf # Collision, don't process further
-                return score
-
-            elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
-                '''
-                score -= safety_thresh_K / dist_to_obstacle # Too close for comfort
-                '''
-                if dist_to_obstacle < od_min: od_min = dist_to_obstacle
-                
-                # Use % instead of flat scaling
-                obstacle_m = 1.0/self.params['safety_thresh']
-                obstacle_c = -obstacle_m*(self.params['safety_thresh']+self.params['robot_radius'])
-                obstacle_cost = (obstacle_m*dist_to_obstacle + obstacle_c)*safety_thresh_K
-                obstacle_acc += obstacle_cost
-                score += obstacle_cost # obstacle cost is negative
-
-        for robot_name in self.other_robots.keys():
-            x, y = self.other_robots[robot_name]
-            dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
-            if dist_to_robot < 2*self.params['robot_radius']:
-                self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
-                score = -np.inf # Collision, don't process further
-                return score
-            elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
-                score -= safety_thresh_K / dist_to_robot
-
-        # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
-        # This is proportional to the distance score. Otherwise it will 'overwhelm' the pathing intuition of the robot
-        goal_hdg = np.arctan2(self.goal_y-end_pose[1], self.goal_x-end_pose[0])
-        hdg_diff = min( orientation_ub_deg, abs( np.degrees(goal_hdg - end_pose[2])) )
-        self.get_logger().debug(f"Ref hdg {np.degrees(goal_hdg):.2f}, curr hdg {np.degrees(end_pose[2]):.2f}")
-        # Clamp heading between max and min
-        hdg_clamp = max(min(hdg_diff, orientation_ub_deg), orientation_lb_deg)
-        # y = mx + c
-        #   0 = m*(orientation_lb_deg) + c
-        # -orientation_K = m*(orientation_ub_deg) + c
-        # c = -m*orientation_lb_deg
-        # -orientation_K = m*(orientation_ub_deg-orientation_lb_deg)
-        # m = orientation_K/-(orientation_ub_deg-orientation_lb_deg)
-        # c follows
-        hdg_m = -orientation_K/(orientation_ub_deg-orientation_lb_deg)
-        hdg_c = -hdg_m*orientation_lb_deg
-        hdg_cost = (hdg_m*hdg_clamp + hdg_c)*dist_plus
-        score += hdg_cost # hdg cost is negative
-
-        # Score breakdown
-        self.get_logger().debug(
-            f"{linear_twist:.2f}|{angular_twist:.2f}" + \
-            f" | end: ({end_pose[0]:.2f}, {end_pose[1]:.2f}, {np.degrees(end_pose[2]):.2f})" + \
-            f" | d: {dist_to_goal:.2f},{dist_plus:.2f} | h: {hdg_diff:.2f},{hdg_cost:.2f}" + \
-            f" | o: {od_min:.2f},{obstacle_acc:.2f} | {score:.2f}"
-        )
-
-        return score
-
     def rankPoseJoint(self, curr_end_pose, curr_linear_twist, curr_angular_twist, 
-        target_end_pose, target_linear_twist, target_angular_twist):
+        target_end_pose, target_linear_twist, target_angular_twist) -> float:
         '''
         Ranks two robots' possible vectors.
         '''
 
-        target_dist_to_goal = self.distToGoal(target_end_pose[0], target_end_pose[1], self.target)
+        target_goal = self._target_path[self._target_waypoint_idx]
+        target_dist_to_goal = self.distToGoal(target_end_pose[0], target_end_pose[1], target_goal[0], target_goal[1])
+        curr_dist_to_goal = self.distToGoal(curr_end_pose[0], curr_end_pose[1], self.goal_x, self.goal_y)
 
-        pass
+        return 0.0
 
     def _get_other_robot_state_callback(self, future):
         '''Response from target DWA server upon querying its state. Updates `self.other_robot_state`.'''
@@ -735,9 +674,14 @@ class DWAMultirobotServer(DWABaseNode):
 
             self.get_logger().info(f"Publishing to {self._joint_plan_target}/cmd_vel")
             self._target_cmd_vel_pub = self.create_publisher(Twist, f"{self._joint_plan_target}/cmd_vel", 10)
+
+            self._target_linear_twist = 0.0
+            self._target_angular_twist = 0.0
         else:
             try:
                 del self._joint_plan_target
+                del self._target_linear_twist
+                del self._target_angular_twist
                 self._target_state_sub.destroy()
                 self._target_cmd_vel_pub.destroy()
             except AttributeError:
