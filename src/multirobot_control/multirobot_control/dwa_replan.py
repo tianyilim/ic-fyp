@@ -12,7 +12,7 @@ from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
 from planner_action_interfaces.srv import GetPlannerStatus, GetIntValue, GetRRTWaypoints, SetRRTWaypoint, SetPoint
 
-from std_msgs.msg import Header, Int32
+from std_msgs.msg import Header, Int32, String, Bool
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
 from visualization_msgs.msg import MarkerArray, Marker
@@ -33,6 +33,11 @@ class DWAReplanServer(DWABaseNode):
     '''
     def __init__(self):
         super().__init__('dwa_replan_server')
+
+        self.create_timer(1/2, self._get_rrt_callback)
+        self.curr_rrt_client = self.create_client(GetRRTWaypoints, f'{self.get_namespace()}/rrt_star_action_server/get_rrt_waypoints')
+
+        self.closest_robot = None
 
     # override stall callback
     def stall_detection_callback(self):
@@ -55,15 +60,13 @@ class DWAReplanServer(DWABaseNode):
                     robot_x, robot_y = self.other_robots[robot_name]
                     # Calculate a path away from the robots that are too close
                     if self.distToGoal( self._x, self._y, robot_x, robot_y ) < (self.params['inter_robot_dist']*self.params['robot_radius']):
-                        # TODO compare manhattan distances to goal, and let the one with the longer distance replan.
-                        
-                        # Get RRT Manhattan distances
-
-                        # Wait for RRT Manhattan distance requests to be valid
-
                         # Compare RRT Manhattan distances. 
                         # If distance is further:
+                        if self._curr_manhattan_dist > self._target_manhattan_dist:
                             # Abort current goal (await replanning)
+                            self.set_planner_state(PlannerStatus.PLANNER_ABORT)
+
+                            # TODO this doesn't call
                         # else:
                             # Continue on current goal
 
@@ -113,6 +116,17 @@ class DWAReplanServer(DWABaseNode):
 
         # Reset distance travelled accumulator
         self._dist_travelled = 0
+
+    def _get_rrt_callback(self):
+        '''Periodically polls the RRT servers to get info about the high-level overview of the plan.'''
+        if self.closest_robot is not None:
+            target_rrt_client = self.create_client(GetRRTWaypoints, f'/{self.closest_robot}/rrt_star_action_server/get_rrt_waypoints')
+            curr_rrt_future = self.curr_rrt_client.call_async(GetRRTWaypoints.Request())
+            curr_rrt_future.add_done_callback(self._get_curr_rrt_dist_callback)
+            target_rrt_future = target_rrt_client.call_async(GetRRTWaypoints.Request())
+            target_rrt_future.add_done_callback(self._get_target_rrt_dist_callback)
+            
+            target_rrt_client.destroy()
 
 def main(args=None):
     rclpy.init(args=args)
