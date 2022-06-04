@@ -1,4 +1,3 @@
-
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -523,6 +522,8 @@ class DWAMultirobotServer(DWABaseNode):
             target_vis_msg_array[target_top_idx].color.g = 1.0
             self.vis_planned_pos_pub.publish( MarkerArray(markers=target_vis_msg_array) )
 
+            self.get_logger().info(f"---- Curr: {self._linear_twist:.2f}, {self._angular_twist:.2f} Target: {self._target_linear_twist:.2f}, {self._target_angular_twist:.2f} ----\n")
+
             if top_score <= -np.inf:
                 # Currently deadlock is handled by stopping the robot.
                 self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robots.", once=True)
@@ -610,12 +611,113 @@ class DWAMultirobotServer(DWABaseNode):
         '''
         Ranks two robots' possible vectors.
         '''
+        goal_K = self.params['goal_K']                              # P factor for proximity to goal
+        orientation_ub_deg = self.params['orientation_ub_deg']      # cutoff in deg for distance to goal
+        orientation_lb_deg = self.params['orientation_lb_deg']
+        orientation_K = self.params['angular_K']                    # Max proportion of orientation that this can take
+        safety_thresh_K = self.params['obstacle_K']
+
+        # Staying still will have a cost of half of the best possible score.
+        # This should reduce the chance of the robot stalling far away from the goal.
+        if  np.allclose(curr_linear_twist, 0.0, atol=1e-3) and np.allclose(curr_angular_twist, 0.0, atol=1e-3)\
+        and np.allclose(target_linear_twist, 0.0, atol=1e-3) and np.allclose(target_angular_twist, 0.0, atol=1e-3):
+            score = -(goal_K/self.params['dist_thresh'])/4
+        else:
+            score = 0
 
         target_goal = self._target_path[self._target_waypoint_idx]
-        target_dist_to_goal = self.distToGoal(target_end_pose[0], target_end_pose[1], target_goal[0], target_goal[1])
-        curr_dist_to_goal = self.distToGoal(curr_end_pose[0], curr_end_pose[1], self.goal_x, self.goal_y)
+        curr_dist_plus = self._rank_goal_closeness_score(curr_end_pose, (self.goal_x, self.goal_y))
+        target_dist_plus = self._rank_goal_closeness_score(target_end_pose, target_goal)
+        score += curr_dist_plus
+        score += target_dist_plus
 
-        return 0.0
+        # obstacles
+        curr_obstacle_cost = self._rank_obstacle_score(curr_end_pose)
+        target_obstacle_cost = self._rank_obstacle_score(target_end_pose)
+        score += curr_obstacle_cost
+        score += target_obstacle_cost
+
+        # Inter-robot factors
+        inter_robot_cost = self._rank_inter_robot_cost(curr_end_pose, curr_linear_twist, 
+            target_end_pose, target_linear_twist)
+        score += inter_robot_cost
+
+        # Score breakdown
+        self.get_logger().info(
+            f"{curr_linear_twist:.2f}|{curr_angular_twist:.2f} {target_linear_twist:.2f}|{target_angular_twist:.2f}" + \
+            f" | d: {curr_dist_plus:.2f}, {target_dist_plus:.2f}" + \
+            f" | o: {curr_obstacle_cost:.2f}, {target_obstacle_cost:.2f}"
+            f" | i: {inter_robot_cost:.2f} | {score:.2f}"
+        )
+
+        return score
+
+    def _rank_goal_closeness_score(self, end_pose: Tuple[float,float,float], 
+        goal_pose: Tuple[float,float]) -> float:
+        '''Gives a plus score to a proposed vector based on how far it ends up from a goal.'''
+        
+        dist_to_goal = self.distToGoal(end_pose[0], end_pose[1], goal_pose[0], goal_pose[1])
+        goal_plus = self.params['goal_K']/dist_to_goal
+
+        return goal_plus
+
+    def _rank_obstacle_score(self, end_pose: Tuple[float,float,float]) -> float:
+        '''Gives a cost to a proposed vector based on how close it comes to an obstacle.'''
+        obstacle_acc = 0.0
+        # Check for collisions or close shaves
+        # OBSTACLE_ARRAY also handles the walls
+        od_min = 1e9
+        for obstacle in OBSTACLE_ARRAY:
+            dist_to_obstacle = dist_to_aabb(end_pose[0], end_pose[1], obstacle)
+
+            if dist_to_obstacle < self.params['robot_radius']:
+                self.get_logger().debug(f"End pose ({end_pose[0]:.2f},{end_pose[1]:.2f},{np.degrees(end_pose[2]):.2f}) collision @ {(obstacle[0]+obstacle[2])/2:.2f}|{(obstacle[1]+obstacle[3])/2:.2f} dist {dist_to_obstacle:.2f}")
+                return -np.inf
+
+            elif dist_to_obstacle < (self.params['robot_radius'] + self.params['safety_thresh']):
+                if dist_to_obstacle < od_min: od_min = dist_to_obstacle
+                
+                # Use % instead of flat scaling
+                obstacle_m = 1.0/self.params['safety_thresh']
+                obstacle_c = -obstacle_m*(self.params['safety_thresh']+self.params['robot_radius'])
+                obstacle_cost = (obstacle_m*dist_to_obstacle + obstacle_c)*self.params['obstacle_K']
+                obstacle_acc += obstacle_cost
+
+        return obstacle_acc
+
+    def _rank_inter_robot_cost(self, curr_end_pose: Tuple[float,float, float], 
+        curr_lin_vel:float, target_end_pose: Tuple[float,float,float],
+        target_lin_vel:float) -> float:
+        '''Gives a cost to both target and current proposed vectors based on how close the
+        two robots come to each other.'''
+
+        dist_to_robot = self.distToGoal(curr_end_pose[0], curr_end_pose[1], target_end_pose[0], target_end_pose[1])
+        dist_to_robot_cost = 0.0
+        if dist_to_robot <= 2*self.params['robot_radius']:
+            self.get_logger().debug(f"End pose {curr_end_pose[0]:.2f}|{curr_end_pose[1]:.2f}|{np.degrees(curr_end_pose[2]):.2f} collision with {target_end_pose[0]:.2f}|{target_end_pose[1]:.2f}|{np.degrees(target_end_pose[2]):.2f} dist {dist_to_robot:.2f}")
+            return -np.inf # Collision, don't process further
+        elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
+            dist_to_robot_cost = -(self.params['obstacle_K']) / dist_to_robot
+
+            # Calc the relative headings of each robot
+            # curr_yaw = curr_end_pose[2] * (2*(curr_lin_vel>=0)-1)
+            # target_yaw = target_end_pose[2] * (2*(target_lin_vel>=0)-1)
+            
+            curr_yaw = curr_end_pose[2]
+            target_yaw = target_end_pose[2]
+
+            orientation_robot_curr = np.arctan2( target_end_pose[1]-curr_end_pose[1], target_end_pose[0]-curr_end_pose[0] )
+            orientation_similarity_curr = np.abs( curr_yaw-orientation_robot_curr )
+            orientation_robot_target = np.arctan2( curr_end_pose[1]-target_end_pose[1], curr_end_pose[0]-target_end_pose[0] )
+            orientation_similarity_target = np.abs( target_yaw-orientation_robot_target )
+
+            self.get_logger().debug(f"Curr ori:{np.degrees(orientation_robot_curr):.2f} Ori_Curr:{np.degrees(curr_yaw):.2f},{np.degrees(orientation_similarity_curr):.2f} Ori_Target:{np.degrees(target_yaw):.2f},{np.degrees(orientation_similarity_target):.2f}")
+
+            # Take absolute difference as an error term
+            dist_to_robot_cost -= self.params['angular_K']*20 / np.degrees(orientation_similarity_curr)
+            dist_to_robot_cost -= self.params['angular_K']*20 / np.degrees(orientation_similarity_target)
+
+        return dist_to_robot_cost
 
     def _get_other_robot_state_callback(self, future):
         '''Response from target DWA server upon querying its state. Updates `self.other_robot_state`.'''
@@ -677,7 +779,11 @@ class DWAMultirobotServer(DWABaseNode):
 
             self._target_linear_twist = 0.0
             self._target_angular_twist = 0.0
+
+            self.params['linear_speed_limit'] = self.get_parameter('linear_speed_limit').value/2 # Limit forward speed when in joint mode
         else:
+            self.params['linear_speed_limit'] = self.get_parameter('linear_speed_limit').value
+
             try:
                 del self._joint_plan_target
                 del self._target_linear_twist
@@ -730,7 +836,6 @@ class DWAMultirobotServer(DWABaseNode):
 
         self.get_logger().debug("Joint Plan X:{} Y:{} Yaw:{}".format(
             self._joint_plan_target_x, self._joint_plan_target_y, self._joint_plan_target_yaw ))
-        pass
 
 def main(args=None):
     rclpy.init(args=args)

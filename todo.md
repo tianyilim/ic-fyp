@@ -311,6 +311,8 @@
 - Move creating subscribers to `odom` / publishers to `cmd_vel` into a modified version of `set_planner_state`.
 - Plumbing for publishing the relevant values to `odom_distribution`, even if it's not fully done up yet.
 - Setup a service to set goal within DWA server, as well as its respective topic.
+- [ ] Collaborative part of code needs further thought - currently it's not much better than the regular DWA node.
+- Create a new DWA variant, `dwa_replan` which aims to replan if a collision is detected between robots.
 
 ---
 
