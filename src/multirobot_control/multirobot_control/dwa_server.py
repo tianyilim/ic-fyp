@@ -624,10 +624,13 @@ class DWABaseNode(Node):
         return marker
 
     def set_planner_state(self, state:PlannerStatus) -> None:
+        '''Sets the state of the DWA server internally and publishes it.'''
         self._planner_state = state
         self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
 
     def publish_cmd_vel(self, lin_vel:float, ang_vel:float) -> None:
+        '''Creates a Twist with the specified `lin` and `ang` velocities and publishes it 
+        to `cmd_vel` for the current robot.'''
         cmd_vel = Twist(
             linear=Vector3(x=lin_vel, y=0.0, z=0.0), 
             angular=Vector3(x=0.0, y=0.0, z=ang_vel)
@@ -636,6 +639,7 @@ class DWABaseNode(Node):
 
     # Service handlers
     def _srv_dwa_status_callback(self, _, response):
+        '''Handles request to check the state of the DWA server.'''
         self.get_logger().debug(f'enter dwa status callback: {self._planner_state.name}:{int(self._planner_state)}')
         response.planner_status = PlannerStatusMsg(data=int(self._planner_state))
 
