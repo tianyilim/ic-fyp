@@ -168,6 +168,16 @@ def generate_launch_description():
         condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_multirobot_server"']))
     )
 
+    start_dwa_replan_cmd = Node(
+        package='multirobot_control',
+        executable='dwa_replan',
+        namespace=namespace,
+        output='screen',
+        parameters=[{"use_sim_time": use_sim_time}, params_file],
+        arguments=['--ros-args', '--log-level', log_level],
+        condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_replan_server"']))
+    )
+
     # Launch localization to give map -> transform
     start_localization_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -220,6 +230,7 @@ def generate_launch_description():
     ld.add_action(start_static_transform_cmd)
     ld.add_action(start_dwa_server_cmd)
     ld.add_action(start_dwa_multirobot_cmd)
+    ld.add_action(start_dwa_replan_cmd)
     ld.add_action(start_rrt_cmd)
 
     # ld.add_action(start_gt_cmd)
