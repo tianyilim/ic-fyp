@@ -40,6 +40,7 @@ setup(
             'plan_client = multirobot_control.plan_client:main',
             'dwa_server = multirobot_control.dwa_server:main',
             'dwa_multirobot = multirobot_control.dwa_multirobot:main',
+            'dwa_replan = multirobot_control.dwa_replan:main',
             'odom_distribution = multirobot_control.odom_distribution:main',
             'goal_creation = multirobot_control.goal_creation:main',
             'map_visualisation = multirobot_control.map_visualisation:main',
