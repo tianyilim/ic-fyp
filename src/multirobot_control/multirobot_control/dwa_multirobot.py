@@ -725,32 +725,6 @@ class DWAMultirobotServer(DWABaseNode):
         self.other_robot_state = PlannerStatus(response.planner_status.data)
         self.get_logger().info(f"Other_robot_state srv callback: {self.other_robot_state.name}")
 
-    @staticmethod
-    def _parse_get_rrt_response(response:GetRRTWaypoints.Response):
-        '''Parses the response from the RRT server about the current list of waypoints.
-        Converts the Point List into a list of x,y values for pythonic interpretation.'''
-        manhattan_dist = response.remaining_dist.data
-        waypoint_idx = response.waypoint_idx.data
-        path = []
-        for point in response.waypoints:
-            path.append((point.x, point.y))
-            
-        return manhattan_dist, waypoint_idx, path
-
-    def _get_curr_rrt_dist_callback(self, future):
-        '''Response from the current RRT server about the waypoints.'''
-        response = future.result()
-        self._curr_manhattan_dist, self._curr_waypoint_idx , self._curr_path = \
-            self._parse_get_rrt_response(response)
-        self.get_logger().info(f"Curr RRT srv callback: Manhattan Dist: {self._curr_manhattan_dist:.2f}, Curr waypt idx: {self._curr_waypoint_idx}\n{self._curr_path}")
-
-    def _get_target_rrt_dist_callback(self, future):
-        '''Response from the target RRT server about the waypoints.'''
-        response = future.result()
-        self._target_manhattan_dist, self._target_waypoint_idx , self._target_path = \
-            self._parse_get_rrt_response(response)
-        self.get_logger().info(f"Target RRT srv callback: Manhattan Dist: {self._target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
-
     def _set_curr_rrt_goal_callback(self, future):
         '''Response from the current RRT server about modifying the current goal point.'''
         response = future.result()
