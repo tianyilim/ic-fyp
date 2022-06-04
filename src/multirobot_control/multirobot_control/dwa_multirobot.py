@@ -11,7 +11,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
-from planner_action_interfaces.srv import GetPlannerStatus, GetIntValue, GetRRTWaypoints, SetRRTWaypoint
+from planner_action_interfaces.srv import GetPlannerStatus, GetIntValue, GetRRTWaypoints, SetRRTWaypoint, SetPoint
 
 from std_msgs.msg import Header, Int32
 from nav_msgs.msg import Odometry
@@ -57,6 +57,8 @@ class DWAMultirobotServer(DWABaseNode):
 
         self._delay_10_hz = self.create_rate(10)
         self._main_loop_timer = self.create_timer(1/20, self._main_loop)
+
+        self._srv_change_goal = self.create_service(SetPoint, f'{self.get_name()}/set_dwa_goal', self._srv_change_goal_callback)
 
         self._other_robot_request = True
         self._curr_rrt_request = True
@@ -314,10 +316,12 @@ class DWAMultirobotServer(DWABaseNode):
             self._curr_path[self._curr_waypoint_idx] = curr_goal
 
         if req is not None:
+            # Update internally
+            self.goal_x, self.goal_y = self._curr_path[self._curr_waypoint_idx]
+
             self._set_curr_rrt_goal_future = self._set_curr_rrt_goal_cli.call_async(req)
             self._set_curr_rrt_goal_future.add_done_callback(self._set_curr_rrt_goal_callback)
-            # Else no action reqd
-
+            
     def set_target_waypoint_vals(self, target_idx, target_goal):
         ''' Checks if target_idx or target_goal need to be changed in class variables, and also
         calls the service to SetRRTWaypoint for the target RRT Server.
@@ -330,6 +334,7 @@ class DWAMultirobotServer(DWABaseNode):
             req.waypoint_idx = Int32(data=target_idx)
             self.get_logger().info(f"Modifying target_waypoint idx from {self._target_waypoint_idx} to {target_idx}")
             self._target_waypoint_idx = target_idx
+
         elif target_goal is not None:
             req = SetRRTWaypoint.Request()
             req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_COORDS
@@ -339,8 +344,15 @@ class DWAMultirobotServer(DWABaseNode):
 
         if req is not None:
             self._set_target_rrt_goal_future = self._set_target_rrt_goal_cli.call_async(req)
-            self._set_target_rrt_goal_future.add_done_callback(self._set_target_rrt_goal_callback)
-            # Else no action reqd
+            self._set_target_rrt_goal_future.add_done_callback(self._set_target_rrt_goal_callback) 
+            
+            # update externally
+            (new_target_x, new_target_y) = self._target_path[self._target_waypoint_idx]
+            _change_goal_client = self.create_client(SetPoint, f'/{self._joint_plan_target}/{self.get_name()}/set_dwa_goal')
+            self._change_goal_client_future = _change_goal_client.call_async(
+                SetPoint.Request(new_goal=Point(x=new_target_x, y=new_target_y, z=0.0))
+            )
+            self._change_goal_client_future.add_done_callback(self._change_goal_callback)
 
     def planned_pos_timer_callback(self):
         ''' 
@@ -367,6 +379,7 @@ class DWAMultirobotServer(DWABaseNode):
                 point=Point(
                     x=self._joint_plan_target_planned_pose[0], y=self._joint_plan_target_planned_pose[1], z=0.0
                 )))
+        # No need to send anything if we are in DEFERRED (the EXEC_JOINT node will send for us)
         elif self._planner_state == PlannerStatus.PLANNER_READY:
             # No action executed, send current x and y values
             self._planned_pos_pub.publish(PointStamped(
@@ -374,7 +387,6 @@ class DWAMultirobotServer(DWABaseNode):
                 point=Point(
                     x=self._x, y=self._y, z=0.0
                 )))
-        # No need to send anything if we are in DEFERRED (the EXEC_JOINT node will send for us)
 
     def dwa_action_callback(self):
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
@@ -656,20 +668,26 @@ class DWAMultirobotServer(DWABaseNode):
 
         return score
 
-    def rankPoseJoint(self):
+    def rankPoseJoint(self, curr_end_pose, curr_linear_twist, curr_angular_twist, 
+        target_end_pose, target_linear_twist, target_angular_twist):
         '''
-        Searches through the possible combination of two robots' possible vectors and
-        returns the highest-scoring pair of scores.
+        Ranks two robots' possible vectors.
         '''
+
+        target_dist_to_goal = self.distToGoal(target_end_pose[0], target_end_pose[1], self.target)
+
         pass
 
     def _get_other_robot_state_callback(self, future):
+        '''Response from target DWA server upon querying its state. Updates `self.other_robot_state`.'''
         response = future.result()
         self.other_robot_state = PlannerStatus(response.planner_status.data)
         self.get_logger().info(f"Other_robot_state srv callback: {self.other_robot_state.name}")
 
     @staticmethod
     def _parse_get_rrt_response(response:GetRRTWaypoints.Response):
+        '''Parses the response from the RRT server about the current list of waypoints.
+        Converts the Point List into a list of x,y values for pythonic interpretation.'''
         manhattan_dist = response.remaining_dist.data
         waypoint_idx = response.waypoint_idx.data
         path = []
@@ -679,26 +697,34 @@ class DWAMultirobotServer(DWABaseNode):
         return manhattan_dist, waypoint_idx, path
 
     def _get_curr_rrt_dist_callback(self, future):
+        '''Response from the current RRT server about the waypoints.'''
         response = future.result()
         self._curr_manhattan_dist, self._curr_waypoint_idx , self._curr_path = \
             self._parse_get_rrt_response(response)
         self.get_logger().info(f"Curr RRT srv callback: Manhattan Dist: {self._curr_manhattan_dist:.2f}, Curr waypt idx: {self._curr_waypoint_idx}\n{self._curr_path}")
 
     def _get_target_rrt_dist_callback(self, future):
+        '''Response from the target RRT server about the waypoints.'''
         response = future.result()
         self._target_manhattan_dist, self._target_waypoint_idx , self._target_path = \
             self._parse_get_rrt_response(response)
         self.get_logger().info(f"Target RRT srv callback: Manhattan Dist: {self._target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
 
     def _set_curr_rrt_goal_callback(self, future):
+        '''Response from the current RRT server about modifying the current goal point.'''
         response = future.result()
         self.get_logger().info(f"Set Curr RRT srv callback: {'success' if response.success else 'failure'}")
 
     def _set_target_rrt_goal_callback(self, future):
+        '''Response from the target RRT server about modifying the current goal point.'''
         response = future.result()
         self.get_logger().info(f"Set Target RRT srv callback: {'success' if response.success else 'failure'}")
 
     def set_planner_state(self, state: PlannerStatus) -> None:
+        '''Sets the state of the DWA server internally and publishes it.
+        
+        Also does housekeeping, which is tearing down/setting up pub/sub for the target robot
+        if the current robot enters/leaves `PLANNER_EXEC_JOINT`.'''
         self._planner_state = state
         self._dwa_status_pub.publish(PlannerStatusMsg(data=int(self._planner_state)))
         if state == PlannerStatus.PLANNER_EXEC_JOINT:
@@ -718,14 +744,36 @@ class DWAMultirobotServer(DWABaseNode):
                 pass
 
     def publish_target_cmd_vel(self, lin_vel: float, ang_vel: float):
-        '''Publish a cmd_vel to the current dwa target node'''
+        '''Creates a Twist with the specified `lin` and `ang` velocities and publishes it 
+        to `cmd_vel` for the target robot.'''
         cmd_vel = Twist(
             linear=Vector3(x=lin_vel, y=0.0, z=0.0), 
             angular=Vector3(x=0.0, y=0.0, z=ang_vel)
         )
         self._target_cmd_vel_pub.publish(cmd_vel)
 
+    def _srv_change_goal_callback(self, request, response):
+        '''Handles request to change the currently-set goal internally.'''
+        new_x = request.new_goal.x
+        new_y = request.new_goal.y
+        # Check if new goal collides with anything
+        if check_collision((new_x, new_y), OBSTACLE_ARRAY, self.params['safety_thresh'],
+                self.params['robot_radius'], use_safety_radius=False )[0]:
+            self.goal_x = new_x
+            self.goal_y = new_y
+            response.success = True
+        else:
+            response.success = False
+        
+        return response
+        
+    def _change_goal_callback(self, future):
+        '''Response from another DWA server upon attempting to change its currently-set goal.'''
+        response = future.result()
+        self.get_logger().info(f"Update target DWA goal position callback: {'success' if response.success else 'failure'}")
+
     def _handle_target_odom_callback(self, msg):
+        '''Updates the current location of the target robot based on its `odom` feedback.'''
         self._joint_plan_target_x = msg.pose.pose.position.x
         self._joint_plan_target_y = msg.pose.pose.position.y
         self._joint_plan_target_rpy = euler_from_quaternion([
