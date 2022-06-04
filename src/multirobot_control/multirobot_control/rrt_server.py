@@ -593,7 +593,7 @@ class RRTStarActionServer(Node):
         '''
         Returns the number of remaining RRT waypoints.
         '''
-        self.get_logger().info(f'Return {len(self.path)} to get_num_remaining_waypoints srv call')
+        self.get_logger().debug(f'Return {len(self.path)} to get_num_remaining_waypoints srv call')
         response.data = Int32(data=len(self.path))
 
         return response
@@ -621,7 +621,7 @@ class RRTStarActionServer(Node):
         Service call to expose `_get_total_manhattan_dist` to other nodes.
         '''
         dist = self._get_total_manhattan_dist()
-        self.get_logger().info(f'Return {dist} to get_total_manhattan_dist srv call')
+        self.get_logger().debug(f'Return {dist:.2f} to get_total_manhattan_dist srv call')
         response.data = Float64(data=dist)
 
         return response
@@ -637,7 +637,7 @@ class RRTStarActionServer(Node):
             for x,y in self.path:
                 waypoints.append(Point(x=float(x), y=float(y), z=0.0))
 
-        self.get_logger().info(f'Return {dist}, {self.waypoint_idx}, {waypoints} to get_rrt_waypoints srv call')
+        self.get_logger().debug(f'Return {dist:.2f}, {self.waypoint_idx}, to get_rrt_waypoints srv call')
         response.remaining_dist = Float64(data=dist)
         response.waypoint_idx = Int32(data=self.waypoint_idx)
         response.waypoints = waypoints
