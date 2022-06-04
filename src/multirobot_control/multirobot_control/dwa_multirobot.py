@@ -56,28 +56,11 @@ class DWAMultirobotServer(DWABaseNode):
         self.params['rrt_max_extend_length'] = self.get_parameter('rrt_max_extend_length').value
 
         self._delay_10_hz = self.create_rate(10)
-        self._main_loop_timer = self.create_timer(0.1, self._main_loop)
+        self._main_loop_timer = self.create_timer(1/20, self._main_loop)
 
         self._other_robot_request = True
         self._curr_rrt_request = True
         self._target_rrt_request = True
-
-    """
-    def handle_other_robot_state(self, msg):
-        '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
-        
-        # TODO move the state querying into odom_distribution.
-        # Because everything is callback-based, it should return fairly quickly.
-        # Should not loop in this callback but rather wait till the next iteration...
-        # Or have a megaloop running somewhere.
-        self.other_robots = {}
-        for idx in range(len(msg.positions)):
-            pose = msg.positions[idx]
-            name = msg.names[idx].data
-            self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
-
-            self.other_robots[name] = (pose.x, pose.y)
-    """
 
     def _main_loop(self):
         '''
@@ -161,16 +144,24 @@ class DWAMultirobotServer(DWABaseNode):
                             curr_goal = self._curr_path[self._curr_waypoint_idx]
                             target_goal = self._target_path[self._target_waypoint_idx]
 
+                            self.get_logger().info(f"Curr goal: {curr_goal[0]:.2f},{curr_goal[1]:.2f}, Target goal: {target_goal[0]:.2f},{target_goal[1]:.2f}")
+
                             # Current goals cannot coexist
                             if np.linalg.norm(np.array(curr_goal)-np.array(target_goal)) \
                                 < (self.params['inter_robot_dist'] * self.params['robot_radius']):
                                 
                                 curr_idx, curr_goal, target_idx, target_goal = \
                                     self.get_collision_free_waypoint_set()
+                                
+                                self.get_logger().info(f"Curr goal set: {curr_idx} | {curr_goal}")
+                                self.get_logger().info(f"Target goal set: {target_idx} | {target_goal}")
 
                                 # Call service to modify goals
                                 self.set_curr_waypoint_vals(curr_idx, curr_goal)
                                 self.set_target_waypoint_vals(target_idx, target_goal)
+                            
+                            else:
+                                self.get_logger().info("Current goals can coexist.")
 
                         else:
                             # Stop robot
@@ -265,7 +256,7 @@ class DWAMultirobotServer(DWABaseNode):
 
         proposed_dist = np.linalg.norm(np.array(target_pos)-np.array(curr_pos))
         if proposed_dist < (self.params['inter_robot_dist'] * self.params['robot_radius']):
-            self.get_logger().error(f"Proposed curr {curr_pos} and target {target_pos} are still too close together with distance {proposed_dist:.2f}")
+            self.get_logger().error(f"Proposed curr {curr_pos[0]:.2f},{curr_pos[1]:.2f} and target {target_pos[0]:.2f},{target_pos[1]:.2f} are still too close together with distance {proposed_dist:.2f}")
 
         return curr_idx, curr_goal, target_idx, target_goal
 
@@ -317,7 +308,7 @@ class DWAMultirobotServer(DWABaseNode):
             self._curr_waypoint_idx = curr_idx
         elif curr_goal is not None:
             req = SetRRTWaypoint.Request()
-            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_IDX
+            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_COORDS
             req.waypoint = Point(x=curr_goal[0], y=curr_goal[1], z=0.0)
             self.get_logger().info(f"Modifying curr_waypoint from {self._curr_path[self._curr_waypoint_idx][0]:.2f},{self._curr_path[self._curr_waypoint_idx][1]:.2f} to {curr_goal[0]:.2f},{curr_goal[1]:.2f}")
             self._curr_path[self._curr_waypoint_idx] = curr_goal
@@ -325,7 +316,7 @@ class DWAMultirobotServer(DWABaseNode):
         if req is not None:
             self._set_curr_rrt_goal_future = self._set_curr_rrt_goal_cli.call_async(req)
             self._set_curr_rrt_goal_future.add_done_callback(self._set_curr_rrt_goal_callback)
-        # Else no action reqd
+            # Else no action reqd
 
     def set_target_waypoint_vals(self, target_idx, target_goal):
         ''' Checks if target_idx or target_goal need to be changed in class variables, and also
@@ -335,13 +326,13 @@ class DWAMultirobotServer(DWABaseNode):
 
         if target_idx is not None:
             req = SetRRTWaypoint.Request()
-            req.sel_waypoint_idx = SetRRTWaypoint.EDIT_WAYPOINT_IDX
+            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_IDX
             req.waypoint_idx = Int32(data=target_idx)
             self.get_logger().info(f"Modifying target_waypoint idx from {self._target_waypoint_idx} to {target_idx}")
             self._target_waypoint_idx = target_idx
         elif target_goal is not None:
             req = SetRRTWaypoint.Request()
-            req.sel_waypoint_idx = SetRRTWaypoint.EDIT_WAYPOINT_IDX
+            req.sel_waypoint_idx = SetRRTWaypoint.Request.EDIT_WAYPOINT_COORDS
             req.waypoint = Point(x=target_goal[0], y=target_goal[1], z=0.0)
             self.get_logger().info(f"Modifying target_waypoint from {self._target_path[self._target_waypoint_idx][0]:.2f},{self._target_path[self._target_waypoint_idx][1]:.2f} to {target_goal[0]:.2f},{target_goal[1]:.2f}")
             self._target_path[self._target_waypoint_idx] = target_goal
@@ -349,7 +340,7 @@ class DWAMultirobotServer(DWABaseNode):
         if req is not None:
             self._set_target_rrt_goal_future = self._set_target_rrt_goal_cli.call_async(req)
             self._set_target_rrt_goal_future.add_done_callback(self._set_target_rrt_goal_callback)
-        # Else no action reqd
+            # Else no action reqd
 
     def planned_pos_timer_callback(self):
         ''' 
@@ -386,8 +377,6 @@ class DWAMultirobotServer(DWABaseNode):
         # No need to send anything if we are in DEFERRED (the EXEC_JOINT node will send for us)
 
     def dwa_action_callback(self):
-        # TODO add in stuff for planner_exec_joint and other stuff...
-        # ...
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
             # Enumerate possible actions, checking for bounds
             possible_linear = [ self._linear_twist ]
@@ -721,8 +710,8 @@ class DWAMultirobotServer(DWABaseNode):
             self.get_logger().info(f"Publishing to {self._joint_plan_target}/cmd_vel")
             self._target_cmd_vel_pub = self.create_publisher(Twist, f"{self._joint_plan_target}/cmd_vel", 10)
         else:
-            del self._joint_plan_target
             try:
+                del self._joint_plan_target
                 self._target_state_sub.destroy()
                 self._target_cmd_vel_pub.destroy()
             except AttributeError:

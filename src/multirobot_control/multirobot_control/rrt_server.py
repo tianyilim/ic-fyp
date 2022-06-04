@@ -649,7 +649,7 @@ class RRTStarActionServer(Node):
         Handles a request to change either the current RRT waypoint or the waypoint_idx.
         '''
 
-        if request.sel_waypoint_idx==SetRRTWaypoint.EDIT_WAYPOINT_IDX:
+        if request.sel_waypoint_idx==SetRRTWaypoint.Request.EDIT_WAYPOINT_IDX:
             req_waypoint_idx = request.waypoint_idx.data
             if req_waypoint_idx < len(self.path):
                 self.get_logger().info(f"Setting current RRT waypoint to {req_waypoint_idx+1}/{len(self.path)}.")
