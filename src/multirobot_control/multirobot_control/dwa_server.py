@@ -352,7 +352,7 @@ class DWABaseNode(Node):
                     self.get_logger().debug(f"Lin: {linear_twist:.2f} Ang: {angular_twist:.2f}")
                     score = self.rankPose(end_pose, linear_twist, angular_twist)
 
-                    marker_vis = self.marker_from_traj(vis_idx, score, end_pose)
+                    marker_vis = self.marker_from_traj(vis_idx, score, (self._x, self._y), end_pose)
                     vis_msg_array.append(marker_vis)
 
                     if score > top_score:
@@ -531,6 +531,45 @@ class DWABaseNode(Node):
         else:
             return False
 
+    def _list_possible_endpoints(self, current_pos:Tuple[float,float], current_yaw:float, 
+        current_lin_vel:float, current_ang_vel:float) -> List[Tuple[float,float,float,float,float]]:
+        ''' Based on the current position, linear, and angular velocities of a robot, report
+        their possible poses after `simulate_duration`.
+        
+        Returns a list of end poses (x,y,theta,linear_vel,angular_vel).
+        '''
+        possible_linear = [ current_lin_vel ]
+        if (current_lin_vel + self.params['linear_step']) <= self.params['linear_speed_limit']:
+            possible_linear.append(current_lin_vel + self.params['linear_step'])
+        if (current_lin_vel - self.params['linear_step']) >= -self.params['linear_speed_limit']:
+            possible_linear.append(current_lin_vel - self.params['linear_step'])
+
+        possible_angular = [ current_ang_vel ]
+        if (current_ang_vel + self.params['angular_step']) <= self.params['angular_speed_limit']:
+            possible_angular.append(current_ang_vel + self.params['angular_step'])
+        if (current_ang_vel - self.params['angular_step']) >= -self.params['angular_speed_limit']:
+            possible_angular.append(current_ang_vel - self.params['angular_step'])
+
+        end_poses = []
+
+        for linear_twist in possible_linear:
+            for angular_twist in possible_angular:
+                # Rotation matrix for current angle
+                effective_yaw = current_yaw + angular_twist*self.params['simulate_duration']
+                c, s = np.cos(effective_yaw), np.sin(effective_yaw)
+                R = np.array(((c, -s), (s, c)))
+
+                # displacement vector
+                displacement = np.array([ linear_twist*self.params['simulate_duration'], 0 ])
+                displacement = R @ displacement
+
+                # Eventual position and orientation
+                end_pose = displacement + np.array(current_pos)
+                end_pose = (end_pose[0], end_pose[1], effective_yaw, linear_twist, angular_twist) 
+                end_poses.append(end_pose)
+
+        return end_poses
+
     def _set_parameter_callback(self, params):
         for param in params:
             if param.name == 'pub_freq':
@@ -556,13 +595,16 @@ class DWABaseNode(Node):
         # Write parameter result change
         return SetParametersResult(successful=True)
 
-    def marker_from_traj(self, idx: int, score: float, end_pose: Tuple[float, float, float]) -> Marker :
+
+    def marker_from_traj(self, idx: int, score: float, start_pos: Tuple[float,float], 
+        end_pose: Tuple[float, float, float]) -> Marker :
         '''
         Returns a `Marker` object from the proposed trajectory.
 
         Args:
         - idx: An index uniquely identifying the proposed trajectory
         - score: Trajectory's score from `rankPose`
+        - start_pos: Tuple of (x,y)
         - end_pose: Tuple of (x, y, yaw) - only x, y are used to determine the shape of the marker
 
         Returns:
@@ -583,11 +625,11 @@ class DWABaseNode(Node):
         marker.action = Marker.ADD
 
         # Position of marker
-        marker.pose.position.x = self._x
-        marker.pose.position.y = self._y
+        marker.pose.position.x = start_pos[0]
+        marker.pose.position.y = start_pos[1]
         marker.pose.position.z = 0.25
         # Orientation is diff between current pose and future pose
-        yaw = np.arctan2((end_pose[1]-self._y), (end_pose[0]-self._x))
+        yaw = np.arctan2((end_pose[1]-start_pos[1]), (end_pose[0]-start_pos[0]))
         quat = quaternion_from_euler(0, 0, yaw)
         marker.pose.orientation.x = quat[0]
         marker.pose.orientation.y = quat[1]
@@ -596,11 +638,11 @@ class DWABaseNode(Node):
 
         # Set the scale of the marker
         # x: Arrow length
-        marker.scale.x = np.hypot((end_pose[1]-self._y), (end_pose[0]-self._x)) 
+        marker.scale.x = np.hypot((end_pose[1]-start_pos[1]), (end_pose[0]-start_pos[0])) 
         # y: Arrow width
         marker.scale.y = 0.05
         # z: Head length
-        marker.scale.z = np.hypot((end_pose[1]-self._y), (end_pose[0]-self._x)) * 0.2
+        marker.scale.z = np.hypot((end_pose[1]-start_pos[1]), (end_pose[0]-start_pos[0])) * 0.2
 
         # Set the color -- be sure to set alpha to something non-zero!
         if score==-np.inf:
