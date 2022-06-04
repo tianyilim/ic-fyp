@@ -8,3 +8,4 @@ class PlannerStatus(IntEnum):
     PLANNER_READY = 2
     PLANNER_DEFERRED = 3
     PLANNER_EXEC_JOINT = 4
+    PLANNER_ABORT = 5
