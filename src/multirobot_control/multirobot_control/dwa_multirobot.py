@@ -568,7 +568,7 @@ class DWAMultirobotServer(DWABaseNode):
                         goal_poses.append( get_point_on_connecting_line(robot_pos, self_pos, (self.params['inter_robot_dist']*self.params['robot_radius'])) )
 
                 for obstacle in OBSTACLE_ARRAY:
-                    dist_to_obstacle, closest_point = dist_to_aabb(self._x, self._y, obstacle, get_closest_point=True)
+                    dist_to_obstacle, closest_point, _ = dist_to_aabb(self._x, self._y, obstacle, get_closest_point=True)
                     if dist_to_obstacle < 1.5*self.params['robot_radius']:
                         # Set local goal to be twice the robot radius away from the closest point at a right angle.
                         self.get_logger().info(f"Robot too close to obstacle. Planning away from it.")
