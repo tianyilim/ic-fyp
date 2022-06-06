@@ -150,6 +150,11 @@ class RRT:
                 plt.draw()
                 plt.pause(0.001)
 
+    def get_goal_xy(self) -> Tuple[float,float]:
+        '''Returns the goal x and y positions internal to the RRT node. This is needed because
+        the goal positions may be different compared to the args passed in.'''
+        return self.goal[0], self.goal[1]
+
     def reset_planner(self, start_pos: Tuple[float, float], goal_pos: Tuple[float, float]):
         '''
         Resets planner to go to a new start/goal pos while keeping the same settings.
