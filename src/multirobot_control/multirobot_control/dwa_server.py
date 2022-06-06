@@ -13,7 +13,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
-from planner_action_interfaces.srv import GetPlannerStatus, GetRRTWaypoints
+from planner_action_interfaces.srv import GetPlannerStatus, GetRRTWaypoints, GetPoint
 
 from std_msgs.msg import Bool, String, Header, Int8
 from nav_msgs.msg import Odometry
@@ -131,6 +131,11 @@ class DWABaseNode(Node):
         # Service to check for server status
         self._srv_dwa_status = self.create_service(GetPlannerStatus, f'{self.get_name()}/get_dwa_server_status', self._srv_dwa_status_callback)
 
+        # Service to report the position of the closest robot
+        self._srv_get_closest_robot_coordinates = self.create_service(GetPoint,
+            f'{self.get_name()}/get_closest_robot_coordinates',
+            self._srv_get_closest_robot_coordinates_callback)
+
         # Publish status changes 
         self._dwa_status_pub = self.create_publisher(PlannerStatusMsg, f'{self.get_name()}/dwa_status', 10)
         self.set_planner_state(PlannerStatus.PLANNER_READY)
@@ -162,6 +167,7 @@ class DWABaseNode(Node):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         self.other_robots = {}
         self.closest_robot = None
+        self.closest_robot_pos = None
         closest_dist = np.inf
 
         for idx in range(len(msg.positions)):
@@ -175,6 +181,7 @@ class DWABaseNode(Node):
             if dist < closest_dist:
                 closest_dist = dist
                 self.closest_robot = name
+                self.closest_robot_pos = (pose.x, pose.y)
     
     def planned_pos_timer_callback(self):
         ''' 
@@ -738,6 +745,17 @@ class DWABaseNode(Node):
         self._target_manhattan_dist, self._target_waypoint_idx , self._target_path = \
             self._parse_get_rrt_response(response)
         self.get_logger().debug(f"Target RRT srv callback: Manhattan Dist: {self._target_manhattan_dist:.2f}, Curr waypt idx: {self._target_waypoint_idx}\n{self._target_path}")
+
+    def _srv_get_closest_robot_coordinates_callback(self, _, response):
+        '''Handles request to check the position of the closest robot. Returns `True` on `valid` 
+        if such a robot exists.'''
+        if self.closest_robot_pos is not None:
+            response.pos = Point(x=self.closest_robot_pos[0], y=self.closest_robot_pos[1], z=0.0)
+            response.valid = True
+        else:
+            response.valid = False
+
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
