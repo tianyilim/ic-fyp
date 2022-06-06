@@ -321,6 +321,7 @@
 - Add service in DWA server to give the coordinates of the closest robot.
 - RRT server then queries DWA server upon an `ABORT` to add the position of the closest robot to the server as an Axis-Aligned Bounding-Box.
 - Add a timeout to replan requests in the `dwa_replan` server.
+- Move the `ABORT` status from the stall case to a separate timer callback which polls once every half second and checks if the current robot has been blocked / obstructed by the target robot in any way.
 - [ ] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
 
 ---
@@ -331,5 +332,32 @@
   - [ ] There is a real chance that more than 2 robots come in proxmity
 - [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
 - [ ] Something to set heading goals, so robots face the goal with some certainty
-- [ ] Think about how to get both implementations of `dwa_server` to inherit from the same class so there is less repetition?
-- [ ] Tips on report, what should be done in terms of references, report structure etc?
+
+---
+
+## Report Structure Ideas
+- Methodology / Existing Work
+  - ROS
+  - Gazebo simulator
+    - Simulation environment with justification
+    - Simulated robot (URDF) with justification
+  - Odom distribution algorithm
+    - Purpose: simulation of communication radius between robots
+  - Collision detection
+    - AABB inflation
+  - Global Path Planning
+    - Discuss other methods like D*, A* and why they were not adopted
+      - Mention that they could be adopted with the current architecture
+    - RRT
+    - RRT*
+  - Local Path Planning
+    - DWA
+      - `rankPose`
+      - Tuning parameters
+      - Stall detection
+      - Inherited classes
+- Results
+  - Comparison between RRT and RRT* (esp in computation time)
+  - Comparison in setting a minimum number of nodes for RRT*
+  - Comparison with setting RRT* path_bias parameter
+  - Comparing `dwa_action_server` with `dwa_replan_server` as number of robots increases 
