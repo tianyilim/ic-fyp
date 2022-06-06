@@ -313,10 +313,15 @@
 - Setup a service to set goal within DWA server, as well as its respective topic.
 - [ ] Collaborative part of code needs further thought - currently it's not much better than the regular DWA node.
 - Create a new DWA variant, `dwa_replan` which aims to replan if a collision is detected between robots.
-
 - Use `self.closest_robot`, no need to calculate again in `dwa_multirobot`
+- Add an `ABORTED` state to the list of planner states.
 
-- Add an `ABORTED` state to the planner
+### Mon 06/05/22
+- Fixed a long-standing bug where the goal coordinates in the RRT server were appended to the path list, which does not respect the collision avoidance done in the RRT node.
+- Add service in DWA server to give the coordinates of the closest robot.
+- RRT server then queries DWA server upon an `ABORT` to add the position of the closest robot to the server as an Axis-Aligned Bounding-Box.
+- Add a timeout to replan requests in the `dwa_replan` server.
+- [ ] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
 
 ---
 

@@ -20,7 +20,7 @@ from rcl_interfaces.msg import SetParametersResult
 from planner_action_interfaces.action import LocalPlanner
 from planner_action_interfaces.msg import OtherRobotLocations
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
-from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus, SetRRTWaypoint
+from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus, SetRRTWaypoint, GetPoint
 
 from std_msgs.msg import Bool, String, Header, Float64, Int32
 from nav_msgs.msg import Odometry
@@ -154,6 +154,11 @@ class RRTStarActionServer(Node):
         self._srv_get_rrt_waypoints = self.create_service(GetRRTWaypoints, f'{self.get_name()}/get_rrt_waypoints', self._srv_get_rrt_waypoints_callback)
         self._srv_set_rrt_waypoint = self.create_service(SetRRTWaypoint, f'{self.get_name()}/set_rrt_waypoint', self._srv_set_rrt_waypoint_callback)
 
+        # Extra respresentation of robots as obstacles
+        self._get_closest_robot_coordinates_cli = self.create_client(GetPoint, f'{self._action_server_name}/get_closest_robot_coordinates')
+        self._additional_obstacles: List[Tuple[float,float,float,float]] = [] 
+        '''List of AABBs that represent robots to plan around'''
+
     def execute_callback(self, goal_handle):
         '''Executes the RRT* action'''
         self.global_planner_status = PlannerStatus.PLANNER_PLAN
@@ -183,11 +188,6 @@ class RRTStarActionServer(Node):
         else:
             # Not goal pose
             self.intermediate_y = self.goal_y
-
-        # Show goal and start locations
-        self.get_logger().info(f"Robot ID {self.robot_num}")
-        self.display_goal_marker(self.goal_x, self.goal_y)
-        self.display_goal_marker(self._x, self._y, id=1, alpha=0.4)
         
         start_x = self._x
         start_y = self._y
@@ -226,8 +226,9 @@ class RRTStarActionServer(Node):
        # Check if (re)planning needs to be done. Only do so when robot has stopped.
         if self.global_planner_status == PlannerStatus.PLANNER_PLAN and self.local_planner_status==PlannerStatus.PLANNER_READY:
             # Find a suitable path through the workspace (and save it for future use).
+            effective_obstacles = OBSTACLE_ARRAY + self._additional_obstacles
             rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
-                                    obstacle_list=OBSTACLE_ARRAY, bounds=OBSTACLE_BOUND,
+                                    obstacle_list=effective_obstacles, bounds=OBSTACLE_BOUND,
                                     path_bias=self.params['rrt_path_bias'],
                                     it_lim=self.params['rrt_it_lim'],
                                     it_min=self.params['rrt_it_min'],
@@ -238,6 +239,8 @@ class RRTStarActionServer(Node):
                                     debug_plot=self.params['rrt_debug_plot'],
                                     logger=self.get_logger()    )
  
+            self.goal_x, self.goal_y = rrt_planner.get_goal_xy()
+ 
             # set distance thresh while RRT computation is done
             self.get_logger().info(f"Setting dist_thresh to {self.params['dist_thresh_hi']}")
             srv = SetParameters.Request()
@@ -245,15 +248,23 @@ class RRTStarActionServer(Node):
                 type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
             ))]
             resp_future = self.dist_thresh_client.call_async(srv)
-            resp_future.add_done_callback(self.param_set_callback)
+            resp_future.add_done_callback(self._set_dist_thresh_callback)
 
             # Replan
             self.remove_path_marker()
             self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
             self.path, num_nodes = rrt_planner.explore()
-            self.path.append((self.goal_x, self.goal_y))
+
+            # Show goal and start locations
+            self.get_logger().info(f"Robot ID {self.robot_num}")
+            self.display_goal_marker(self.goal_x, self.goal_y)
+            self.display_goal_marker(self._x, self._y, id=1, alpha=0.4)
+
             self.get_logger().info(f"Path found with {len(self.path)} segments in {num_nodes} nodes")
             self.display_path_marker()
+
+            # After planning wrt additional obstacles, clear them
+            self._additional_obstacles = []
 
             self.global_planner_status = PlannerStatus.PLANNER_EXEC
             self.waypoint_idx = 0
@@ -268,7 +279,7 @@ class RRTStarActionServer(Node):
                     type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_lo']
                 ))]
                 resp_future = self.dist_thresh_client.call_async(srv)
-                resp_future.add_done_callback(self.param_set_callback)
+                resp_future.add_done_callback(self._set_dist_thresh_callback)
 
             # Send new goal
             if not self._sent_goal:
@@ -354,6 +365,14 @@ class RRTStarActionServer(Node):
             result.final_position.x, result.final_position.y,
             1+self.waypoint_idx, len(self.path)
             ))
+        
+        if result.success.data:
+            pass
+        else:
+            self.get_logger().info(f"Local planner aborted goal. Replan based on new obstacle")
+            get_closest_robot_coordinates_future = self._get_closest_robot_coordinates_cli.call_async(GetPoint.Request())
+            get_closest_robot_coordinates_future.add_done_callback(self._get_closest_robot_coordinates_callback)
+            self.global_planner_status = PlannerStatus.PLANNER_PLAN
         
         # Remove waypoint marker from RViz Visualisation
         self.remove_path_marker_by_idx(self.waypoint_idx)
@@ -551,6 +570,7 @@ class RRTStarActionServer(Node):
         self.vis_goal_pub.publish(marker)
 
     def parameter_callback(self, params):
+        '''Callback to handle changes in parameters from an external service'''
         for param in params:
             if param.name == 'pub_freq':
                 if param.type_==Parameter.Type.DOUBLE or param.type_==Parameter.Type.INTEGER:
@@ -575,18 +595,35 @@ class RRTStarActionServer(Node):
         # Write parameter result change
         return SetParametersResult(successful=True)
 
-    def param_set_callback(self, future):
+    def _set_dist_thresh_callback(self, future):
+        '''Response from the target DWA server on setting the distance threshold.'''
         resp = future.result()
         self.get_logger().info(f"Set distance threshold {resp.results[0].successful}")
 
     def _local_planner_state_callback(self, msg):
+        '''Subscription to the target DWA server on its state.'''
         self.local_planner_status = PlannerStatus(msg.data)
         self.get_logger().info(f"{self.get_namespace()}: {self.local_planner_status.name}")
 
     def _get_local_planner_state_callback(self, future):
+        '''Response from the target DWA server on its current state.'''
         response = future.result()
         self.local_planner_status = PlannerStatus(response.planner_status.data)
         self.get_logger().info(f"{self.get_namespace()} srv callback: {self.local_planner_status.name}")
+
+    def _get_closest_robot_coordinates_callback(self, future):
+        '''Response from the target DWA server on the location of the closest robot, if it exists.
+        Converts this point into an AABB which is then added to the list of areas to plan around.'''
+        response = future.result()
+        if response.valid:
+            self.get_logger().info(f"Closest robot at {response.pos.x:.2f},{response.pos.y:.2f}")
+            self._additional_obstacles = [(
+                response.pos.x - self.params['robot_radius'],
+                response.pos.y - self.params['robot_radius'],
+                response.pos.x + self.params['robot_radius'],
+                response.pos.y + self.params['robot_radius'] )]
+        else:
+            self._additional_obstacles = []
 
     # Services
     def _srv_get_num_remaining_waypoints_callback(self, _, response):
