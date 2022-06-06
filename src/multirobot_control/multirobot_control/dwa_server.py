@@ -27,7 +27,7 @@ from multirobot_control.math_utils import dist_to_aabb, get_point_on_connecting_
 from multirobot_control.planner_status import PlannerStatus
 
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 class DWABaseNode(Node):
 
@@ -65,18 +65,16 @@ class DWABaseNode(Node):
         self.add_on_set_parameters_callback(self._set_parameter_callback)
 
         # state variables
-        self._x = 0.0
-        self._y = 0.0
-        self._yaw = 0.0
+        self._x:float = 0.0
+        self._y:float = 0.0
+        self._yaw:float = 0.0
 
         # Inputs to cmd_vel
-        self._linear_twist = 0.0
-        self._angular_twist = 0.0
-
-        self._planned_pose = None
-
+        self._linear_twist:float = 0.0
+        self._angular_twist:float = 0.0
+        self._planned_pose:Tuple[float,float] = (self._x, self._y)
         # Distance accumulator
-        self._dist_travelled = 0.0
+        self._dist_travelled:float = 0.0
 
         # Parameters
         self.params = {
@@ -101,22 +99,22 @@ class DWABaseNode(Node):
             "stall_dist_thresh" :   self.get_parameter("stall_dist_thresh").value,
         }
         
-        # other robots on the map
         self.other_robots:Dict[str, Tuple[float,float]] = {} 
+        '''A dict of the positions of other close robots'''
 
         # Subscribe to Odom (which has ground truth)
-        self.state_sub = self.create_subscription(Odometry, 'odom', \
+        self._state_sub = self.create_subscription(Odometry, 'odom', \
             self.handle_odom, qos_profile_sensor_data)
 
         # Sub to messages about the pose of other robots (and their predicted positions)
-        self.other_robot_sub = self.create_subscription(OtherRobotLocations, 
+        self._other_robot_sub = self.create_subscription(OtherRobotLocations, 
             'otherRobotLocations', self.handle_other_robot_state, 10)
 
         # Publish to cmd_vel
         self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         # Publish predicted movement
         self._planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
-        self.vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
+        self._vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
 
         # Timer callback for planned position
         self.planned_pos_timer = self.create_timer(1/self.params['pub_freq'], self.planned_pos_timer_callback)
@@ -167,7 +165,7 @@ class DWABaseNode(Node):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         self.other_robots = {}
         self.closest_robot = None
-        self.closest_robot_pos = None
+        self.closest_robot_pos:Union[Tuple[float,float],None] = None
         closest_dist = np.inf
 
         for idx in range(len(msg.positions)):
@@ -266,7 +264,7 @@ class DWABaseNode(Node):
                 self.get_logger().info(f"Stall detected. Moving towards local goal {local_goal_x:.2f},{local_goal_y:.2f} with vect {self._linear_twist:.2f}, {self._angular_twist:.2f}")
 
         # Reset distance travelled accumulator
-        self._dist_travelled = 0
+        self._dist_travelled = 0.0
 
     def execute_callback(self, goal_handle):
         ''' Executes the DWA action. '''
@@ -405,7 +403,7 @@ class DWABaseNode(Node):
             vis_msg_array[top_idx].color.g = 1.0
 
             # Visualise trajectories in RViz
-            self.vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
+            self._vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
 
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose

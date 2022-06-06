@@ -428,7 +428,7 @@ class DWAMultirobotServer(DWABaseNode):
             vis_msg_array[top_idx].color.g = 1.0
 
             # Visualise trajectories in RViz
-            self.vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
+            self._vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
 
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose
@@ -517,10 +517,10 @@ class DWAMultirobotServer(DWABaseNode):
             # Label top score with color and publish it.
             curr_vis_msg_array[curr_top_idx].color.r = 0.0
             curr_vis_msg_array[curr_top_idx].color.g = 1.0
-            self.vis_planned_pos_pub.publish( MarkerArray(markers=curr_vis_msg_array) )
+            self._vis_planned_pos_pub.publish( MarkerArray(markers=curr_vis_msg_array) )
             target_vis_msg_array[target_top_idx].color.r = 0.0
             target_vis_msg_array[target_top_idx].color.g = 1.0
-            self.vis_planned_pos_pub.publish( MarkerArray(markers=target_vis_msg_array) )
+            self._vis_planned_pos_pub.publish( MarkerArray(markers=target_vis_msg_array) )
 
             self.get_logger().info(f"---- Curr: {self._linear_twist:.2f}, {self._angular_twist:.2f} Target: {self._target_linear_twist:.2f}, {self._target_angular_twist:.2f} ----\n")
 
