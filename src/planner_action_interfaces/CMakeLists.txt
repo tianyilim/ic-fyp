@@ -35,6 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetPlannerStatus.srv"
   "srv/GetRRTWaypoints.srv"
   "srv/SetRRTWaypoint.srv"
+  "srv/GetPoint.srv"
   "srv/SetPoint.srv"
   DEPENDENCIES geometry_msgs
 )
