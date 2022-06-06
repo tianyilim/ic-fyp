@@ -35,6 +35,9 @@ class DWAReplanServer(DWABaseNode):
     def __init__(self):
         super().__init__('dwa_replan_server')
 
+        self.declare_parameter('replan_duration', 5.0)
+        self.params['replan_duration'] = self.get_parameter('replan_duration').value
+
         # Periodically poll the RRT server for info about the global plan
         self.create_timer(1/2, self._get_rrt_timer_callback)
         self.curr_rrt_client = self.create_client(GetRRTWaypoints, f'{self.get_namespace()}/rrt_star_action_server/get_rrt_waypoints')
@@ -79,13 +82,13 @@ class DWAReplanServer(DWABaseNode):
                             last_replan_f = self._last_replan.seconds_nanoseconds()
                             last_replan_f = last_replan_f[0] + last_replan_f[1]/1e9
                             time_diff = now_time_f - last_replan_f
-                            if time_diff > 5.0:
+                            if time_diff > self.params['replan_duration']:
                                 # Abort current goal (await replanning)
                                 self.get_logger().info(f"{self.get_namespace()} aborting current goal.")
                                 self._last_replan = self.get_clock().now()
                                 self.set_planner_state(PlannerStatus.PLANNER_ABORT)
                             else:
-                                self.get_logger().info(f"Time since last replanning: {time_diff:.2f}. Waiting.")
+                                self.get_logger().info(f"Time since last replanning: {time_diff:.2f}. Waiting for {self.params['replan_duration']}.")
                     
                         # Set a timer to clear the `replan` flag (eg. 5-10s) so that replanning only happens once in awhile
                         # Tag this replan flag to name in case of multiple robots getting tangled together

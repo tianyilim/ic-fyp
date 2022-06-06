@@ -22,6 +22,7 @@
     obstacle_K: 1.0
     stall_det_period: 1.0
     stall_dist_thresh: 0.1
+    replan_duration: 5.0  # How long to wait to replan when an obstacle is reached
 
     # Typically for the RRT Action Server
     rrt_path_bias: 0.1
