@@ -1,3 +1,4 @@
+from time import time
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
@@ -34,10 +35,16 @@ class DWAReplanServer(DWABaseNode):
     def __init__(self):
         super().__init__('dwa_replan_server')
 
-        self.create_timer(1/2, self._get_rrt_callback)
+        # Periodically poll the RRT server for info about the global plan
+        self.create_timer(1/2, self._get_rrt_timer_callback)
         self.curr_rrt_client = self.create_client(GetRRTWaypoints, f'{self.get_namespace()}/rrt_star_action_server/get_rrt_waypoints')
 
+        self._last_replan = Time(seconds=0, nanoseconds=0, clock_type=self.get_clock().clock_type)
+        '''The timestamp where replanning was done due to stall detection.'''
+
         self.closest_robot = None
+        self._curr_manhattan_dist = None
+        self._target_manhattan_dist = None
 
     # override stall callback
     def stall_detection_callback(self):
@@ -58,18 +65,28 @@ class DWAReplanServer(DWABaseNode):
 
                 for robot_name in self.other_robots.keys():
                     robot_x, robot_y = self.other_robots[robot_name]
+                    dist_to_robot = self.distToGoal( self._x, self._y, robot_x, robot_y )
+                    self.get_logger().info(f'{self.get_namespace()} dist to {robot_name}: {dist_to_robot:.2f}')
                     # Calculate a path away from the robots that are too close
-                    if self.distToGoal( self._x, self._y, robot_x, robot_y ) < (self.params['inter_robot_dist']*self.params['robot_radius']):
+                    if dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
                         # Compare RRT Manhattan distances. 
                         # If distance is further:
+                        self.get_logger().info(f"Curr Dist: {self._curr_manhattan_dist:.2f} Target Dist: {self._target_manhattan_dist:.2f}")
+
                         if self._curr_manhattan_dist > self._target_manhattan_dist:
-                            # Abort current goal (await replanning)
-                            self.set_planner_state(PlannerStatus.PLANNER_ABORT)
-
-                            # TODO this doesn't call
-                        # else:
-                            # Continue on current goal
-
+                            now_time_f = self.get_clock().now().seconds_nanoseconds()
+                            now_time_f = now_time_f[0] + now_time_f[1]/1e9
+                            last_replan_f = self._last_replan.seconds_nanoseconds()
+                            last_replan_f = last_replan_f[0] + last_replan_f[1]/1e9
+                            time_diff = now_time_f - last_replan_f
+                            if time_diff > 5.0:
+                                # Abort current goal (await replanning)
+                                self.get_logger().info(f"{self.get_namespace()} aborting current goal.")
+                                self._last_replan = self.get_clock().now()
+                                self.set_planner_state(PlannerStatus.PLANNER_ABORT)
+                            else:
+                                self.get_logger().info(f"Time since last replanning: {time_diff:.2f}. Waiting.")
+                    
                         # Set a timer to clear the `replan` flag (eg. 5-10s) so that replanning only happens once in awhile
                         # Tag this replan flag to name in case of multiple robots getting tangled together
 
@@ -117,16 +134,43 @@ class DWAReplanServer(DWABaseNode):
         # Reset distance travelled accumulator
         self._dist_travelled = 0
 
-    def _get_rrt_callback(self):
+    def handle_other_robot_state(self, msg):
+        '''
+        Wraps around the base implementation of `handle_other_robot_state`.
+
+        Check if the current closest robot is the same as on the previous iteration of this
+        callback, so we know to change the target of the RRT Query client.
+        '''
+
+        past_closest_robot = self.closest_robot
+
+        super().handle_other_robot_state(msg)
+
+        if self.closest_robot != past_closest_robot:
+            if past_closest_robot is None:
+                # Create new client
+                self.target_rrt_client = self.create_client(GetRRTWaypoints, f'/{self.closest_robot}/rrt_star_action_server/get_rrt_waypoints')
+                self.get_logger().info(f"{self.closest_robot} in range, creating RRT query client")
+            else:
+                self.target_rrt_client.destroy()
+
+                if self.closest_robot is not None:
+                    # Create new client
+                    self.target_rrt_client = self.create_client(GetRRTWaypoints, f'/{self.closest_robot}/rrt_star_action_server/get_rrt_waypoints')
+                    self.get_logger().info(f"{past_closest_robot} out of range, moving client to {self.closest_robot}.")
+                else:
+                    # Remove reference to this variable
+                    del self.target_rrt_client
+                    self.get_logger().info(f"{past_closest_robot} out of range, deleting RRT query client.")
+
+
+    def _get_rrt_timer_callback(self):
         '''Periodically polls the RRT servers to get info about the high-level overview of the plan.'''
         if self.closest_robot is not None:
-            target_rrt_client = self.create_client(GetRRTWaypoints, f'/{self.closest_robot}/rrt_star_action_server/get_rrt_waypoints')
             curr_rrt_future = self.curr_rrt_client.call_async(GetRRTWaypoints.Request())
             curr_rrt_future.add_done_callback(self._get_curr_rrt_dist_callback)
-            target_rrt_future = target_rrt_client.call_async(GetRRTWaypoints.Request())
+            target_rrt_future = self.target_rrt_client.call_async(GetRRTWaypoints.Request())
             target_rrt_future.add_done_callback(self._get_target_rrt_dist_callback)
-            
-            target_rrt_client.destroy()
 
 def main(args=None):
     rclpy.init(args=args)
