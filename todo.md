@@ -322,7 +322,7 @@
 - RRT server then queries DWA server upon an `ABORT` to add the position of the closest robot to the server as an Axis-Aligned Bounding-Box.
 - Add a timeout to replan requests in the `dwa_replan` server.
 - Move the `ABORT` status from the stall case to a separate timer callback which polls once every half second and checks if the current robot has been blocked / obstructed by the target robot in any way.
-- [ ] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
+- [x] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
 
 ---
 

@@ -1,9 +1,10 @@
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, float, float]],
     get_closest_point:bool=False
-    ):
+    ) -> Union[float, Tuple[float, Tuple[float,float], Tuple[float,float]], 
+        Tuple[float, Tuple[float,float], None]]:
         '''
         Calculates the distance from the robot base (modelled as a circle) and any Axis-Aligned Bounding Box.
         AABBs are useful here because the shelf obstacles in the world are axis-aligned rectangles.
@@ -18,6 +19,17 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
         - aabb: [x0, y0, x1, y1]
         - get_closest_point: Additionally also returns the closest point on the AABB to the 
             given point.
+        
+        Return values have three cases.
+        1. `get_closest_point` is False. Only return a float, positive if the point is
+        outside the AABB, and negative if the point is within the AABB.
+        2. `get_closest_point` is True.
+            - The obstacle lies within the AABB. Return a negative value for the distance.
+            Also return the closest point in the X and Y axes to the AABB as the second and
+            third retvals, ordered by whichever is closer.
+            - The obstacle is outside the AABB. Return a positive value for the distance.
+            Return the closest point on the edge of the AABB as the second retval and 
+            None for the third retval.
         '''
         # First calculate the closest point to the circle on the AABB.
         # AABB coords are always (x1, y1, x2, y2) with x1<x2, y1<y2
@@ -63,9 +75,9 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
 
                 # Return the closest point to the edge of the bounding box.
                 if dist_closest_x < dist_closest_y:
-                  return internal_dist, closest_x
+                  return internal_dist, closest_x, closest_y
                 else:
-                  return internal_dist, closest_y
+                  return internal_dist, closest_y, closest_x
             else:
                 return internal_dist
 
@@ -79,7 +91,7 @@ def dist_to_aabb(curr_x: float, curr_y: float, aabb: List[Tuple[float, float, fl
             return dist_to_bot, np.array((
                 aabb_ctr_x + diff_vect_x_clamped,
                 aabb_ctr_y + diff_vect_y_clamped
-            ))
+            )), None
         else:
             return dist_to_bot
 
@@ -227,16 +239,27 @@ def check_collision(pos:Tuple[float, float], obstacles:List[Tuple[float,float,fl
     '''
     eff_safety_radius = (robot_radius + safety_radius) if use_safety_radius else robot_radius
 
-    for obstacle in obstacles:
+    for curr_obs_idx, obstacle in enumerate(obstacles):
         obstacle_expanded = (
             obstacle[0] - eff_safety_radius,
             obstacle[1] - eff_safety_radius,
             obstacle[2] + eff_safety_radius,
             obstacle[3] + eff_safety_radius
         )
-        obs_dist, closest_point = dist_to_aabb(pos[0], pos[1], obstacle_expanded, get_closest_point=True)
+        obs_dist, closest_point_1, closest_point_2 = dist_to_aabb(pos[0], pos[1], obstacle_expanded, get_closest_point=True)
         # Use copysign here because there is the possibility of -0.0 being returned
         if np.copysign(1, obs_dist) < 0:
-            return False, closest_point
+            # Remove current obstacle from obstacles list
+            obstacle_minus = obstacles[:curr_obs_idx] + obstacles[curr_obs_idx+1:]
+            
+            # Check if proposed point collides with anything
+            # We know this fn call will definitely return, there is a base case where
+            # len(obstacles)=0
+            collision, _ = check_collision(
+                closest_point_1, obstacle_minus, safety_radius, robot_radius, use_safety_radius)
+            if collision:
+                return False, closest_point_1
+            else:
+                return False, closest_point_2
 
     return True, pos
