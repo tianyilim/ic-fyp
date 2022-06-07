@@ -24,6 +24,8 @@ from std_msgs.msg import String
 from unique_identifier_msgs.msg import UUID
 from gazebo_msgs.srv import SpawnEntity, DeleteEntity
 
+from planner_action_interfaces.msg import NamedFloat
+
 from tf_transformations import euler_from_quaternion
 
 # The dictionary containing the palette of robots--> gazebo colors
@@ -52,6 +54,7 @@ class goal_output():
     distance_travelled: float = -1
     num_waypoints: int = -1
     start_time: float = -1
+    plan_time: float = -1
     completion_time: float = -1
 
     def to_dict(self) -> Dict :
@@ -62,6 +65,7 @@ class goal_output():
             'distance_travelled' : self.distance_travelled,
             'num_waypoints' : self.num_waypoints,
             'start_time' : self.start_time,
+            'plan_time': self.plan_time,
             'completion_time' : self.completion_time,
         }
 
@@ -124,6 +128,7 @@ class GoalCreation(Node):
         # Arrays to wait for robots to be done spawning in Gazebo before sending goals
         self.robots_done_spawning = {}
         self.robots_done_subscriber = {}
+        self.plan_done_subscriber = {}
 
         # Code to visualise goals in Gazebo
         self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
@@ -156,9 +161,12 @@ class GoalCreation(Node):
             # Flag to wait for robots to be done spawning
             self.robots_done_spawning[robot] = False
             self.get_logger().info(f"Subscribing to /{robot}/finished_spawning")
-
             self.robots_done_subscriber[robot] = self.create_subscription(String, 
                 f"/{robot}/finished_spawning", self._handle_robot_done_spawning, 10)
+
+            self.get_logger().info(f"Subscribing to /{robot}/rrt_done")
+            self.plan_done_subscriber[robot] = self.create_subscription(NamedFloat, 
+                f"/{robot}/rrt_done", self._handle_robot_rrt_done, 10)
             
             self.action_clients[robot] = \
                 ActionClient(self, LocalPlanner, robot+'/rrt_star')
@@ -428,6 +436,14 @@ class GoalCreation(Node):
         robot_name = msg.data
         self.get_logger().info(f"{robot_name} done spawning.")
         self.robots_done_spawning[robot_name] = True
+
+    def _handle_robot_rrt_done(self, msg):
+        '''Recieves a `std_msgs/String` saying that robot is done with RRT planning.'''
+        robot_name = msg.name.data
+        plan_time = msg.data.data
+
+        self.results[robot_name][-1].plan_time = plan_time
+        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s wall time to plan RRT.")
 
 def main(args=None):
     rclpy.init(args=args)

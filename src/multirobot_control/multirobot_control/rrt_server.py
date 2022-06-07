@@ -5,9 +5,6 @@ the the robot to meet each of them.
 By design choice, each robot calculates its own navigation tree, as it shows that the
 algorithim can be run in a distributed manner.
 '''
-
-from multiprocessing.connection import wait
-import re
 import rclpy
 from rclpy.action import ActionServer, ActionClient
 from rclpy.executors import MultiThreadedExecutor
@@ -18,7 +15,7 @@ from rclpy.time import Duration
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.action import LocalPlanner
-from planner_action_interfaces.msg import OtherRobotLocations
+from planner_action_interfaces.msg import OtherRobotLocations, NamedFloat
 from planner_action_interfaces.msg import PlannerStatus as PlannerStatusMsg
 from planner_action_interfaces.srv import GetIntValue, GetFloatValue, GetRRTWaypoints, GetPlannerStatus, SetRRTWaypoint, GetPoint
 
@@ -148,6 +145,9 @@ class RRTStarActionServer(Node):
         # Periodically poll if a new task is ready
         self.create_timer(0.1, self.spin_callback)
 
+        # Publish value when done with planning for logging purposes
+        self._rrt_done_pub = self.create_publisher(NamedFloat, 'rrt_done', 10)
+
         # Services 
         self._srv_get_num_remaining_waypoints = self.create_service(GetIntValue, f'{self.get_name()}/get_num_remaining_waypoints', self._srv_get_num_remaining_waypoints_callback)
         self._srv_get_total_manhattan_dist = self.create_service(GetFloatValue, f'{self.get_name()}/get_total_manhattan_dist', self._srv_get_total_manhattan_dist_callback)
@@ -227,6 +227,11 @@ class RRTStarActionServer(Node):
         if self.global_planner_status == PlannerStatus.PLANNER_PLAN and self.local_planner_status==PlannerStatus.PLANNER_READY:
             # Find a suitable path through the workspace (and save it for future use).
             effective_obstacles = OBSTACLE_ARRAY + self._additional_obstacles
+            
+            # Apparently this takes 0 sim time?
+            # start_time = self.get_clock().now()
+            start_time = time.time()
+            
             rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
                                     obstacle_list=effective_obstacles, bounds=OBSTACLE_BOUND,
                                     path_bias=self.params['rrt_path_bias'],
@@ -255,8 +260,20 @@ class RRTStarActionServer(Node):
             self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
             self.path, num_nodes = rrt_planner.explore()
 
+            # When done with planning send a message
+            # end_time = self.get_clock().now()
+            # search_duration = (end_time - start_time).seconds_nanoseconds()
+            # search_duration = search_duration[0] + search_duration[1]/1e9
+            end_time = time.time()
+            search_duration = end_time - start_time
+
+            self.get_logger().info(f"{self.get_namespace().strip('/')} done planning with duration {search_duration}")
+            self._rrt_done_pub.publish(NamedFloat(
+                name=String(data=f"{self.get_namespace().strip('/')}"),
+                data=Float64(data=search_duration) ) )
+
             # Show goal and start locations
-            self.get_logger().info(f"Robot ID {self.robot_num}")
+            self.get_logger().debug(f"Robot ID {self.robot_num}")
             self.display_goal_marker(self.goal_x, self.goal_y)
             self.display_goal_marker(self._x, self._y, id=1, alpha=0.4)
 
