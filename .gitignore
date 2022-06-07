@@ -1,6 +1,5 @@
 build/*
 install/*
-log/*
 experiment/*
 **/tmp/*
 **/result/*
@@ -9,5 +8,6 @@ experiment/*
 **/test_scenarios
 **/test_params
 
+**/log/*
 **/params_custom.yaml
 **/scenario_custom.yaml
