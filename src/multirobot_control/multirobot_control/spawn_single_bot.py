@@ -109,8 +109,8 @@ def main():
     node.get_logger().info('Done! Shutting down node.')
 
     fin_pub = node.create_publisher(String, f'/{args.robot_namespace}/finished_spawning', 10)
-    while fin_pub.get_subscription_count() < 1:
-        node.get_logger().warn("Please create a subscriber to spawn_single_bot/fin_pub.", once=True)
+    while fin_pub.get_subscription_count() < 2:
+        node.get_logger().warn(f"Waiting for odom_distribution and goal_creation to subscribe to /{args.robot_namespace}/finished_spawning", once=True)
         time.sleep(1)
     fin_pub.publish(String(data=f"{args.robot_namespace}"))
 

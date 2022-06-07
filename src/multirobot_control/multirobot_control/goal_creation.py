@@ -121,6 +121,9 @@ class GoalCreation(Node):
         self.robot_name_to_idx = {}         # Map robot names to respective indices (eg. robot1->1)
         self.goal_futures = {}              # One goal future corresponding to each robot
         self.result_futures = {}            # Same for results
+        # Arrays to wait for robots to be done spawning in Gazebo before sending goals
+        self.robots_done_spawning = {}
+        self.robots_done_subscriber = {}
 
         # Code to visualise goals in Gazebo
         self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
@@ -150,6 +153,13 @@ class GoalCreation(Node):
         }
 
         for index, robot in enumerate(self.get_parameter("robot_list").value):
+            # Flag to wait for robots to be done spawning
+            self.robots_done_spawning[robot] = False
+            self.get_logger().info(f"Subscribing to /{robot}/finished_spawning")
+
+            self.robots_done_subscriber[robot] = self.create_subscription(String, 
+                f"/{robot}/finished_spawning", self._handle_robot_done_spawning, 10)
+            
             self.action_clients[robot] = \
                 ActionClient(self, LocalPlanner, robot+'/rrt_star')
 
@@ -161,24 +171,11 @@ class GoalCreation(Node):
             # Generate goals or read from the list
             if self.randomly_generate_goals:
                 self.robot_remaining_goals[robot] = self.get_parameter('total_goals').value
-                # Send initial first goal (random generated)
-                goal_idx = np.random.randint(len(GOAL_ARRAY))
-                initial_goal =  GOAL_ARRAY[goal_idx]
             else:
                 self.robot_remaining_goals[robot] = len(self.goal_array[index])
-                if len(self.goal_array[index]) > 0:
-                    initial_goal = (self.goal_array[index][0][0], self.goal_array[index][0][1])
-                else:
-                    initial_goal = None
 
-            if initial_goal is not None:
+            if self.robot_remaining_goals[robot] > 0:
                 self.robot_goal_status[robot] = RobotGoalStatus.GOAL_STATUS_READY
-
-                self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
-                    robot, initial_goal[0], initial_goal[1]
-                ))
-
-                self.send_goal(robot, Point(x=initial_goal[0], y=initial_goal[1], z=0.0))
 
         # Create a timer callback to periodically assign goals
         goal_timer_period = 1.0
@@ -279,41 +276,47 @@ class GoalCreation(Node):
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_READY
 
     def goal_assignment_timer_callback(self):
-        # Check if all robots are done
-        if all( remaining_goals == 0 for remaining_goals in self.robot_remaining_goals.values() ):
-            now_s = self.get_clock().now().seconds_nanoseconds()
-            now_s = float(now_s[0] + now_s[1]/1e9)
-            self.results['end_time'] = now_s
+        
+        # Check if all robots are done spawning
+        if all(self.robots_done_spawning.values()):
+            # Check if all robots are done
+            if all( remaining_goals == 0 for remaining_goals in self.robot_remaining_goals.values() ):
+                now_s = self.get_clock().now().seconds_nanoseconds()
+                now_s = float(now_s[0] + now_s[1]/1e9)
+                self.results['end_time'] = now_s
 
-            self.get_logger().info("All robots are done with their goals. Shutting down node.")
+                self.get_logger().info("All robots are done with their goals. Shutting down node.")
 
-            self.dump_results()
-            self.destroy_node()
-            rclpy.shutdown()
+                self.dump_results()
+                self.destroy_node()
+                rclpy.shutdown()
 
-        # Iterate over all robots
-        for robot_name in self.robot_remaining_goals.keys():
+            # Iterate over all robots
+            for robot_name in self.robot_remaining_goals.keys():
 
-            # Debug hook for checking if this is running
-            self.get_logger().debug(f"Robot {robot_name} status {self.robot_goal_status[robot_name]} " + \
-            f"Remaining Goals {self.robot_remaining_goals[robot_name]}")
+                # Debug hook for checking if this is running
+                self.get_logger().debug(f"Robot {robot_name} status {self.robot_goal_status[robot_name]} " + \
+                f"Remaining Goals {self.robot_remaining_goals[robot_name]}")
 
-            if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY \
-                and self.robot_remaining_goals[robot_name] > 0:
-                # assign a new goal
-                if self.randomly_generate_goals:
-                    goal_idx = np.random.randint(len(GOAL_ARRAY))
-                    goal_coords =  GOAL_ARRAY[goal_idx]
-                else:
-                    robot_idx = self.robot_name_to_idx[robot_name]
-                    goal_idx = len(self.goal_array[robot_idx]) - self.robot_remaining_goals[robot_name]
-                    goal_coords = (self.goal_array[robot_idx][goal_idx][0], self.goal_array[robot_idx][goal_idx][1])
+                if self.robot_goal_status[robot_name] == RobotGoalStatus.GOAL_STATUS_READY \
+                    and self.robot_remaining_goals[robot_name] > 0:
+                    # assign a new goal
+                    if self.randomly_generate_goals:
+                        goal_idx = np.random.randint(len(GOAL_ARRAY))
+                        goal_coords =  GOAL_ARRAY[goal_idx]
+                    else:
+                        robot_idx = self.robot_name_to_idx[robot_name]
+                        goal_idx = len(self.goal_array[robot_idx]) - self.robot_remaining_goals[robot_name]
+                        goal_coords = (self.goal_array[robot_idx][goal_idx][0], self.goal_array[robot_idx][goal_idx][1])
 
-                self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
-                    robot_name, goal_coords[0], goal_coords[1]
-                ))
+                    self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
+                        robot_name, goal_coords[0], goal_coords[1]
+                    ))
 
-                self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
+                    self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
+        else:
+            self.get_logger().info(f"Waiting for all robots to spawn... {self.robots_done_spawning}")
+
 
     def watchdog_timer_callback(self):
         '''
@@ -419,6 +422,12 @@ class GoalCreation(Node):
                 # Append planner params yaml file to the end of results file
                 file.write('\n')
                 file.write(f2.read())
+
+    def _handle_robot_done_spawning(self, msg):
+        '''Recieves a `std_msgs/String` on robot_namespace/finished_spawning.'''
+        robot_name = msg.data
+        self.get_logger().info(f"{robot_name} done spawning.")
+        self.robots_done_spawning[robot_name] = True
 
 def main(args=None):
     rclpy.init(args=args)

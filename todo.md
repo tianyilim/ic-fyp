@@ -325,7 +325,8 @@
 - [x] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
 
 ### Tue 07/06/22
-
+- Edit `goal_creation` to wait for robots to be done spawning in Gazebo before beginning to assign goals.
+- `spawn_single_bot` also waits for 2 subscribers (`goal_creation` and `odom_distribution`) to the done topic before publishing that one message, and then shutting down.
 
 ---
 
