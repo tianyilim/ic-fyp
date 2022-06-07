@@ -288,7 +288,7 @@
   - Created a new service type `SetRRTWaypoint.srv` that allows either the waypoint index of the RRT path or the waypoint coordinates to be modified, and created the infrastructure in the RRT server.
 - [ ] Think about the required machinery for the RRT server to handle changes in the DWA state machine
 
-### Thu 02/05/22
+### Thu 02/06/22
 - Fixed lots of stuff from [Tues/Wed](#tue-310522) - most of the tick marks added today.
 - QOL change: select scenario file from `spawn_bots_launch` file
 - All `check_line_of_sight` uses the inflation method originally used in `rrt_node` (moved to `math_utils`)
@@ -297,7 +297,7 @@
   - [x] Put as parameters.
 - Refactor `dwa_server` to act as the "base class". The multirobot case can then inherit from the base class and overwrite some of its functions.
 
-### Fri 03/05/22
+### Fri 03/06/22
 - Add in option in `planner_params.yaml` to choose between `dwa_action_server` and `dwa_multirobot_server`.
 - Launch file will launch the appropriate server (but fail silently if something is not met)
 - `odom_distribution` only starts listening to stuff from `odom` when the robot has finished spawning (gets a message on `{namespace}/finished_spawning`)
@@ -306,7 +306,7 @@
 - [x] Rethink how the status of each server should be retrieved. Perhaps the centralised node can take care of it but this architectural choice detracts from a truly "distributed" computation.
   - An idea would be moving the computation in `dwa_multirobot_server/handle_other_robot_state` into a separate mega-loop/timer callback. This allows for polling to happen somehow (allowing us to call `while not ... ready() : ...`)
 
-### Sat 04/05/22
+### Sat 04/06/22
 - Changed up system architecture for `dwa_multirobot`, using a `_main_loop` that runs at 10Hz to check for the locations of other robots, and run state transition.
 - Move creating subscribers to `odom` / publishers to `cmd_vel` into a modified version of `set_planner_state`.
 - Plumbing for publishing the relevant values to `odom_distribution`, even if it's not fully done up yet.
@@ -316,13 +316,16 @@
 - Use `self.closest_robot`, no need to calculate again in `dwa_multirobot`
 - Add an `ABORTED` state to the list of planner states.
 
-### Mon 06/05/22
+### Mon 06/06/22
 - Fixed a long-standing bug where the goal coordinates in the RRT server were appended to the path list, which does not respect the collision avoidance done in the RRT node.
 - Add service in DWA server to give the coordinates of the closest robot.
 - RRT server then queries DWA server upon an `ABORT` to add the position of the closest robot to the server as an Axis-Aligned Bounding-Box.
 - Add a timeout to replan requests in the `dwa_replan` server.
 - Move the `ABORT` status from the stall case to a separate timer callback which polls once every half second and checks if the current robot has been blocked / obstructed by the target robot in any way.
 - [x] `check_collision`'s proposed collision-free point should also check if it collides with any other obstacles. This is because the assumption the the proposed point collides with just one obstacle is no longer valid.
+
+### Tue 07/06/22
+
 
 ---
 
