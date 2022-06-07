@@ -2,6 +2,9 @@ build/*
 install/*
 log/*
 experiment/*
-tmp/*
-result/*
+**/tmp/*
+**/result/*
 **/__pycache__
+
+**/test_scenarios
+**/test_params
