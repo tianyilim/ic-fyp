@@ -327,7 +327,11 @@
 ### Tue 07/06/22
 - Edit `goal_creation` to wait for robots to be done spawning in Gazebo before beginning to assign goals.
 - `spawn_single_bot` also waits for 2 subscribers (`goal_creation` and `odom_distribution`) to the done topic before publishing that one message, and then shutting down.
+- Add `goal_creation` flag to `spawn_bots.launch.py` so everything can launch in one terminal file now
+- Add `test_scenario.launch.py`, similar to `spawn_bots.launch.py` but bypasses `input()` of the scenario choice
+  - This is hardcoded to always read `scenario_custom.yaml`...
 
+- Made `evaluate_planners.bash` which runs a bash script to evaluate different settings, which are then dumped into YAML result files.
 ---
 
 - [ ] Set up multi robot joint planner
