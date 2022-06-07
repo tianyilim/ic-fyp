@@ -332,6 +332,12 @@
   - This is hardcoded to always read `scenario_custom.yaml`...
 
 - Made `evaluate_planners.bash` which runs a bash script to evaluate different settings, which are then dumped into YAML result files.
+- Edit the test parameters in `create_test_scenarios.py` and run a test by calling `bash evaluate_planners.bash` in `~/fyp/ic-fyp/src/multirobot_control`.
+  - This will output log files in `~/fyp/ic-fyp/src/multirobot_control/result/log/...`
+  - This will output result files in `~/fyp/ic-fyp/src/multirobot_control/result/...`
+- It's a fairly fragile system that won't work on someone else's machine but should be fixed sometime soon
+
+
 ---
 
 - [ ] Set up multi robot joint planner
