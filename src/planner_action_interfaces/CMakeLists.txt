@@ -30,6 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/LocalPlanner.action"
   "msg/OtherRobotLocations.msg"
   "msg/PlannerStatus.msg"
+  "msg/NamedFloat.msg"
   "srv/GetIntValue.srv"
   "srv/GetFloatValue.srv"
   "srv/GetPlannerStatus.srv"

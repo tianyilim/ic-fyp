@@ -337,6 +337,7 @@
   - This will output result files in `~/fyp/ic-fyp/src/multirobot_control/result/...`
 - It's a fairly fragile system that won't work on someone else's machine but should be fixed sometime soon
 
+- Create `NamedFloat` message
 
 ---
 
