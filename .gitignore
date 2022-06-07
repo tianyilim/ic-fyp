@@ -8,3 +8,6 @@ experiment/*
 
 **/test_scenarios
 **/test_params
+
+**/params_custom.yaml
+**/scenario_custom.yaml
