@@ -97,6 +97,7 @@ def generate_launch_description():
     spawn_entity_cmd = Node(
         package='multirobot_control',
         executable='spawn_single_bot',
+        namespace=namespace,
         arguments=[
             '--robot_name', namespace,
             '--robot_namespace', namespace,
