@@ -689,7 +689,7 @@ class DWABaseNode(Node):
 
         # Duration of marker, set to be the update rate of the 
         # controller so we don't have to delete objects
-        period = self.params['action_duration']
+        period = self.params['action_duration']*1.2
         period_sec = int( np.round(period) )
         period_nanosec = int( (period-period_sec)*1e9 )
         marker.lifetime = Duration(seconds=period_sec, nanoseconds=period_nanosec).to_msg()
