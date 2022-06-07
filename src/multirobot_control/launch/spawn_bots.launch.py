@@ -1,21 +1,3 @@
-'''
-Simple demo to load up a demo world and spawn in one or more robots. 
-'''
-
-# Copyright (c) 2018 Intel Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import os
 import yaml
 
@@ -29,7 +11,6 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 
-from multirobot_control.colour_palette import colour_palette, colour_palette_rviz_named
 from multirobot_control.set_rviz_config import set_rviz_config
 from multirobot_control.parse_urdf import parse_urdf
 
@@ -88,6 +69,7 @@ def generate_launch_description():
     world = LaunchConfiguration('world')
     headless_config = LaunchConfiguration('headless')
     log_level = LaunchConfiguration('log_level')
+    goal_creation = LaunchConfiguration('goal_creation')
     rviz = LaunchConfiguration('rviz')
 
     # Ensure all logs come out in order
@@ -122,6 +104,12 @@ def generate_launch_description():
         'rviz',
         default_value='true',
         description="Whether or not to launch RViz."
+    )
+
+    declare_goal_creation_cmd = DeclareLaunchArgument(
+        'goal_creation',
+        default_value='false',
+        description='Whether to autostart goal_creation node'
     )
 
     # Launch commands
@@ -198,7 +186,6 @@ def generate_launch_description():
     start_odom_distr_cmd = Node(
         package="multirobot_control",
         executable="odom_distribution",
-        # No need for namespace
         output='screen',
         parameters=[params_file, scenario_file_dir],
         arguments=['--ros-args', '--log-level', log_level]
@@ -209,6 +196,15 @@ def generate_launch_description():
         executable="map_visualisation",
         output="screen",
         arguments=['--ros-args', '--log-level', log_level]
+    )
+
+    start_goal_creation_cmd = Node(
+        package="multirobot_control",
+        executable="goal_creation",
+        output="screen",
+        arguments=['--ros-args', '--log-level', log_level],
+        parameters=[scenario_file_dir],
+        condition=IfCondition(goal_creation)
     )
 
     # Rviz does not need debug hooks
@@ -233,6 +229,7 @@ def generate_launch_description():
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_rviz_cmd)
+    ld.add_action(declare_goal_creation_cmd)
     
 
     # Add the actions to launch all of the navigation nodes
@@ -245,6 +242,7 @@ def generate_launch_description():
 
     ld.add_action(start_odom_distr_cmd)
     ld.add_action(start_map_viz_cmd)
+    ld.add_action(start_goal_creation_cmd)
     ld.add_action(start_rviz_cmd)
 
     return ld
