@@ -31,5 +31,3 @@ def make_grid(pars_dict: Dict[str,List]):
 # Extract this for test values
 TEST_COMBINATIONS = make_grid(test_variables)
 TEST_GRID = TEST_COMBINATIONS * test_repetitions
-
-print(TEST_COMBINATIONS)
