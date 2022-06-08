@@ -6,7 +6,9 @@ import os
 import numpy as np
 import glob
 
-from src.multirobot_control.multirobot_control.goal_output import result_summary, goal_output
+import sys # allow for us to use files from another directory
+sys.path.append('/home/tianyilim/fyp/ic-fyp/src/multirobot_control')
+from multirobot_control.goal_output import result_summary, goal_output
 from config import TEST_COMBINATIONS
 from ast import literal_eval
 
@@ -38,14 +40,15 @@ def parse_res_dict(dict) -> goal_output:
 
     return parsed_dict
 
-RESULT_DIR = "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/result"
+RESULT_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/result"
 
 # This must match the parameters set in `create_test_scenarios.py`
 
 # Get the test combinations
 test_params = {}
 for combi in TEST_COMBINATIONS:
-    test_params[combi] = result_summary()
+    combi_key = frozenset(combi.items())
+    test_params[combi_key] = result_summary()
 test_param_names = TEST_COMBINATIONS[0].keys()
 
 for file in glob.glob(RESULT_DIR+"/*.yaml"):
@@ -61,7 +64,7 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
         test_combination_key[key] = literal_eval(params[key])
         print(f"with {key}: {test_combination_key[key]}")
 
-    res_summary = test_params[test_combination_key]
+    res_summary = test_params[frozenset(test_combination_key.items())]
 
     for key in res.keys():
         if 'robot' in key:
