@@ -6,19 +6,20 @@ Modify this as desired to create a bunch of test cases to be run with `evaluate_
 Creates custom scenario files in `test_scenarios` and custom parameter files in `test_params`
 Be sure to have the same name for matching files in `test_scenarios` and `test_params`.
 
-Results can then be scored externally
+Results can then be scored externally.
 '''
 
 import os
 import copy
-from pickle import LIST
 import yaml
+from config import TEST_GRID
+from datetime import datetime
 
-if not os.path.exists("/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_scenarios"):
-    os.mkdir("/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_scenarios")
+TEST_SCENARIO_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/test_scenarios"
+TEST_PARAMS_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/test_params"
 
-if not os.path.exists("/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_params"):
-    os.mkdir("/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_params")
+if not os.path.exists(TEST_SCENARIO_DIR): os.mkdir(TEST_SCENARIO_DIR)
+if not os.path.exists(TEST_PARAMS_DIR): os.mkdir(TEST_PARAMS_DIR)
 
 scenario_settings = {
     'robot_list': ["robot1"],
@@ -77,19 +78,15 @@ param_settings = {
 # local_planner = ['dwa_action_server', 'dwa_multirobot_server','dwa_replan_server']
 
 # TODO : Set this to something legit
-# For now changes max speed from 0.4 to 0.7 and runs each value 5 times.
-LIST_OF_POSSIBLE_SETTINGS = [
-    0.6, 0.6, 0.6, 0.6, 0.6,
-    0.6, 0.6, 0.6, 0.6, 0.6,
-    0.6, 0.6, 0.6, 0.6, 0.6,
-    0.6, 0.6, 0.6, 0.6, 0.6,
-    0.6, 0.6, 0.6, 0.6, 0.6,
-]
 
-for i, setting in enumerate(LIST_OF_POSSIBLE_SETTINGS):
-    filename = f"linear_speed_limit_{setting}_{i}"
-    scenario_filename = f"/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_scenarios/{filename}.yaml"
-    param_filename = f"/home/tianyilim/fyp/ic-fyp/src/multirobot_control/test_params/{filename}.yaml"
+elems_search_grid = len(TEST_GRID)
+start_time = datetime.now().strftime('%d%m%y_%H%M%S')
+
+for i, setting in enumerate( TEST_GRID ):
+    # Set filename as time of test
+    filename = f"{start_time}_{i+1}_{elems_search_grid}"
+    scenario_filename = f"{TEST_SCENARIO_DIR}/{filename}.yaml"
+    param_filename = f"{TEST_PARAMS_DIR}/{filename}.yaml"
 
     scenario_settings_copy = copy.deepcopy(scenario_settings)
     param_settings_copy = copy.deepcopy(param_settings)
@@ -99,15 +96,15 @@ for i, setting in enumerate(LIST_OF_POSSIBLE_SETTINGS):
     
     ##################### WRITE STUFF INTO SETTINGS HERE #####################
     
-    param_settings_copy['linear_speed_limit'] = setting
+    for parameter in setting.keys():
+        param_settings_copy[parameter] = setting[parameter]
 
     ####################### END WRITE STUFF TO SETTINGS ######################
 
     scenario_tofile = {'/**': {'ros__parameters': scenario_settings_copy}}
     param_tofile = {'/**': {'ros__parameters': param_settings_copy}}
     
-    print(f"Scenario filename: {scenario_filename}")
-    print(f"Parameter filename: {param_filename}")
+    print(f"Scenario/Parameter filename: {os.path.basename(scenario_filename)}")
 
     with open(scenario_filename, 'w') as f:
         yaml.safe_dump(scenario_tofile, f)
