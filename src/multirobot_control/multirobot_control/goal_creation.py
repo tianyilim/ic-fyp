@@ -1,9 +1,6 @@
 '''
 Node that handles creating and visualizing 'goals' for each robot. 
 '''
-
-from dataclasses import dataclass
-from typing import Dict, Tuple, List
 import xml.etree.ElementTree as ET
 import os
 
@@ -32,6 +29,7 @@ from tf_transformations import euler_from_quaternion
 from multirobot_control.colour_palette import colour_palette
 # Gloabl Goal array
 from multirobot_control.map_params import GOAL_ARRAY
+from multirobot_control.goal_output import goal_output
 
 import numpy as np
 from enum import Enum, auto
@@ -46,28 +44,6 @@ class RobotGoalStatus(Enum):
     GOAL_STATUS_READY = auto()      # Ready to accept a new goal
     GOAL_STATUS_DOING = auto()      # Done with the goal
     GOAL_STATUS_PENDING = auto()    # Processing a goal
-
-@dataclass
-class goal_output():
-    goal_coords: Tuple[float, float]
-    start_coords: Tuple[float, float] = (0,0)
-    distance_travelled: float = -1
-    num_waypoints: int = -1
-    start_time: float = -1
-    plan_time: float = -1
-    completion_time: float = -1
-
-    def to_dict(self) -> Dict :
-        ''' Returns the output as a dictionary, so that we can easily write to YAML log file later. '''
-        return {
-            'goal_coords' : self.goal_coords,
-            'start_coords' : self.start_coords,
-            'distance_travelled' : self.distance_travelled,
-            'num_waypoints' : self.num_waypoints,
-            'start_time' : self.start_time,
-            'plan_time': self.plan_time,
-            'completion_time' : self.completion_time,
-        }
 
 class GoalCreation(Node):
 
