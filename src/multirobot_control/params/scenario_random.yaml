@@ -16,9 +16,9 @@
     # robot_starting_theta: [0.0, 1.57]
 
     robot_list: ["robot1", "robot2", "robot3", "robot4", "robot5", "robot6"]
-    robot_starting_x: [-5.5, 0.0, 5.5, -5.5, 0.0, 5.5]
-    robot_starting_y: [1.15, 1.15, 1.15, -1.15, -1.15, -1.15]
-    robot_starting_theta: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    robot_starting_x: []
+    robot_starting_y: []
+    robot_starting_theta: []
     total_goals: 1
     watchdog_timeout_s: 120
     result_folder: "result"
@@ -28,4 +28,3 @@
     goal_array: "[]"
 
     realtime_factor: 1.0
-    publish_rate: 100.0
