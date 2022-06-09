@@ -75,9 +75,9 @@ class RRT:
         if start_collision[0] is False:
             self.start = start_collision[1]
             if self.logger is None:
-                print(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+                print(f"Start Node {start_pos[0]:.2f},{start_pos[1]:.2f} collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
             else:
-                self.logger.warn(f"Start Node collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
+                self.logger.warn(f"Start Node {start_pos[0]:.2f},{start_pos[1]:.2f} collides with an obstacle. Assigning {self.start[0]:.2f}, {self.start[1]:.2f} as nearest start position.")
         self.node_list = [self.Node(self.start, None, 0)]
 
         # Check if goal node is valid
@@ -86,9 +86,9 @@ class RRT:
         if goal_collision[0] is False:
             self.goal = goal_collision[1]
             if self.logger is None:
-                print(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+                print(f"Goal Node {goal_pos[0]:.2f},{goal_pos[1]:.2f} collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
             else:
-                self.logger.warn(f"Goal Node collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
+                self.logger.warn(f"Goal Node {goal_pos[0]:.2f},{goal_pos[1]:.2f} collides with an obstacle. Assigning {self.goal[0]:.2f}, {self.goal[1]:.2f} as nearest goal position.")
 
         self.goal_node = self.Node(self.goal, None, np.inf)
 
