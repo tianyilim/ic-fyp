@@ -346,6 +346,7 @@
 - These parameters are passed in as `extra_gazebo_args`, see launchfile. For some reason passing a float directly doesn't work, so we have to pass in the entire params file.
 - The issue with accelerating sim time is that the RRT plan time will take proportionally longer in sim time. Therefore, we extend the watchdog timeout in `goal_creation` by the time taken for the RRT planner, multiplied by the speedup factor. This is inexact, as the speedup factor usually does not run at an exact time, but should be an alright approximation.
 - RRT computation time varies with CPU load (and hence speedup %), do not test anything related to the timing of the RRT in a sped-up state.
+- Add random spawn locations (robots spawn in random locations and orientations if location is not fully specified in a scenario)
 
 ---
 

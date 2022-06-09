@@ -3,6 +3,11 @@ import xml.etree.ElementTree as ET
 import xacro
 import os
 
+from typing import Dict
+from multirobot_control.map_params import GOAL_ARRAY
+
+import numpy as np
+
 def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
     '''
     Modifies the input URDF file to take in the robot name and robot colour, remapping the 
@@ -96,3 +101,53 @@ def parse_world(world_filepath:str, realtime_factor:float):
         ET.ElementTree(root).write(f)
 
     return output_filepath
+
+def parse_scenario(scenario_configs:Dict):
+    '''
+    Reads a Dict corresponding to a Scenario YAML file.
+    
+    If the pose of all robots is defined, then return a list with those corresponding poses.
+
+    If not, spawn robots in random locations chosen from GOAL_ARRAY with a random orientation.
+    '''
+    robots = []
+
+    if len(scenario_configs['/**']['ros__parameters']['robot_starting_x']) == len(scenario_configs['/**']['ros__parameters']['robot_list']) \
+    and len(scenario_configs['/**']['ros__parameters']['robot_starting_y']) == len(scenario_configs['/**']['ros__parameters']['robot_list']) \
+    and len(scenario_configs['/**']['ros__parameters']['robot_starting_theta']) == len(scenario_configs['/**']['ros__parameters']['robot_list']):
+
+        for idx in range(len(scenario_configs['/**']['ros__parameters']['robot_list'])):
+            robots.append({
+                'name': scenario_configs['/**']['ros__parameters']['robot_list'][idx],
+                'x_pose': scenario_configs['/**']['ros__parameters']['robot_starting_x'][idx],
+                'y_pose': scenario_configs['/**']['ros__parameters']['robot_starting_y'][idx],
+                'z_pose': 0.10,
+                'yaw_pose': scenario_configs['/**']['ros__parameters']['robot_starting_theta'][idx]
+            })
+
+    # If starting_x, y, theta do not line up with number of robots, randomly generate cooridnates
+    else:
+        used_idx = []
+
+        for idx in range(len(scenario_configs['/**']['ros__parameters']['robot_list'])):
+
+            # Prevent duplicate initial spawn positions
+            while True:
+                spawn_idx = np.random.randint(len(GOAL_ARRAY))
+                if spawn_idx not in used_idx:
+                    used_idx.append(spawn_idx)
+                    break
+
+            spawn_coords =  GOAL_ARRAY[spawn_idx]
+            spawn_theta = np.random.random()*np.pi*2
+
+            robots.append({
+                'name': scenario_configs['/**']['ros__parameters']['robot_list'][idx],
+                'x_pose': spawn_coords[0],
+                'y_pose': spawn_coords[1],
+                'z_pose': 0.10,
+                'yaw_pose': spawn_theta
+            })
+
+
+    return robots

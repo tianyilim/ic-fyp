@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 
 from multirobot_control.set_rviz_config import set_rviz_config
-from multirobot_control.parse_urdf import parse_urdf, parse_world
+from multirobot_control.parse_urdf import parse_urdf, parse_world, parse_scenario
 
 def generate_launch_description():
     # Get the launch directory
@@ -24,6 +24,8 @@ def generate_launch_description():
     os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
 
     params_file_dir = os.path.join(bringup_src, 'params', 'params_custom.yaml')
+    gazebo_param_path = os.path.join(bringup_src, 'params', 'gazebo_params.yaml')
+
 
     # Hardcoded scenario source
     scenario_file_dir = os.path.join(bringup_src, 'params', 'scenario_custom.yaml')
@@ -41,15 +43,7 @@ def generate_launch_description():
     with open(params_file_dir, 'r') as f:
         param_configs = yaml.safe_load(f)
 
-    robots = []
-    for idx in range(len(scenario_configs['/**']['ros__parameters']['robot_list'])):
-        robots.append({
-            'name': scenario_configs['/**']['ros__parameters']['robot_list'][idx],
-            'x_pose': scenario_configs['/**']['ros__parameters']['robot_starting_x'][idx],
-            'y_pose': scenario_configs['/**']['ros__parameters']['robot_starting_y'][idx],
-            'z_pose': 0.10,
-            'yaw_pose': scenario_configs['/**']['ros__parameters']['robot_starting_theta'][idx]
-        })
+    robots = parse_scenario(scenario_configs)
 
     world_file = os.path.join(bringup_src, 'worlds', 'factory_world2.xacro')
     if 'realtime_factor' in scenario_configs['/**']['ros__parameters']:
@@ -106,7 +100,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
-                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
+                'extra_gazebo_args': f"--ros-args --params-file \"{gazebo_param_path}\"",
             }.items(),
             condition=UnlessCondition(headless_config)
         )
@@ -118,7 +112,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
-                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
+                'extra_gazebo_args': f"--ros-args --params-file \"{gazebo_param_path}\"",
             }.items(),
             condition=IfCondition(headless_config)
         )
