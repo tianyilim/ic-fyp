@@ -53,9 +53,6 @@ class GoalCreation(Node):
             namespace='',
             parameters=[
                 ('robot_list', Parameter.Type.STRING_ARRAY),   # list of robot names to subscribe to
-                ('robot_starting_x', Parameter.Type.DOUBLE_ARRAY),
-                ('robot_starting_y', Parameter.Type.DOUBLE_ARRAY),
-                ('robot_starting_theta', Parameter.Type.DOUBLE_ARRAY),
                 ('total_goals', Parameter.Type.INTEGER),
                 ('watchdog_timeout_s', Parameter.Type.INTEGER),
                 ('result_folder', Parameter.Type.STRING),
@@ -85,10 +82,6 @@ class GoalCreation(Node):
 
         assert self.get_parameter("robot_list").value is not None
         assert len(self.get_parameter("robot_list").value) != 0
-        assert len(self.get_parameter("robot_starting_x").value) == len(self.get_parameter("robot_list").value), \
-            "Ensure all robot starting x are specified!"
-        assert len(self.get_parameter("robot_starting_y").value) == len(self.get_parameter("robot_list").value), \
-            "Ensure all robot starting y are specified!"
         if len(self.goal_array) != 0:
             assert len(self.goal_array) == len(self.get_parameter("robot_list").value), \
             "Ensure that goal array has same number of elements as the number of robots!"
