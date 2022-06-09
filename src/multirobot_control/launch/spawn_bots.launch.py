@@ -44,8 +44,8 @@ def generate_launch_description():
     scenario_file_dir = scenario_choices[choice_idx]
     print(f"Chose index [{choice_idx}] Scenario: {scenario_choices[choice_idx]}")
 
-    rviz_ref_file_dir = os.path.join(bringup_dirs, 'rviz', 'rviz_config.rviz')
-    rviz_file_dir = os.path.join(bringup_dirs, 'rviz', 'rviz_config_.rviz')
+    rviz_ref_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')
+    rviz_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config_.rviz')
 
     set_rviz_config(rviz_src=rviz_ref_file_dir, rviz_dest=rviz_file_dir, config_path=scenario_file_dir)
 
