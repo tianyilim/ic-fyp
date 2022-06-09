@@ -17,7 +17,7 @@ from multirobot_control.parse_urdf import parse_urdf
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('multirobot_control')
-    bringup_src = bringup_dir + "../../../../src/multirobot_control"
+    bringup_src = bringup_dir + "/../../../../src/multirobot_control"
     robot_base_dir = get_package_share_directory('robot_base')
 
     # Load in GAZEBO_MODEL_PATH (use src) directory
@@ -187,7 +187,7 @@ def generate_launch_description():
         package="multirobot_control",
         executable="odom_distribution",
         output='screen',
-        parameters=[params_file, scenario_file_dir],
+        parameters=[params_file, scenario_file_dir, {'use_sim_time': True}],
         arguments=['--ros-args', '--log-level', log_level]
     )
 
@@ -195,7 +195,8 @@ def generate_launch_description():
         package="multirobot_control",
         executable="map_visualisation",
         output="screen",
-        arguments=['--ros-args', '--log-level', log_level]
+        arguments=['--ros-args', '--log-level', log_level],
+        parameters=[{'use_sim_time': True}]
     )
 
     start_goal_creation_cmd = Node(
@@ -203,7 +204,7 @@ def generate_launch_description():
         executable="goal_creation",
         output="screen",
         arguments=['--ros-args', '--log-level', log_level],
-        parameters=[scenario_file_dir],
+        parameters=[scenario_file_dir, {'use_sim_time': True}],
         condition=IfCondition(goal_creation)
     )
 
@@ -212,6 +213,7 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         arguments=['-d',  rviz_file_dir, '--ros-args', '--log-level', 'info'],
+        parameters=[{'use_sim_time': True}],
         condition=IfCondition(rviz)
         # output='screen'
     )
@@ -225,12 +227,10 @@ def generate_launch_description():
     # Declare the launch options
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_params_file_cmd)
-    # ld.add_action(declare_urdf_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_goal_creation_cmd)
-    
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(gazebo_cmd)
