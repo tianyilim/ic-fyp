@@ -348,6 +348,13 @@
 - RRT computation time varies with CPU load (and hence speedup %), do not test anything related to the timing of the RRT in a sped-up state.
 - Add random spawn locations (robots spawn in random locations and orientations if location is not fully specified in a scenario)
 
+- Running robot
+```
+real    81m0.465s
+user    1m35.099s
+sys     0m20.302s
+```
+
 ---
 
 - [ ] Set up multi robot joint planner
