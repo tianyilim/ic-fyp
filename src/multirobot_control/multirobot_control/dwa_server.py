@@ -435,8 +435,7 @@ class DWABaseNode(Node):
 
             curr_dwa_call = self.get_clock().now()
             dt = (curr_dwa_call-self._last_dwa_call).nanoseconds / 1e9
-            dt = 1 / ( dt )
-            self.get_logger().debug(f"Sim time freq {dt:.2f}")
+            self.get_logger().debug(f"Sim time period {dt:.2f}")
             self._last_dwa_call = curr_dwa_call
 
     # Helper functions
