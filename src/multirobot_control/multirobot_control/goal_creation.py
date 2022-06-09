@@ -117,7 +117,7 @@ class GoalCreation(Node):
         while not self.delete_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Deleter service not available, waiting again...', once=True)
 
-        self.get_logger().debug('Goal SDF path: {}'.format(GOAL_SDF_PATH))
+        self.get_logger().debug(f'Goal SDF path: {GOAL_SDF_PATH}')
 
         # Code to write to file
         self.parameter_file = self.get_parameter('params_filepath').value
@@ -225,10 +225,10 @@ class GoalCreation(Node):
         if not goal_handle.accepted:
             # TODO: Respond to goal rejected by attempting to send another goal.
             # If goal cannot be completed in ~TIMEOUT seconds, reject goal too?
-            self.get_logger().info('Goal rejected by robot {}'.format(robot_name))
+            self.get_logger().info(f'Goal rejected by robot {robot_name}')
             return
 
-        self.get_logger().debug('Goal accepted by robot {}'.format(robot_name))
+        self.get_logger().debug(f'Goal accepted by robot {robot_name}')
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_DOING
 
         self.result_futures[robot_name] = goal_handle.get_result_async()
@@ -245,11 +245,7 @@ class GoalCreation(Node):
         # Remove goal from current robot.
         self.robot_remaining_goals[robot_name] -= 1
 
-        self.get_logger().info('Robot {} Success: {} Final pos {:.2f},{:.2f} Remaining goals {}'.format(
-            robot_name,
-            result.success.data, result.final_position.x, result.final_position.y),
-            self.robot_remaining_goals[robot_name]
-            )
+        self.get_logger().info(f'Robot {robot_name} Success: {result.success.data} Final pos {result.final_position.x:.2f},{result.final_position.y:.2f} Remaining goals {self.robot_remaining_goals[robot_name]}')
 
         # Update field in goal log
         now_s = self.get_clock().now().seconds_nanoseconds()
@@ -295,10 +291,7 @@ class GoalCreation(Node):
                         goal_idx = len(self.goal_array[robot_idx]) - self.robot_remaining_goals[robot_name]
                         goal_coords = (self.goal_array[robot_idx][goal_idx][0], self.goal_array[robot_idx][goal_idx][1])
 
-                    self.get_logger().info("Sending {} Goal {:.2f},{:.2f}. {} goals left".format(
-                        robot_name, goal_coords[0], goal_coords[1],
-                        self.robot_remaining_goals[robot_name]
-                    ))
+                    self.get_logger().info(f"Sending {robot_name} Goal {goal_coords[0]:.2f},{goal_coords[1]:.2f}. {self.robot_remaining_goals[robot_name]} goals left")
 
                     self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
         else:
@@ -311,7 +304,7 @@ class GoalCreation(Node):
         '''
         if self._sim_start_time is not None:
             nt = self.get_clock().now().seconds_nanoseconds()
-            now_time = nt[0] + nt[1]/1e9
+            now_time = float(nt[0] + nt[1]/1e9)
             time_diff = now_time-self._sim_start_time
             
             if time_diff > self.get_parameter('watchdog_timeout_s').value:
@@ -333,8 +326,7 @@ class GoalCreation(Node):
             feedback.orientation.w
         ])[2]       # Only rotation about the z axis
         
-        self.get_logger().debug('Robot {} Current X:{:.2f} Y:{:.2f} Yaw:{:.2f}'.format(
-            name, curr_x, curr_y, np.degrees(curr_yaw) ))
+        self.get_logger().debug(f'Robot {name} Current X:{curr_x:.2f} Y:{curr_y:.2f} Yaw:{np.degrees(curr_yaw):.2f}')
 
     def parameter_callback(self, params):
         # (don't modify robot_list)
@@ -422,7 +414,7 @@ class GoalCreation(Node):
 
         if all(self.robots_done_spawning.values()):
             st = self.get_clock().now().seconds_nanoseconds()
-            self._sim_start_time = st[0] + st[1]/1e9
+            self._sim_start_time = float(st[0] + st[1]/1e9)
 
     def _handle_robot_rrt_done(self, msg):
         '''Recieves a `std_msgs/String` saying that robot is done with RRT planning.'''
