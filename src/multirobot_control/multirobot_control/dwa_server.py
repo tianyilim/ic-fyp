@@ -114,7 +114,7 @@ class DWABaseNode(Node):
             'otherRobotLocations', self.handle_other_robot_state, 10)
 
         # Publish to cmd_vel
-        self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 1)
         # Publish predicted movement
         self._planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
         self._vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
@@ -128,6 +128,7 @@ class DWABaseNode(Node):
         # Wait item to implement DWA node
         self._dwa_wait_rate = self.create_rate(1/self.params['action_duration'])
         self._dwa_action_timer = self.create_timer(self.params['action_duration'], self.dwa_action_callback)
+        self._last_dwa_call = self.get_clock().now()
 
         # Service to check for server status
         self._srv_dwa_status = self.create_service(GetPlannerStatus, f'{self.get_name()}/get_dwa_server_status', self._srv_dwa_status_callback)
@@ -411,28 +412,32 @@ class DWABaseNode(Node):
             # only write this here because we don't want the value of the class var to be corrupted
             self._planned_pose = top_pose
 
-            if top_score <= -np.inf:
-                # Currently deadlock is handled by stopping the robot.
-                self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.", once=True)
-                self._linear_twist = 0.0
-                self._angular_twist = 0.0
-
-            self.publish_cmd_vel(self._linear_twist, self._angular_twist)
-            
-            self.get_logger().debug('{} Curr X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
-                self.get_namespace(),
-                self._x, self._y, np.degrees(self._yaw), 
-                self._linear_twist, self._angular_twist ))
-
             if self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
                 # Ensure robot is stopped
                 self._linear_twist = 0.0
                 self._angular_twist = 0.0
-                self.publish_cmd_vel(self._linear_twist, self._angular_twist)
                 
                 self.set_planner_state(PlannerStatus.PLANNER_READY)
+            else:
+                if top_score <= -np.inf:
+                    # Currently deadlock is handled by stopping the robot.
+                    self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.", once=True)
+                    self._linear_twist = 0.0
+                    self._angular_twist = 0.0
+                
+                self.get_logger().debug('{} Curr X:{:.2f} Y:{:.2f} Yaw:{:.2f} Lin:{:.2f}, Ang:{:.2f}'.format(
+                    self.get_namespace(),
+                    self._x, self._y, np.degrees(self._yaw), 
+                    self._linear_twist, self._angular_twist ))
 
+            self.publish_cmd_vel(self._linear_twist, self._angular_twist)
             # ? Extensions: Check for collision / Timeout and send 'goal failed'?
+
+            curr_dwa_call = self.get_clock().now()
+            dt = (curr_dwa_call-self._last_dwa_call).nanoseconds / 1e9
+            dt = 1 / ( dt )
+            self.get_logger().debug(f"Sim time freq {dt:.2f}")
+            self._last_dwa_call = curr_dwa_call
 
     # Helper functions
     def rankPose(self, end_pose, linear_twist, angular_twist):
