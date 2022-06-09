@@ -26,3 +26,6 @@
 
     # If random goals are desired, leave this as an empty list
     goal_array: "[]"
+
+    realtime_factor: 1.0
+    publish_rate: 100.0

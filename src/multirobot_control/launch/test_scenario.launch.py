@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 
 from multirobot_control.set_rviz_config import set_rviz_config
-from multirobot_control.parse_urdf import parse_urdf
+from multirobot_control.parse_urdf import parse_urdf, parse_world
 
 def generate_launch_description():
     # Get the launch directory
@@ -51,9 +51,15 @@ def generate_launch_description():
             'yaw_pose': scenario_configs['/**']['ros__parameters']['robot_starting_theta'][idx]
         })
 
+    world_file = os.path.join(bringup_src, 'worlds', 'factory_world2.xacro')
+    if 'realtime_factor' in scenario_configs['/**']['ros__parameters']:
+        realtime_factor = scenario_configs['/**']['ros__parameters']['realtime_factor']
+    else:
+        realtime_factor = 1.0
+    world = parse_world(world_file, realtime_factor)
+
     # Create the launch configuration variables
     params_file = LaunchConfiguration('params_file')
-    world = LaunchConfiguration('world')
     headless_config = LaunchConfiguration('headless')
     log_level = LaunchConfiguration('log_level')
     goal_creation = LaunchConfiguration('goal_creation')
@@ -62,13 +68,6 @@ def generate_launch_description():
     # Ensure all logs come out in order
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
-
-    declare_world_cmd = DeclareLaunchArgument(
-        'world', default_value=os.path.join(
-            bringup_dir, 'worlds', 'factory_world2.world'
-        ),
-        description="Full path to world file"
-    )
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
@@ -107,6 +106,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
+                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
             }.items(),
             condition=UnlessCondition(headless_config)
         )
@@ -118,6 +118,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
+                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
             }.items(),
             condition=IfCondition(headless_config)
         )
@@ -212,7 +213,6 @@ def generate_launch_description():
     ld.add_action(stdout_linebuf_envvar)
 
     # Declare the launch options
-    ld.add_action(declare_world_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)

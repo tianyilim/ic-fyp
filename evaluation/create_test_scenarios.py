@@ -32,6 +32,9 @@ scenario_settings = {
     'params_filepath': "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml",
     # If random goals are desired, leave this as an empty list
     'goal_array': "[]",
+
+    'realtime_factor': 0.0,
+    'publish_rate': 100.0
 }
 
 param_settings = {
