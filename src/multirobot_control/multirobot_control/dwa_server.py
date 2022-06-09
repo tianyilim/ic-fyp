@@ -102,6 +102,9 @@ class DWABaseNode(Node):
         self.other_robots:Dict[str, Tuple[float,float]] = {} 
         '''A dict of the positions of other close robots'''
 
+        self.closest_robot_pos:Union[Tuple[float,float],None] = None
+        '''Where the closest robot is, if within detection range.'''
+
         # Subscribe to Odom (which has ground truth)
         self._state_sub = self.create_subscription(Odometry, 'odom', \
             self.handle_odom, qos_profile_sensor_data)
