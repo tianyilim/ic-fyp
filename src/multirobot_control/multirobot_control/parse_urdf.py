@@ -4,6 +4,13 @@ import xacro
 import os
 
 def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
+    '''
+    Modifies the input URDF file to take in the robot name and robot colour, remapping the 
+    control inputs accordingly.
+    Also modifies the visual characteristics of the robot so they are easily distinguishable.
+
+    Returns the modified URDF filepath, typically in `tmp` of the current working directory.
+    '''
     if robot_num in colour_palette:
         color = colour_palette[robot_num]
         color_rviz = colour_palette_rviz_named[robot_num]
@@ -57,6 +64,32 @@ def parse_urdf(urdf_filepath:str, robot_num: int, robot_namespace:str):
     # Save file for reference
     output_dir = os.path.join(os.getcwd(), "tmp")
     output_filepath = os.path.join(output_dir, f"out_{robot_namespace}.xml")
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    with open(output_filepath, 'wb+') as f:
+        ET.ElementTree(root).write(f)
+
+    return output_filepath
+
+def parse_world(world_filepath:str, realtime_factor:float):
+    '''
+    Modifies the input world xacro file to take in the realtime speedup factor.
+
+    Returns the modified world filepath, typically in `tmp` of the current working directory.
+    '''
+    root = ET.fromstring(xacro.process(world_filepath))
+
+    physics = root.find('world').find('physics').find('real_time_update_rate')
+    if realtime_factor == 0.0:
+        input_val = 0.0
+    else:
+        input_val = realtime_factor / 0.001 # default step size for gz
+
+    physics.text = str(input_val)
+
+    # Save file for reference
+    output_dir = os.path.join(os.getcwd(), "tmp")
+    output_filepath = os.path.join(output_dir, f"world.xml")
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     with open(output_filepath, 'wb+') as f:

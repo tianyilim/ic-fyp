@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 
 from multirobot_control.set_rviz_config import set_rviz_config
-from multirobot_control.parse_urdf import parse_urdf
+from multirobot_control.parse_urdf import parse_urdf, parse_world
 
 def generate_launch_description():
     # Get the launch directory
@@ -23,8 +23,8 @@ def generate_launch_description():
     # Load in GAZEBO_MODEL_PATH (use src) directory
     os.environ['GAZEBO_MODEL_PATH'] = os.path.join(bringup_src, "models") + ":" + os.environ.get("GAZEBO_MODEL_PATH")
 
-    params_file_dir = os.path.join(bringup_dir, 'params', 'planner_params.yaml')
-    scenario_root_dir = os.path.join(bringup_dir, 'params')
+    params_file_dir = os.path.join(bringup_src, 'params', 'planner_params.yaml')
+    scenario_root_dir = os.path.join(bringup_src, 'params')
 
     # Not sure why a list comprehension doesn't work
     scenario_choices = []
@@ -44,8 +44,8 @@ def generate_launch_description():
     scenario_file_dir = scenario_choices[choice_idx]
     print(f"Chose index [{choice_idx}] Scenario: {scenario_choices[choice_idx]}")
 
-    rviz_ref_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config.rviz')
-    rviz_file_dir = os.path.join(bringup_dir, 'rviz', 'rviz_config_.rviz')
+    rviz_ref_file_dir = os.path.join(bringup_dirs, 'rviz', 'rviz_config.rviz')
+    rviz_file_dir = os.path.join(bringup_dirs, 'rviz', 'rviz_config_.rviz')
 
     set_rviz_config(rviz_src=rviz_ref_file_dir, rviz_dest=rviz_file_dir, config_path=scenario_file_dir)
 
@@ -64,9 +64,15 @@ def generate_launch_description():
             'yaw_pose': scenario_configs['/**']['ros__parameters']['robot_starting_theta'][idx]
         })
 
+    world_file = os.path.join(bringup_src, 'worlds', 'factory_world2.xacro')
+    if 'realtime_factor' in scenario_configs['/**']['ros__parameters']:
+        realtime_factor = scenario_configs['/**']['ros__parameters']['realtime_factor']
+    else:
+        realtime_factor = 1.0
+    world = parse_world(world_file, realtime_factor)
+
     # Create the launch configuration variables
     params_file = LaunchConfiguration('params_file')
-    world = LaunchConfiguration('world')
     headless_config = LaunchConfiguration('headless')
     log_level = LaunchConfiguration('log_level')
     goal_creation = LaunchConfiguration('goal_creation')
@@ -75,13 +81,6 @@ def generate_launch_description():
     # Ensure all logs come out in order
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
-
-    declare_world_cmd = DeclareLaunchArgument(
-        'world', default_value=os.path.join(
-            bringup_dir, 'worlds', 'factory_world2.world'
-        ),
-        description="Full path to world file"
-    )
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
@@ -225,7 +224,6 @@ def generate_launch_description():
     ld.add_action(stdout_linebuf_envvar)
 
     # Declare the launch options
-    ld.add_action(declare_world_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_log_level_cmd)
