@@ -69,17 +69,17 @@ def main():
     node.get_logger().info('spawning `{}` on namespace `{}` at x:{}, y:{}, z:{}, Yaw:{}'.format(
         args.robot_name, args.robot_namespace, args.x, args.y, args.z, args.yaw))
 
-    node.get_logger().info('Taking URDF from {}'.format(args.urdf))
+    node.get_logger().debug('Taking URDF from {}'.format(args.urdf))
 
-    node.get_logger().info(
+    node.get_logger().debug(
         'Creating Service client to connect to `/spawn_entity`')
     client = node.create_client(SpawnEntity, '/spawn_entity')
 
-    node.get_logger().info('Connecting to `/spawn_entity` service...')
+    node.get_logger().info('Connecting to `/spawn_entity` service')
     if not client.service_is_ready():
         client.wait_for_service()
-        node.get_logger().info('...connected!')
-    
+        node.get_logger().debug('...connected!')
+
     # Set data for request
     root = ET.parse(args.urdf).getroot()
     request = SpawnEntity.Request()
@@ -101,18 +101,18 @@ def main():
     future = client.call_async(request)
     rclpy.spin_until_future_complete(node, future, timeout_sec=args.timeout)
     if future.result() is not None:
-        print(f'response: {future.result()!r}')
+        node.get_logger().info(f'response: {future.result()!r}')
     else:
         raise RuntimeError(
             f'exception while calling service: {future.exception()!r}')
-
-    node.get_logger().info('Done! Shutting down node.')
 
     fin_pub = node.create_publisher(String, f'/{args.robot_namespace}/finished_spawning', 10)
     while fin_pub.get_subscription_count() < 2:
         node.get_logger().warn(f"Waiting for odom_distribution and goal_creation to subscribe to /{args.robot_namespace}/finished_spawning", once=True)
         time.sleep(1)
     fin_pub.publish(String(data=f"{args.robot_namespace}"))
+    
+    node.get_logger().info('Done! Shutting down node.')
 
     node.destroy_node()
     rclpy.shutdown()
