@@ -17,21 +17,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     bringup_dir = get_package_share_directory('multirobot_control')
-    nav2_bringup_dir = get_package_share_directory('nav2_bringup')
-    robot_model_dir = get_package_share_directory('neo_simulation2')
-    warehouse_dir = get_package_share_directory('aws_robomaker_small_warehouse_world')
     
     # Arguments for namespacing
     namespace = LaunchConfiguration('namespace')
-    use_namespace = LaunchConfiguration('use_namespace')
-    x_pose = LaunchConfiguration('x_pose')
-    y_pose = LaunchConfiguration('y_pose')
-    z_pose = LaunchConfiguration('z_pose')
-    yaw_pose = LaunchConfiguration('yaw_pose')
     use_sim_time = LaunchConfiguration('use_sim_time')
-    map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
-    autostart = LaunchConfiguration('autostart')
     robot_num = LaunchConfiguration('robot_num')
     log_level = LaunchConfiguration('log_level')
     local_planner = LaunchConfiguration('local_planner')
@@ -46,50 +36,15 @@ def generate_launch_description():
         default_value='',
         description='Top-level namespace')
 
-    declare_use_namespace_cmd = DeclareLaunchArgument(
-        'use_namespace',
-        default_value='false',
-        description='Whether to apply a namespace to the navigation stack')
-
-    declare_x_pose_cmd = DeclareLaunchArgument(
-        'x_pose',
-        default_value='0.0',
-        description='Initial x-pose of robot')
-
-    declare_y_pose_cmd = DeclareLaunchArgument(
-        'y_pose',
-        default_value='0.0',
-        description='Initial y-pose of robot')
-
-    declare_z_pose_cmd = DeclareLaunchArgument(
-        'z_pose',
-        default_value='0.01',
-        description='Initial z-pose of robot')
-
-    declare_yaw_pose_cmd = DeclareLaunchArgument(
-        'yaw_pose',
-        default_value='3.14',
-        description="Initial yaw of robot"
-    )
-
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
         default_value='false',
         description='Use simulation (Gazebo) clock if true')
 
-    declare_map_yaml_cmd = DeclareLaunchArgument(
-        'map', default_value=os.path.join(
-            robot_model_dir, 'maps', 'neo_workshop.yaml' ),
-        description='Full path to map yaml file to load')
-
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
         default_value=os.path.join(bringup_dir, 'params', 'planner_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
-
-    declare_autostart_cmd = DeclareLaunchArgument(
-        'autostart', default_value='true',
-        description='Automatically startup the nav2 stack')
 
     declare_robot_num_cmd = DeclareLaunchArgument(
         'robot_num',
@@ -107,20 +62,6 @@ def generate_launch_description():
         'local_planner',
         default_value='dwa_action_server',
         description="Local planner name"
-    )
-
-    start_gt_cmd = Node(
-        package='multirobot_control',
-        executable='gt_odom',
-        name='base_footprint_gt',
-        namespace=namespace,
-        arguments=[
-            '--link_name', PythonExpression(["'", namespace, "' + 'base_footprint'"]),
-            '--namespace', namespace,
-            '--ros-args', '--log-level', log_level
-        ],
-        parameters=[{'use_sim_time': use_sim_time}],
-        output='screen'
     )
 
     start_static_transform_cmd = Node(
@@ -178,63 +119,18 @@ def generate_launch_description():
         condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_replan_server"']))
     )
 
-    # Launch localization to give map -> transform
-    start_localization_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(bringup_dir, 'launch', 'localization.launch.py')
-        ),
-        launch_arguments={
-            'namespace': namespace,
-            'map_yaml_file': map_yaml_file,
-            'use_sim_time': use_sim_time,
-            'autostart': autostart,
-            'params_file': params_file,
-            'x_pose' : x_pose,
-            'y_pose' : y_pose,
-            'z_pose' : z_pose,
-            'yaw_pose' : yaw_pose,
-        }.items()
-    )
-
-    start_navigation_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(bringup_dir, 'launch', 'navigation.launch.py')
-        ),
-        launch_arguments={
-            'namespace': namespace,
-            'map_yaml_file': map_yaml_file,
-            'use_sim_time': use_sim_time,
-            'autostart': autostart,
-            'params_file': params_file,
-            'x_pose' : x_pose,
-            'y_pose' : y_pose,
-            'z_pose' : z_pose,
-            'yaw_pose' : yaw_pose,
-        }.items()
-    )
-
     ld = LaunchDescription()
     ld.add_action(declare_namespace_cmd)
-    ld.add_action(declare_use_namespace_cmd)
-    ld.add_action(declare_x_pose_cmd)
-    ld.add_action(declare_y_pose_cmd)
-    ld.add_action(declare_z_pose_cmd)
-    ld.add_action(declare_yaw_pose_cmd)
     ld.add_action(declare_use_sim_time_cmd)
-    ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
-    ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_robot_num_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_local_planner_cmd)
     
     ld.add_action(start_static_transform_cmd)
     ld.add_action(start_dwa_server_cmd)
     ld.add_action(start_dwa_multirobot_cmd)
     ld.add_action(start_dwa_replan_cmd)
     ld.add_action(start_rrt_cmd)
-
-    # ld.add_action(start_gt_cmd)
-    # ld.add_action(start_localization_cmd)
-    # ld.add_action(start_navigation_cmd)
 
     return ld
