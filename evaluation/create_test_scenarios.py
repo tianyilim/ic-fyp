@@ -26,7 +26,7 @@ scenario_settings = {
     'robot_starting_x': [-5.5],
     'robot_starting_y': [1.15],
     'robot_starting_theta': [0.0],
-    'total_goals': 10,
+    'total_goals': 100,
     'watchdog_timeout_s': 240,
     'result_folder': "result",
     'params_filepath': "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml",
