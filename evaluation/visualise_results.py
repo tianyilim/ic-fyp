@@ -64,40 +64,63 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
         test_combination_key[key] = literal_eval(params[key])
         print(f"with {key}: {test_combination_key[key]}")
 
-    res_summary = test_params[frozenset(test_combination_key.items())]
+    if frozenset(test_combination_key.items()) in test_params:
+        res_summary = test_params[frozenset(test_combination_key.items())]
 
-    for key in res.keys():
-        if 'robot' in key:
-            num_completed_goals = 0
+        res_summary.num_iterations += 1
 
-            res_list = res[key]
-            for elem_dict in res_list:
-                elem = parse_res_dict(elem_dict)
+        for key in res.keys():
+            if 'robot' in key:
+                num_completed_goals = 0
 
-                res_summary.avg_plan_time = \
-                    write_to_attr(res_summary.avg_plan_time, elem.plan_time)
+                res_list = res[key]
+                for elem_dict in res_list:
+                    elem = parse_res_dict(elem_dict)
 
-                if elem.completion_time != -1:
-                    num_completed_goals += 1
+                    res_summary.avg_plan_time = \
+                        write_to_attr(res_summary.avg_plan_time, elem.plan_time)
 
-                    manhattan_dist = np.linalg.norm(
-                        np.array(elem.goal_coords)-np.array(elem.start_coords) )
-                    res_summary.avg_waypoint_dist = \
-                        write_to_attr(res_summary.avg_waypoint_dist, manhattan_dist)
+                    if elem.completion_time != -1:
+                        num_completed_goals += 1
 
-                    res_summary.avg_dist_travelled = \
-                        write_to_attr(res_summary.avg_dist_travelled, elem.distance_travelled)
+                        manhattan_dist = np.linalg.norm(
+                            np.array(elem.goal_coords)-np.array(elem.start_coords) )
+                        res_summary.avg_waypoint_dist = \
+                            write_to_attr(res_summary.avg_waypoint_dist, manhattan_dist)
 
-                    total_time = elem.completion_time-elem.start_time
-                    move_time = elem.completion_time-(elem.start_time+elem.plan_time)
-                    res_summary.avg_total_time = \
-                        write_to_attr(res_summary.avg_total_time, total_time)
+                        res_summary.avg_dist_travelled = \
+                            write_to_attr(res_summary.avg_dist_travelled, elem.distance_travelled)
 
-                    res_summary.avg_move_time = \
-                        write_to_attr(res_summary.avg_move_time, move_time)
+                        total_time = elem.completion_time-elem.start_time
+                        move_time = elem.completion_time-(elem.start_time+elem.plan_time)
+                        res_summary.avg_total_time = \
+                            write_to_attr(res_summary.avg_total_time, total_time)
 
-            res_summary.avg_num_completed_goals = \
-                write_to_attr(res_summary.avg_num_completed_goals, num_completed_goals)
+                        res_summary.avg_move_time = \
+                            write_to_attr(res_summary.avg_move_time, move_time)
 
-for param in test_params.keys():
-    print(f"{param}\n{test_params[param]}")
+                res_summary.avg_num_completed_goals = \
+                    write_to_attr(res_summary.avg_num_completed_goals, num_completed_goals)
+    
+    else:
+        print(f"{test_combination_key} not in test_params. Skipping.")
+
+# for param in test_params.keys():
+#     print(f"{param}\n{test_params[param]}")
+
+x_val = np.arange(len(test_params), dtype='int')
+keys = [str(dict(k)) for k in test_params.keys()]
+completed_goals = [c.avg_num_completed_goals for c in test_params.values()]
+dist_travelled = [c.avg_dist_travelled for c in test_params.values()]
+total_time = [c.avg_total_time for c in test_params.values()]
+plan_time = [c.avg_plan_time for c in test_params.values()]
+move_time = [c.avg_move_time for c in test_params.values()]
+
+plt.figure()
+for x in x_val:
+    plt.bar(x, completed_goals[x], label=keys[x])
+    # plt.xticks(x_val, keys, rotation=-90)
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
