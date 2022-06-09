@@ -47,7 +47,7 @@ RESULT_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/result"
 # Get the test combinations
 test_params = {}
 for combi in TEST_COMBINATIONS:
-    combi_key = frozenset(combi.items())
+    combi_key = str(combi.items())
     test_params[combi_key] = result_summary()
 test_param_names = TEST_COMBINATIONS[0].keys()
 
@@ -61,11 +61,14 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
     test_combination_key = {}
     for key in test_param_names:
         # This is needed for some reason because all the YAML files read as floats.
-        test_combination_key[key] = literal_eval(params[key])
+        try:
+            test_combination_key[key] = literal_eval(params[key])
+        except ValueError:
+            test_combination_key[key] = params[key]
         print(f"with {key}: {test_combination_key[key]}")
 
-    if frozenset(test_combination_key.items()) in test_params:
-        res_summary = test_params[frozenset(test_combination_key.items())]
+    if str(test_combination_key.items()) in test_params:
+        res_summary = test_params[str(test_combination_key.items())]
 
         res_summary.num_iterations += 1
 
@@ -109,7 +112,8 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 #     print(f"{param}\n{test_params[param]}")
 
 x_val = np.arange(len(test_params), dtype='int')
-keys = [str(dict(k)) for k in test_params.keys()]
+# keys = [str(dict(k)) for k in test_params.keys()]
+keys = [str(k) for k in test_params.keys()]
 completed_goals = [c.avg_num_completed_goals for c in test_params.values()]
 dist_travelled = [c.avg_dist_travelled for c in test_params.values()]
 total_time = [c.avg_total_time for c in test_params.values()]

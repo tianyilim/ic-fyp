@@ -12,7 +12,7 @@ Results can then be scored externally.
 import os
 import copy
 import yaml
-from config import TEST_GRID
+import config
 from datetime import datetime
 
 TEST_SCENARIO_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/test_scenarios"
@@ -33,8 +33,7 @@ scenario_settings = {
     # If random goals are desired, leave this as an empty list
     'goal_array': "[]",
 
-    'realtime_factor': 0.0,
-    'publish_rate': 100.0
+    'realtime_factor': 1.0  # Max speedup
 }
 
 param_settings = {
@@ -75,6 +74,8 @@ param_settings = {
 
     # Typically for odom_distribution node,
     'odom_dist_thresh': 2.0,
+
+    'num_robots': 1
 }
 
 # Tuning parameters
@@ -82,10 +83,10 @@ param_settings = {
 
 # TODO : Set this to something legit
 
-elems_search_grid = len(TEST_GRID)
+elems_search_grid = len(config.TEST_GRID)
 start_time = datetime.now().strftime('%d%m%y_%H%M%S')
 
-for i, setting in enumerate( TEST_GRID ):
+for i, setting in enumerate( config.TEST_GRID ):
     # Set filename as time of test
     filename = f"{start_time}_{i+1}_{elems_search_grid}"
     scenario_filename = f"{TEST_SCENARIO_DIR}/{filename}.yaml"
@@ -100,7 +101,15 @@ for i, setting in enumerate( TEST_GRID ):
     ##################### WRITE STUFF INTO SETTINGS HERE #####################
     
     for parameter in setting.keys():
-        param_settings_copy[parameter] = setting[parameter]
+        if parameter in param_settings_copy.keys():
+            param_settings_copy[parameter] = setting[parameter]
+
+        if parameter in scenario_settings_copy.keys():
+            scenario_settings_copy[parameter] = setting[parameter]
+
+    # number of robots is a special setting
+    if 'robot_list' in setting.keys():
+        param_settings_copy['num_robots'] = len(setting['robot_list'])
 
     ####################### END WRITE STUFF TO SETTINGS ######################
 
