@@ -229,7 +229,6 @@ class RRTStarActionServer(Node):
             effective_obstacles = OBSTACLE_ARRAY + self._additional_obstacles
             
             # Apparently this takes 0 sim time?
-            # start_time = self.get_clock().now()
             # start_time = time.process_time()
             
             rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
@@ -260,17 +259,21 @@ class RRTStarActionServer(Node):
             self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
             
             start_time = default_timer()
+            start_time_sim = self.get_clock().now()
+
             self.path, num_nodes = rrt_planner.explore()
 
             # When done with planning send a message
-            # end_time = self.get_clock().now()
             # search_duration = (end_time - start_time).seconds_nanoseconds()
             # search_duration = search_duration[0] + search_duration[1]/1e9
             # end_time = time.process_time()
+            end_time_sim = self.get_clock().now()
             end_time = default_timer()
-            search_duration = end_time - start_time
 
-            self.get_logger().info(f"{self.get_namespace().strip('/')} done planning with duration {search_duration}")
+            search_duration = end_time - start_time
+            search_duration_sim = (end_time_sim-start_time_sim).nanoseconds
+
+            self.get_logger().info(f"{self.get_namespace().strip('/')} done planning in wall: {search_duration:.2f}s sim: {search_duration_sim}ns")
             self._rrt_done_pub.publish(NamedFloat(
                 name=String(data=f"{self.get_namespace().strip('/')}"),
                 data=Float64(data=search_duration) ) )

@@ -344,6 +344,8 @@
 - Fixed a long-standing bug in the Gazebo server setup. Noted that the publish rate of DWA messages always seemed to cap at 10Hz, which was due to the fact that the Gazebo clock only publishes every 10Hz (?).
 - This was fixed by adding `publish_rate` as a parameter in all the relevant scenario files. Scenario files then pass that parameter on to the Gazebo server through regular ROS parameters in the launch files. See the [docs](https://github.com/ros-simulation/gazebo_ros_pkgs/wiki/ROS-2-Migration:-ROS-Clocks-and-sim-time#clock-rate)
 - These parameters are passed in as `extra_gazebo_args`, see launchfile. For some reason passing a float directly doesn't work, so we have to pass in the entire params file.
+- The issue with accelerating sim time is that the RRT plan time will take proportionally longer in sim time. Therefore, we extend the watchdog timeout in `goal_creation` by the time taken for the RRT planner, multiplied by the speedup factor. This is inexact, as the speedup factor usually does not run at an exact time, but should be an alright approximation.
+- RRT computation time varies with CPU load (and hence speedup %), do not test anything related to the timing of the RRT in a sped-up state.
 
 ---
 

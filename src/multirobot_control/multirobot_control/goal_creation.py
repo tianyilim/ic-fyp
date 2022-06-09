@@ -61,6 +61,7 @@ class GoalCreation(Node):
                 ('result_folder', Parameter.Type.STRING),
                 ('params_filepath', Parameter.Type.STRING),
                 ('goal_array', Parameter.Type.STRING),
+                ('realtime_factor', Parameter.Type.DOUBLE)
             ]
         )
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -168,6 +169,7 @@ class GoalCreation(Node):
         self.goal_assignment_timer = self.create_timer( goal_timer_period, self.goal_assignment_timer_callback )
 
         self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
+        self._watchdog_expiry_time = self.get_parameter('watchdog_timeout_s').value
 
     def send_goal(self, robot_name, goal_position: Point):
         '''
@@ -307,7 +309,7 @@ class GoalCreation(Node):
             now_time = float(nt[0] + nt[1]/1e9)
             time_diff = now_time-self._sim_start_time
             
-            if time_diff > self.get_parameter('watchdog_timeout_s').value:
+            if time_diff > self._watchdog_expiry_time:
                 self.get_logger().warn(f"Time: {time_diff:.2f}. Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
                 self.dump_results()
 
@@ -423,6 +425,13 @@ class GoalCreation(Node):
 
         self.results[robot_name][-1].plan_time = plan_time
         self.get_logger().debug(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
+        
+        if self.get_parameter('realtime_factor').value > 0.0:
+            real_to_sim = self.get_parameter('realtime_factor').value
+        else:
+            real_to_sim = 10.0 # Approximation
+
+        self._watchdog_expiry_time += plan_time*real_to_sim
 
 def main(args=None):
     rclpy.init(args=args)
