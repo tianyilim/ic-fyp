@@ -10,6 +10,12 @@
     <uri>model://ground_plane</uri>
   </include>
 
+  <!-- Realtime update rate - run as fast as possible -->
+  <physics type='ode'>
+    <real_time_update_rate>0.0</real_time_update_rate>
+  </physics>
+  
+
   <!-- Default camera angle -->
   <gui fullscreen='0'>
     <camera name='user_camera'>
