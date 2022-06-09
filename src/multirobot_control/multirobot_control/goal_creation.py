@@ -417,14 +417,15 @@ class GoalCreation(Node):
         plan_time = msg.data.data
 
         self.results[robot_name][-1].plan_time = plan_time
-        self.get_logger().debug(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
+        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
         
         if self.get_parameter('realtime_factor').value > 0.0:
             real_to_sim = self.get_parameter('realtime_factor').value
         else:
             real_to_sim = 10.0 # Approximation
 
-        self._watchdog_expiry_time += plan_time*real_to_sim
+        # This screws up when we add multiple robots...
+        # self._watchdog_expiry_time += plan_time*real_to_sim
 
 def main(args=None):
     rclpy.init(args=args)
