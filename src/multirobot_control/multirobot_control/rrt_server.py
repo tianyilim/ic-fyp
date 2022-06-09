@@ -35,6 +35,7 @@ from multirobot_control.math_utils import check_line_of_sight, check_collision
 from multirobot_control.planner_status import PlannerStatus
 
 import time
+from timeit import default_timer
 import numpy as np
 from typing import List, Tuple
 from enum import Enum, auto
@@ -112,7 +113,6 @@ class RRTStarActionServer(Node):
         
         while not self._local_planner_state_query_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Service not availble, trying again...")
-            time.sleep(1)
         self._local_planner_state_future = self._local_planner_state_query_cli.call_async(GetPlannerStatus.Request())
         self._local_planner_state_future.add_done_callback(self._get_local_planner_state_callback)
 
@@ -230,7 +230,7 @@ class RRTStarActionServer(Node):
             
             # Apparently this takes 0 sim time?
             # start_time = self.get_clock().now()
-            start_time = time.time()
+            # start_time = time.process_time()
             
             rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
                                     obstacle_list=effective_obstacles, bounds=OBSTACLE_BOUND,
@@ -258,13 +258,16 @@ class RRTStarActionServer(Node):
             # Replan
             self.remove_path_marker()
             self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
+            
+            start_time = default_timer()
             self.path, num_nodes = rrt_planner.explore()
 
             # When done with planning send a message
             # end_time = self.get_clock().now()
             # search_duration = (end_time - start_time).seconds_nanoseconds()
             # search_duration = search_duration[0] + search_duration[1]/1e9
-            end_time = time.time()
+            # end_time = time.process_time()
+            end_time = default_timer()
             search_duration = end_time - start_time
 
             self.get_logger().info(f"{self.get_namespace().strip('/')} done planning with duration {search_duration}")
