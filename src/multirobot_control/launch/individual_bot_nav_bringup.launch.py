@@ -83,9 +83,8 @@ def generate_launch_description():
         executable='rrt_server',
         namespace=namespace,
         output='screen',
-        parameters=[{"robot_num": robot_num,
-                     "use_sim_time": use_sim_time},
-                     params_file],
+        parameters=[params_file, {"robot_num": robot_num,
+                     "use_sim_time": use_sim_time}],
         arguments=['--robot_num', robot_num, '--ros-args', '--log-level', log_level]
     )
 
@@ -94,7 +93,7 @@ def generate_launch_description():
         executable='dwa_server',
         namespace=namespace,
         output='screen',
-        parameters=[{"use_sim_time": use_sim_time}, params_file],
+        parameters=[params_file, {"use_sim_time": use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
         condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_action_server"']))
     )
@@ -104,7 +103,7 @@ def generate_launch_description():
         executable='dwa_multirobot',
         namespace=namespace,
         output='screen',
-        parameters=[{"use_sim_time": use_sim_time}, params_file],
+        parameters=[params_file, {"use_sim_time": use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
         condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_multirobot_server"']))
     )
@@ -114,7 +113,7 @@ def generate_launch_description():
         executable='dwa_replan',
         namespace=namespace,
         output='screen',
-        parameters=[{"use_sim_time": use_sim_time}, params_file],
+        parameters=[params_file, {"use_sim_time": use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
         condition=IfCondition(PythonExpression(['\"', local_planner, '\" == "dwa_replan_server"']))
     )

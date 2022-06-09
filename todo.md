@@ -339,6 +339,12 @@
 
 - Create `NamedFloat` message
 
+### Thu 09/06/22
+- Went through launch files and made sure they all are set to run with `use_sim_time:=true`
+- Fixed a long-standing bug in the Gazebo server setup. Noted that the publish rate of DWA messages always seemed to cap at 10Hz, which was due to the fact that the Gazebo clock only publishes every 10Hz (?).
+- This was fixed by adding `publish_rate` as a parameter in all the relevant scenario files. Scenario files then pass that parameter on to the Gazebo server through regular ROS parameters in the launch files. See the [docs](https://github.com/ros-simulation/gazebo_ros_pkgs/wiki/ROS-2-Migration:-ROS-Clocks-and-sim-time#clock-rate)
+- These parameters are passed in as `extra_gazebo_args`, see launchfile. For some reason passing a float directly doesn't work, so we have to pass in the entire params file.
+
 ---
 
 - [ ] Set up multi robot joint planner

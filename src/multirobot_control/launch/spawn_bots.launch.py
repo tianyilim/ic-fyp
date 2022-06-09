@@ -119,6 +119,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
+                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
             }.items(),
             condition=UnlessCondition(headless_config)
         )
@@ -130,6 +131,7 @@ def generate_launch_description():
             launch_arguments={
                 'world': world,
                 'verbose': 'true',
+                'extra_gazebo_args': f"--ros-args --params-file \"{scenario_file_dir}\"",
             }.items(),
             condition=IfCondition(headless_config)
         )
