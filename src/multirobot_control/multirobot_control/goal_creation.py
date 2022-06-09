@@ -106,14 +106,16 @@ class GoalCreation(Node):
         self.robots_done_subscriber = {}
         self.plan_done_subscriber = {}
 
+        self._sim_start_time = None     # Track run duration of the simulation
+
         # Code to visualise goals in Gazebo
         self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
         while not self.spawn_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Spawner service not available, waiting again...')
+            self.get_logger().info('Spawner service not available, waiting again...', once=True)
 
         self.delete_client = self.create_client(DeleteEntity, 'delete_entity')
         while not self.delete_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Deleter service not available, waiting again...')
+            self.get_logger().info('Deleter service not available, waiting again...', once=True)
 
         self.get_logger().debug('Goal SDF path: {}'.format(GOAL_SDF_PATH))
 
@@ -136,11 +138,11 @@ class GoalCreation(Node):
         for index, robot in enumerate(self.get_parameter("robot_list").value):
             # Flag to wait for robots to be done spawning
             self.robots_done_spawning[robot] = False
-            self.get_logger().info(f"Subscribing to /{robot}/finished_spawning")
+            self.get_logger().debug(f"Subscribing to /{robot}/finished_spawning")
             self.robots_done_subscriber[robot] = self.create_subscription(String, 
                 f"/{robot}/finished_spawning", self._handle_robot_done_spawning, 10)
 
-            self.get_logger().info(f"Subscribing to /{robot}/rrt_done")
+            self.get_logger().debug(f"Subscribing to /{robot}/rrt_done")
             self.plan_done_subscriber[robot] = self.create_subscription(NamedFloat, 
                 f"/{robot}/rrt_done", self._handle_robot_rrt_done, 10)
             
@@ -165,8 +167,7 @@ class GoalCreation(Node):
         goal_timer_period = 1.0
         self.goal_assignment_timer = self.create_timer( goal_timer_period, self.goal_assignment_timer_callback )
 
-        watchdog_timer_period = self.get_parameter('watchdog_timeout_s').value
-        self.goal_assignment_timer = self.create_timer( watchdog_timer_period, self.watchdog_timer_callback )
+        self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
 
     def send_goal(self, robot_name, goal_position: Point):
         '''
@@ -227,7 +228,7 @@ class GoalCreation(Node):
             self.get_logger().info('Goal rejected by robot {}'.format(robot_name))
             return
 
-        self.get_logger().info('Goal accepted by robot {}'.format(robot_name))
+        self.get_logger().debug('Goal accepted by robot {}'.format(robot_name))
         self.robot_goal_status[robot_name] = RobotGoalStatus.GOAL_STATUS_DOING
 
         self.result_futures[robot_name] = goal_handle.get_result_async()
@@ -240,14 +241,15 @@ class GoalCreation(Node):
         # Extract information about the robot from the response by format
         robot_name = result.robot_name.data
         robot_name = robot_name.strip('/')   # get rid of topic name
-
-        self.get_logger().info('Robot {} Success: {} Final_Position X:{:.2f} Y:{:.2f}'.format(
-            robot_name,
-            result.success.data, result.final_position.x, result.final_position.y))
         
         # Remove goal from current robot.
         self.robot_remaining_goals[robot_name] -= 1
-        self.get_logger().info(f"Robot {robot_name} has {self.robot_remaining_goals[robot_name]} goals remaining.")
+
+        self.get_logger().info('Robot {} Success: {} Final pos {:.2f},{:.2f} Remaining goals {}'.format(
+            robot_name,
+            result.success.data, result.final_position.x, result.final_position.y),
+            self.robot_remaining_goals[robot_name]
+            )
 
         # Update field in goal log
         now_s = self.get_clock().now().seconds_nanoseconds()
@@ -293,8 +295,9 @@ class GoalCreation(Node):
                         goal_idx = len(self.goal_array[robot_idx]) - self.robot_remaining_goals[robot_name]
                         goal_coords = (self.goal_array[robot_idx][goal_idx][0], self.goal_array[robot_idx][goal_idx][1])
 
-                    self.get_logger().info("Sending {} Goal X:{:.2f} Y:{:.2f}".format(
-                        robot_name, goal_coords[0], goal_coords[1]
+                    self.get_logger().info("Sending {} Goal {:.2f},{:.2f}. {} goals left".format(
+                        robot_name, goal_coords[0], goal_coords[1],
+                        self.robot_remaining_goals[robot_name]
                     ))
 
                     self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
@@ -304,15 +307,19 @@ class GoalCreation(Node):
 
     def watchdog_timer_callback(self):
         '''
-        If this callback triggers, the time limit for execution is over.
-
-        Shut down gracefully and dump existing values to log file.
+        Periodically checks if the execution time is greater than the allowed time.
         '''
-        self.get_logger().warn(f"Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
-        self.dump_results()
+        if self._sim_start_time is not None:
+            nt = self.get_clock().now().seconds_nanoseconds()
+            now_time = nt[0] + nt[1]/1e9
+            time_diff = now_time-self._sim_start_time
+            
+            if time_diff > self.get_parameter('watchdog_timeout_s').value:
+                self.get_logger().warn(f"Time: {time_diff:.2f}. Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
+                self.dump_results()
 
-        self.destroy_node()
-        rclpy.shutdown()
+                self.destroy_node()
+                rclpy.shutdown()
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback.current_pose
@@ -331,7 +338,7 @@ class GoalCreation(Node):
 
     def parameter_callback(self, params):
         # (don't modify robot_list)
-        self.get_logger().info("No parameters are able to be set for this node.")
+        self.get_logger().warn("No parameters are able to be set for this node.")
         return SetParametersResult(successful=False)
 
     # TODO pass goal/uuid number into the spawn_delete arguments so that goals are deleted spawned appropriately.
@@ -357,7 +364,7 @@ class GoalCreation(Node):
         else:
             robot_idx = self.robot_name_to_idx[robot_name]
             goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name] + 1
-        self.get_logger().info(f"Spawning goal {goal_num} for {robot_name}.")
+        self.get_logger().debug(f"Spawning goal {goal_num} for {robot_name}.")
         # Send request
         self.spawn_future = self.spawn_client.call_async(request)
         self.spawn_future.add_done_callback(self.spawn_done)
@@ -377,7 +384,7 @@ class GoalCreation(Node):
         else:
             robot_idx = self.robot_name_to_idx[robot_name]
             goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name]
-        self.get_logger().info(f"Deleting goal {goal_num} for {robot_name}.")
+        self.get_logger().debug(f"Deleting goal {goal_num} for {robot_name}.")
         # Send request
         self.delete_future = self.delete_client.call_async(request)
         self.delete_future.add_done_callback(self.delete_done)
@@ -410,8 +417,12 @@ class GoalCreation(Node):
     def _handle_robot_done_spawning(self, msg):
         '''Recieves a `std_msgs/String` on robot_namespace/finished_spawning.'''
         robot_name = msg.data
-        self.get_logger().info(f"{robot_name} done spawning.")
+        self.get_logger().debug(f"{robot_name} done spawning.")
         self.robots_done_spawning[robot_name] = True
+
+        if all(self.robots_done_spawning.values()):
+            st = self.get_clock().now().seconds_nanoseconds()
+            self._sim_start_time = st[0] + st[1]/1e9
 
     def _handle_robot_rrt_done(self, msg):
         '''Recieves a `std_msgs/String` saying that robot is done with RRT planning.'''
@@ -419,7 +430,7 @@ class GoalCreation(Node):
         plan_time = msg.data.data
 
         self.results[robot_name][-1].plan_time = plan_time
-        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s wall time to plan RRT.")
+        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
 
 def main(args=None):
     rclpy.init(args=args)
