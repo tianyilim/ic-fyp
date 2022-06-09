@@ -295,7 +295,7 @@ class GoalCreation(Node):
 
                     self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
         else:
-            self.get_logger().info(f"Waiting for all robots to spawn... {self.robots_done_spawning}")
+            self.get_logger().info(f"Waiting for all robots to spawn...")
 
 
     def watchdog_timer_callback(self):
@@ -422,7 +422,7 @@ class GoalCreation(Node):
         plan_time = msg.data.data
 
         self.results[robot_name][-1].plan_time = plan_time
-        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
+        self.get_logger().debug(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
 
 def main(args=None):
     rclpy.init(args=args)
