@@ -32,3 +32,4 @@ class result_summary():
     avg_total_time: float = None
     avg_plan_time: float = None
     avg_move_time: float = None
+    num_iterations: int = 0
