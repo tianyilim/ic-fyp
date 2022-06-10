@@ -1,5 +1,5 @@
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Tuple, List
 
 @dataclass
@@ -32,4 +32,12 @@ class result_summary():
     avg_total_time: float = None
     avg_plan_time: float = None
     avg_move_time: float = None
+
+    num_completed_goals: List[float] = field(default_factory=list)
+    waypoint_dist: List[float] = field(default_factory=list)
+    dist_travelled: List[float] = field(default_factory=list)
+    total_time: List[float] = field(default_factory=list)
+    plan_time: List[float] = field(default_factory=list)
+    move_time: List[float] = field(default_factory=list)
+
     num_iterations: int = 0

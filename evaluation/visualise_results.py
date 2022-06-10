@@ -46,16 +46,18 @@ RESULT_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/result"
 
 # Get the test combinations
 test_params = {}
+test_param_dict = {}
 for combi in TEST_COMBINATIONS:
     combi_key = str(combi.items())
     test_params[combi_key] = result_summary()
+    test_param_dict[combi_key] = combi
 test_param_names = TEST_COMBINATIONS[0].keys()
 
 for file in glob.glob(RESULT_DIR+"/*.yaml"):
     with open(file, 'r') as f:
         res = yaml.load(f, Loader=yaml.BaseLoader)
 
-    print(f"Opening {os.path.basename(file)}")
+    # print(f"Opening {os.path.basename(file)}")
     # Associate the value of the parameter file with the test combination
     params = res['/**']['ros__parameters']
     test_combination_key = {}
@@ -65,7 +67,7 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
             test_combination_key[key] = literal_eval(params[key])
         except ValueError:
             test_combination_key[key] = params[key]
-        print(f"with {key}: {test_combination_key[key]}")
+        # print(f"with {key}: {test_combination_key[key]}")
 
     if str(test_combination_key.items()) in test_params:
         res_summary = test_params[str(test_combination_key.items())]
@@ -80,6 +82,7 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
                 for elem_dict in res_list:
                     elem = parse_res_dict(elem_dict)
 
+                    res_summary.plan_time.append(elem.plan_time)
                     res_summary.avg_plan_time = \
                         write_to_attr(res_summary.avg_plan_time, elem.plan_time)
 
@@ -88,22 +91,27 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 
                         manhattan_dist = np.linalg.norm(
                             np.array(elem.goal_coords)-np.array(elem.start_coords) )
+                        res_summary.waypoint_dist.append(manhattan_dist)
                         res_summary.avg_waypoint_dist = \
                             write_to_attr(res_summary.avg_waypoint_dist, manhattan_dist)
 
+                        res_summary.dist_travelled.append(elem.distance_travelled)
                         res_summary.avg_dist_travelled = \
                             write_to_attr(res_summary.avg_dist_travelled, elem.distance_travelled)
 
                         total_time = elem.completion_time-elem.start_time
                         move_time = elem.completion_time-(elem.start_time+elem.plan_time)
+                        res_summary.total_time.append(total_time)
                         res_summary.avg_total_time = \
                             write_to_attr(res_summary.avg_total_time, total_time)
 
+                        res_summary.move_time.append(move_time)
                         res_summary.avg_move_time = \
                             write_to_attr(res_summary.avg_move_time, move_time)
 
                 res_summary.avg_num_completed_goals = \
                     write_to_attr(res_summary.avg_num_completed_goals, num_completed_goals)
+                res_summary.num_completed_goals.append(num_completed_goals)
     
     else:
         print(f"{test_combination_key} not in test_params. Skipping.")
@@ -114,17 +122,28 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 x_val = np.arange(len(test_params), dtype='int')
 # keys = [str(dict(k)) for k in test_params.keys()]
 keys = [str(k) for k in test_params.keys()]
+labels = []
+
+num_iterations = [c.num_iterations for c in test_params.values()]
+completed_goals_std = [np.std(np.array(c.num_completed_goals)) for c in test_params.values()]
+completed_goals_sum = [np.sum(np.array(c.num_completed_goals)) for c in test_params.values()]
 completed_goals = [c.avg_num_completed_goals for c in test_params.values()]
 dist_travelled = [c.avg_dist_travelled for c in test_params.values()]
 total_time = [c.avg_total_time for c in test_params.values()]
 plan_time = [c.avg_plan_time for c in test_params.values()]
 move_time = [c.avg_move_time for c in test_params.values()]
 
-plt.figure()
+fig, ax = plt.subplots()
 for x in x_val:
-    plt.bar(x, completed_goals[x], label=keys[x])
-    # plt.xticks(x_val, keys, rotation=-90)
-plt.legend()
-plt.grid()
+    bar = ax.bar(x, completed_goals[x], label=keys[x], yerr=completed_goals_std[x])
+    d = test_param_dict[keys[x]]
+    label = f"LP: {'A' if d['local_planner']=='dwa_action_server' else 'R'}, n_r: {d['num_robots']}"
+    labels.append(label)
+    ax.bar_label(bar, labels=[f'±{completed_goals_std[x]:.2f}, {num_iterations[x]} runs'],
+             padding=8, color='k', fontsize=8)
+
+ax.set_xticks(x_val, labels, rotation=-45)
+# ax.legend()
+ax.grid()
 plt.tight_layout()
 plt.show()
