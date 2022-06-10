@@ -164,6 +164,8 @@ class GoalCreation(Node):
         self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
         self._watchdog_expiry_time = self.get_parameter('watchdog_timeout_s').value
 
+        # self._check_sim_rtf_timer = self.create_timer(5.0, self._get_sim_rtf_callback, clock=rclpy.clock.Clock())
+
     def send_goal(self, robot_name, goal_position: Point):
         '''
         Sends a Point goal to the robot (specified by `robot_name`)

@@ -662,10 +662,11 @@ class RRTStarActionServer(Node):
         '''
         Returns the total manhattan distance of remaining elements along the path.
         '''
-        dist = 0.0
+        dist = -np.inf  # Lowest possible score if there are no more waypoints left to follow
         remaining_points = len(self.path) - self.waypoint_idx
 
         if remaining_points >= 1:
+            dist = 0.0
             dist += np.linalg.norm(
                 np.array((self._x, self._y)) - \
                 np.array(self.path[self.waypoint_idx]) )
