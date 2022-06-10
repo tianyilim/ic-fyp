@@ -71,7 +71,10 @@ class DWAReplanServer(DWABaseNode):
                 self.closest_robot_pos[1])
             
             # Also account for the case where the other robot is ON the goal
-            if dist_to_goal-dist_to_robot > -0.05:
+            # if dist_to_goal-dist_to_robot > -0.05:
+
+            # If there is a robot in the vicinity
+            if dist_to_robot < self.params['robot_radius']*3.0:
                 # Check bearing
                 bearing_to_goal = np.arctan2((self.goal_y-self._y), (self.goal_x-self._x))
                 bearing_to_robot = np.arctan2((self.closest_robot_pos[1]-self._y), (self.closest_robot_pos[0]-self._x))
