@@ -355,13 +355,140 @@ user    1m35.099s
 sys     0m20.302s
 ```
 
+### Fri 10/06/22
+- Poster presentation is on 28/6, any chance to meet before that to run through a presentation?
+  - Animations and video, focus more on 'teaching' what I have achieved
+  - Show technical depth
+  - Read through project specification carefully
+  - Schedule meeting after the 22nd (report submission)
+- Run through report structure
+  - Framework for tuning parameters and evaluation is the same, where do we present this tuning framework?
+    - Present the methodology and results as 'interleaved'
+  - Don't forget to write a little about the joint DWA approach that ultimately did not succeed
+
+- [ ] Tune values for vanilla DWA parameters (single robot case, grid search over a few variants of the params, run @ max speed)
+  - [ ] Remember to save these graphs!
+- [ ] Global planner sends start/end times instead of time elapsed. Then we can have a fairer test?
+  - [ ] Add time based on the currently-detected real-time factor
+
+### Sat 11/06/22
+- [ ] Figure out an alternative heuristic to DWA that calculates distance towards closest point of line of sight to goal instead of regular
+- [ ] Try to use that in a global planner setting and see if it works
+- [ ] Lit review on Local and Global planners
+  - [ ] DWA
+  - [ ] TEB
+  - [ ] MPC
+  - [ ] RRT
+  - [ ] RRT*
+  - [ ] A*
+  - [ ] D*
+
+### Mon 13/06/22
+- [ ] Lit review on Multi-robot planners
+  - [ ] Centralized approaches
+    - [ ] Conflict-Based Search
+  - [ ] Decentralised approaches
+    - [ ] Nonlinear MPC
+    - [ ] Velocity Obstacles
+    - And this is why we try to use DWA (it is distributed and performs a similar role as MPC)
+- [ ] Lit review on ROS and Gazebo
+
+### Tue 14/06/22
+- [ ] Implementation of multi-robot simulation
+  - [ ] Simulation of "communication range" using `odom_distribution` node
+  - [ ] Configurable Scenario files
+    - [ ] Swap scenario
+    - [ ] Single scenario
+    - [ ] Random scenario
+    - [ ] Parameterized scenario
+- [ ] Implementation of Global Planner
+  - [ ] Refactor source code a bit:
+    - [ ] Rename `rrt_server` as global planner server or something
+    - [ ] Implement a pure RRT node in addition to the RRT* in `rrt_node`
+    - [ ] Timing of RRT vs RRT* for single robot case
+  - [ ] Explain implementation of base RRT node
+    - [ ] Collision detection in math_utils
+    - [ ] AABB collision
+    - [ ] Expanding / dilation using a safety radius
+    - [ ] Using "octagon" for expansion instead of naively adding
+  - [ ] Explain implementation of RRT* extension
+- [ ] Implementation of Local Planner
+  - [ ] RankPose
+  - [ ] Diagram of services provided by DWA node
+  - [ ] Sequence diagram of 
+
+### Wed 15/06/22
+- [ ] Implementation of Replan DWA
+  - [ ] Show case of two robots using vanilla DWA in deadlock
+  - [ ] Show case of two robots using replan DWA and how deadlock is avoided
+  - [ ] Required query services from global planner
+    - [ ] Manhattan distance as a heuristic
+  - [ ] Example sequence diagram for replanning
+- [ ] Implementation of Joint DWA
+  - [ ] State machine
+  - [ ] Sequence diagram
+  - [ ] Required requests from Global planner
+  - [ ] Due to lack of time, this was deemed not yet ready for demonstration and thus left for future work.
+
+### Thu 16/06/22
+- [ ] Present results
+- [ ] Comparing DWA implementation:
+  - [ ] Individual goals per robot per unit time
+  - [ ] Total goals per unit time
+- [ ] Comparing RRT implementation:
+  - [ ] Execution time for the 1 robot case
+  - [ ] Total Manhattan distance
+  - [ ] Total distance travelled by robots
+- [ ] 
+
+### Fri 17/06/22
+- Meeting with Supervisor
+  - Show results/graphics and check if they are well presented
+  - Show algorithm and see if it is easily understandable
+
+### Sat 18/06/22
+
+### Sun 19/06/22
+
+### Mon 20/06/22
+
+### Tue 21/06/22
+
+### Wed 22/06/22
+- **Report Submission**
+- Take a break @ FSAI competition
+
+### Thu 23/06/22
+- [ ] Prepare slide graphics and videos before presentation
+
+### Fri 24/06/22
+- Meeting with Supervisor
+  - Show videos
+  - Reuse graphics from report to show results
+
+### Sat 25/06/22
+
+### Sun 26/06/22
+
+### Mon 27/06/22
+- Finish Powerpoint report by this day
+- Rehearse presentation (w housemates, coursemates)
+
+### Tue 28/06/22
+- Rehearse once/twice before presentation
+- **Presentation @ 4:55pm**
+
 ---
+
+## Report Checklist
+9 days to write report and present results (if no work on Sundays)
+1 more meeting with supervisor (in ~5 days)
+
 
 - [ ] Set up multi robot joint planner
   - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
   - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
   - [ ] There is a real chance that more than 2 robots come in proxmity
-- [ ] Script to parse the YAML log files and show a visualisation (perhaps can do this semi-manually in Excel for a small-scale project...)
 - [ ] Something to set heading goals, so robots face the goal with some certainty
 
 ---
