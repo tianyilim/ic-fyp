@@ -374,11 +374,11 @@ sys     0m20.302s
 ### Sat 11/06/22
 - [ ] Figure out an alternative heuristic to DWA that calculates distance towards closest point of line of sight to goal instead of regular
 - [ ] Try to use that in a global planner setting and see if it works
-- [ ] Lit review on Local and Global planners
+- [x] Lit review on Local and Global planners
   - [x] DWA
   - [x] TEB
-  - [ ] RRT
-  - [ ] RRT*
+  - [x] RRT
+  - [x] RRT*
   - [x] A*
   - [x] D*
 
