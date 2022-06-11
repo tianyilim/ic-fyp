@@ -94,9 +94,6 @@ class RRT:
 
         if self.debug_plot:
             self.fig = plt.figure()
-            self.line_keys = {}
-            '''Dict of ((start_x,start_y), (end_x,end_y))-> Line''' 
-
             plt.ion()
             plt.show()
             
@@ -216,13 +213,13 @@ class RRT:
             c = self.check_line_intersection(nearest_node._pos, prop_coords, waypoint=False)
             
             if c==False:
-                # If path between new_node and nearest_node is not in collision:
-                # Connect node to best parent in near_inds
-                near_idxs = self.get_near_idxs(prop_coords) # find close nodes
-                # connect new node to the best parent in near_idxs
-                new_node = self.choose_parent(near_idxs, prop_coords)
-                # Rewire nodes in the proximity of new_node if it improves their costs
-                self.rewire(new_node, near_idxs)
+                if self.debug_plot:    
+                    plt.plot( prop_coords[0], prop_coords[1], 'ro' )
+                    plt.plot([nearest_node._pos[0], prop_coords[0]], [nearest_node._pos[1], prop_coords[1]], 'k')
+                    plt.draw()
+                    plt.pause(0.0001)
+
+                new_node = self.Node(prop_coords, nearest_node, vect_to_nearest)
 
                 if self.logger is not None:
                     self.logger.debug(f"New node added at ({new_node._pos[0]:.2f}, {new_node._pos[1]:.2f})\n")
@@ -286,9 +283,9 @@ class RRT:
                     print("Path found!")
                 else:
                     self.logger.info("Path found!")
-                
-                if self.debug_plot:
-                    plt.plot([self.goal_node._pos[0], self.goal_node._parent._pos[0]], [self.goal_node._pos[1], self.goal_node._parent._pos[1]], 'k')
+
+                if self.debug_plot: 
+                    plt.plot([self.goal_node._pos[0], self.node_list[-2]._pos[0]], [self.goal_node._pos[1], self.node_list[-2]._pos[1]], 'k')
                     plt.draw()
                     plt.pause(0.0001)
                     input()
@@ -303,102 +300,6 @@ class RRT:
         else:
             self.logger.error(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
         return []    # Cannot find a path
-
-    def get_near_idxs(self, new_pos: np.ndarray):
-        '''
-        Find nodes close to the new node's pos.
-        '''
-        
-        near_inds = []
-        while len(near_inds) < 1:
-            nnode = len(self.node_list) + 1
-            r = self.connect_circle_dist * np.sqrt((np.log(nnode) / nnode))
-            dlist = [np.sum(np.square((node._pos - new_pos))) for node in self.node_list]
-            near_inds = [dlist.index(i) for i in dlist if i <= r ** 2]
-
-            # Make sure we can always find nearby nodes
-            if len(near_inds) < 1:
-                self.connect_circle_dist *= 1.1
-                # ~ print(f"connect circle dist is now {self.connect_circle_dist}")
-
-        assert len(near_inds) != 0, '[rrt_get_near_idxs] no near nodes'
-        return near_inds
-
-    def choose_parent(self, near_idxs, prop_coords):
-        '''
-        Choose parent of new node as the lowest resulting cost parent in near_idxs and
-        new_node.cost to the corresponding minimal cost
-
-        Return a corresponding new best node.
-        '''
-        assert len(near_idxs) > 0, "[rrt_choose_parent] empty list of near nodes!"
-
-        min_cost = np.inf
-        best_near_node = self.node_list[near_idxs[0]]
-
-        # Go through all near nodes and evaluate them as potential parent nodes by
-        for node_idx in near_idxs:
-            prop_parent = self.node_list[node_idx]  # proposed parent
-            # check if a connection would result in a collision
-            start_extension = len(self.node_list) != 1
-            if self.check_line_intersection(prop_parent._pos, prop_coords, waypoint=start_extension) != False:
-                continue
-
-            # evaluate the cost of the new_node if it had that near node as a parent
-            cost = prop_parent._cost + np.linalg.norm( prop_parent._pos - prop_coords )
-
-            if cost < min_cost:
-                min_cost = cost
-                best_near_node = prop_parent
-
-        assert best_near_node is not None, "[rrt_chooose_parent] parent node must not be None!"
-        # pick the parent resulting in the lowest cost, and return a corresponding node
-
-        # ~ print(f"new node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f}")
-        if self.debug_plot:    
-            plt.plot( prop_coords[0], prop_coords[1], 'ro' )
-            self.line_keys[(tuple(best_near_node._pos), tuple(prop_coords))], = plt.plot(
-                [best_near_node._pos[0], prop_coords[0]],
-                [best_near_node._pos[1], prop_coords[1]], 'k'
-            )
-            plt.draw()
-            plt.pause(0.0001)
-
-
-        return self.Node( prop_coords, best_near_node, min_cost )
-
-    def rewire(self, new_node, near_idxs):
-        '''
-        Rewire near nodes to new node if it will result in a lower cost.
-        '''
-        # go through all near nodes and check whether rewiring them to the new_node ...
-        for node_idx in near_idxs:
-            prop_child = self.node_list[node_idx]  # proposed child
-            # A) Not cause a collision and
-            start_extension = len(self.node_list) != 1
-            if self.check_line_intersection(prop_child._pos, new_node._pos, waypoint=start_extension) != False:
-                continue
-            # B) reduce their own cost.
-            orig_cost = new_node._cost
-            new_cost = np.linalg.norm(new_node._pos - prop_child._pos) + orig_cost
-            
-            if new_cost < prop_child._cost:
-                if self.debug_plot:
-                    self.line_keys[(tuple(prop_child._parent._pos), tuple(prop_child._pos))].remove()
-                    self.line_keys.pop( (tuple(prop_child._parent._pos), tuple(prop_child._pos)) )
-                
-                prop_child._parent = new_node
-
-                if self.debug_plot:
-                    self.line_keys[(tuple(prop_child._parent._pos), tuple(prop_child._pos))], = plt.plot(
-                        [prop_child._parent._pos[0], prop_child._pos[0]],
-                        [prop_child._parent._pos[1], prop_child._pos[1]], 'k'
-                    )
-                    plt.draw()
-                    plt.pause(0.0001)
-
-        # If A and B are true, update the cost and parent properties of the node.
-        self.propagate_cost_to_leaves(new_node)
 
     def check_collision(self, pos:Tuple[float, float], use_safety_radius:bool=True):
         '''
@@ -473,12 +374,3 @@ class RRT:
         # path_coords.pop(0)
 
         return path_coords, len(self.node_list)
-
-    def propagate_cost_to_leaves(self, parent_node):
-        """Recursively update the cost of the nodes"""
-        for node in self.node_list:
-            if node._parent == parent_node:
-                orig_cost = parent_node._cost
-                new_cost = np.linalg.norm(parent_node._pos - node._pos)
-                node._cost = orig_cost + new_cost
-                self.propagate_cost_to_leaves(node)
