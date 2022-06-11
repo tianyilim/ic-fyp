@@ -288,7 +288,6 @@ class RRT:
                     plt.plot([self.goal_node._pos[0], self.node_list[-2]._pos[0]], [self.goal_node._pos[1], self.node_list[-2]._pos[1]], 'k')
                     plt.draw()
                     plt.pause(0.0001)
-                    input()
 
                 return self.get_path()
 
@@ -364,6 +363,11 @@ class RRT:
         path = [ self.goal_node ]   # This should be the goal node
         while np.any(path[-1]._pos != self.start):
             path.append( path[-1]._parent )
+            if self.debug_plot:
+                if path[-1]._parent is not None:
+                    plt.plot([path[-1]._parent._pos[0], path[-1]._pos[0]], [path[-1]._parent._pos[1], path[-1]._pos[1]], 'y')
+                    plt.draw()
+                    plt.pause(0.0001)
 
         path.reverse()
 
@@ -372,5 +376,8 @@ class RRT:
 
         path_coords = [(n._pos[0], n._pos[1]) for n in path]
         # path_coords.pop(0)
+
+        if self.debug_plot:
+            input()
 
         return path_coords, len(self.node_list)
