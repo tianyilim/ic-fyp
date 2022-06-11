@@ -375,20 +375,20 @@ sys     0m20.302s
 - [ ] Figure out an alternative heuristic to DWA that calculates distance towards closest point of line of sight to goal instead of regular
 - [ ] Try to use that in a global planner setting and see if it works
 - [ ] Lit review on Local and Global planners
-  - [ ] DWA
-  - [ ] TEB
-  - [ ] MPC
+  - [x] DWA
+  - [x] TEB
   - [ ] RRT
   - [ ] RRT*
-  - [ ] A*
-  - [ ] D*
+  - [x] A*
+  - [x] D*
 
 ### Mon 13/06/22
 - [ ] Lit review on Multi-robot planners
   - [ ] Centralized approaches
+    - [ ] SIPP
     - [ ] Conflict-Based Search
   - [ ] Decentralised approaches
-    - [ ] Nonlinear MPC
+    - [x] Nonlinear MPC
     - [ ] Velocity Obstacles
     - And this is why we try to use DWA (it is distributed and performs a similar role as MPC)
 - [ ] Lit review on ROS and Gazebo
