@@ -383,17 +383,15 @@ sys     0m20.302s
   - [x] D*
 
 ### Mon 13/06/22
-- [ ] Lit review on Multi-robot planners
-  - [ ] Centralized approaches
-    - [ ] SIPP
-    - [ ] Conflict-Based Search
-  - [ ] Decentralised approaches
+- [x] Lit review on Multi-robot planners
+  - [x] Centralized approaches
+    - [x] SIPP
+    - [x] Conflict-Based Search
+  - [x] Decentralised approaches
     - [x] Nonlinear MPC
-    - [ ] Velocity Obstacles
-    - And this is why we try to use DWA (it is distributed and performs a similar role as MPC)
+    - [x] Velocity Obstacles
+  - [x] And this is why we try to use DWA (it is distributed and performs a similar role as MPC)
 - [ ] Lit review on ROS and Gazebo
-
-### Tue 14/06/22
 - [ ] Implementation of multi-robot simulation
   - [ ] Simulation of "communication range" using `odom_distribution` node
   - [ ] Configurable Scenario files
@@ -401,16 +399,19 @@ sys     0m20.302s
     - [ ] Single scenario
     - [ ] Random scenario
     - [ ] Parameterized scenario
+
+### Tue 14/06/22
 - [ ] Implementation of Global Planner
   - [ ] Refactor source code a bit:
     - [ ] Rename `rrt_server` as global planner server or something
-    - [ ] Implement a pure RRT node in addition to the RRT* in `rrt_node`
-    - [ ] Timing of RRT vs RRT* for single robot case
+    - [x] Implement a pure RRT node in addition to the RRT* in `rrt_node`
+    - [ ] Timing of RRT vs RRT* in isolation
+    - [ ] Average path distance of RRT vs RRT*
   - [ ] Explain implementation of base RRT node
     - [ ] Collision detection in math_utils
     - [ ] AABB collision
     - [ ] Expanding / dilation using a safety radius
-    - [ ] Using "octagon" for expansion instead of naively adding
+    - [ ] Using "octagon" for expansion instead of naively adding distance to the sides
   - [ ] Explain implementation of RRT* extension
 - [ ] Implementation of Local Planner
   - [ ] RankPose
@@ -431,7 +432,7 @@ sys     0m20.302s
   - [ ] Due to lack of time, this was deemed not yet ready for demonstration and thus left for future work.
 
 ### Thu 16/06/22
-- [ ] Present results
+- [ ] Present results and disucssion
 - [ ] Comparing DWA implementation:
   - [ ] Individual goals per robot per unit time
   - [ ] Total goals per unit time
@@ -439,14 +440,23 @@ sys     0m20.302s
   - [ ] Execution time for the 1 robot case
   - [ ] Total Manhattan distance
   - [ ] Total distance travelled by robots
-- [ ] 
 
 ### Fri 17/06/22
 - Meeting with Supervisor
   - Show results/graphics and check if they are well presented
   - Show algorithm and see if it is easily understandable
+- [ ] Conclusion
+  - [ ] Ethics
+    - [ ] Potential of MRS:
+      - [ ] Factories, Farms, Security
+      - [ ] Used for making war
+      - [ ] These technologies should be developed with bettering the human condition in mind
+  - [ ] Future Work
+    - [ ] Testing with real robots
+    - [ ] Integrating this with simulated/real perception (currently assumes perfect perception)
 
 ### Sat 18/06/22
+- [ ] Get more results if necessary
 
 ### Sun 19/06/22
 
@@ -456,7 +466,6 @@ sys     0m20.302s
 
 ### Wed 22/06/22
 - **Report Submission**
-- Take a break @ FSAI competition
 
 ### Thu 23/06/22
 - [ ] Prepare slide graphics and videos before presentation
