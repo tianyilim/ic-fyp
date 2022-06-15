@@ -11,3 +11,6 @@ experiment/*
 **/log/*
 **/params_custom.yaml
 **/scenario_custom.yaml
+
+**/*.bkp
+**/*.dtmp
