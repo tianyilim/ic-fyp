@@ -392,31 +392,31 @@ sys     0m20.302s
     - [x] Velocity Obstacles
   - [x] And this is why we try to use DWA (it is distributed and performs a similar role as MPC)
 - [ ] Lit review on ROS and Gazebo
-- [ ] Implementation of multi-robot simulation
-  - [ ] Simulation of "communication range" using `odom_distribution` node
-  - [ ] Configurable Scenario files
-    - [ ] Swap scenario
-    - [ ] Single scenario
-    - [ ] Random scenario
-    - [ ] Parameterized scenario
+- [x] Implementation of multi-robot simulation
+  - [x] Simulation of "communication range" using `odom_distribution` node
+  - [x] Configurable Scenario files
+    - [x] Swap scenario
+    - [x] Single scenario
+    - [x] Random scenario
+    - [x] Parameterized scenario
 
 ### Tue 14/06/22
 - [ ] Implementation of Global Planner
   - [ ] Refactor source code a bit:
     - [ ] Rename `rrt_server` as global planner server or something
     - [x] Implement a pure RRT node in addition to the RRT* in `rrt_node`
-    - [ ] Timing of RRT vs RRT* in isolation
-    - [ ] Average path distance of RRT vs RRT*
-  - [ ] Explain implementation of base RRT node
-    - [ ] Collision detection in math_utils
-    - [ ] AABB collision
-    - [ ] Expanding / dilation using a safety radius
-    - [ ] Using "octagon" for expansion instead of naively adding distance to the sides
-  - [ ] Explain implementation of RRT* extension
+    - [x] Timing of RRT vs RRT* in isolation
+    - [x] Average path distance of RRT vs RRT*
+  - [x] Explain implementation of base RRT node
+    - [x] Collision detection in math_utils
+    - [x] AABB collision
+    - [x] Expanding / dilation using a safety radius
+    - [x] Using "octagon" for expansion instead of naively adding distance to the sides
+  - [x] Explain implementation of RRT* extension
 - [ ] Implementation of Local Planner
   - [ ] RankPose
   - [ ] Diagram of services provided by DWA node
-  - [ ] Sequence diagram of 
+  - [ ] Sequence diagram of DWA node
 
 ### Wed 15/06/22
 - [ ] Implementation of Replan DWA
@@ -425,13 +425,13 @@ sys     0m20.302s
   - [ ] Required query services from global planner
     - [ ] Manhattan distance as a heuristic
   - [ ] Example sequence diagram for replanning
+
+### Thu 16/06/22
 - [ ] Implementation of Joint DWA
   - [ ] State machine
   - [ ] Sequence diagram
   - [ ] Required requests from Global planner
   - [ ] Due to lack of time, this was deemed not yet ready for demonstration and thus left for future work.
-
-### Thu 16/06/22
 - [ ] Present results and disucssion
 - [ ] Comparing DWA implementation:
   - [ ] Individual goals per robot per unit time
