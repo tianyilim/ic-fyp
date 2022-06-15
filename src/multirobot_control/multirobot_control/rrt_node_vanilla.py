@@ -197,7 +197,8 @@ class RRT:
                 if self.logger is not None:
                     self.logger.debug(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
                 else:
-                    print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
+                    pass
+                    # print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
                 continue    # Somehow we have a vector that too near a node
 
             # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
@@ -278,18 +279,17 @@ class RRT:
                     self.node_list.append(self.goal_node)
                     goal_found = True
 
-            if goal_found and iterations > self.it_min:
-                if self.logger is None:
-                    print("Path found!")
-                else:
-                    self.logger.info("Path found!")
+                    if self.logger is None:
+                        print("Path found!")
+                    else:
+                        self.logger.info("Path found!")
 
-                if self.debug_plot: 
-                    plt.plot([self.goal_node._pos[0], self.node_list[-2]._pos[0]], [self.goal_node._pos[1], self.node_list[-2]._pos[1]], 'k')
-                    plt.draw()
-                    plt.pause(0.0001)
+                    if self.debug_plot: 
+                        plt.plot([self.goal_node._pos[0], self.node_list[-2]._pos[0]], [self.goal_node._pos[1], self.node_list[-2]._pos[1]], 'k')
+                        plt.draw()
+                        plt.pause(0.0001)
 
-                return self.get_path()
+                    return self.get_path()
 
             if iterations > self.it_lim:
                 break
