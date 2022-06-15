@@ -92,6 +92,9 @@ class RRT:
 
         self.goal_node = self.Node(self.goal, None, np.inf)
 
+        # Flag to check for goal found
+        self.goal_found = False
+
         if self.debug_plot:
             self.fig = plt.figure()
             self.line_keys = {}
@@ -172,7 +175,7 @@ class RRT:
         # Look for a new x,y coordinate that is correct
         while True:
             # See if we should step in the direction of the goal
-            if goal_valid and (self.path_bias > np.random.random()):
+            if goal_valid and not self.goal_found and (self.path_bias > np.random.random()):
                 prop_coords = self.goal
                 step_to_goal = True
             else:
@@ -200,7 +203,8 @@ class RRT:
                 if self.logger is not None:
                     self.logger.debug(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
                 else:
-                    print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
+                    pass
+                    # print(f"Skipping extension to node at {prop_coords[0]:.2f}, {prop_coords[1]:.2f} that is too close to existing node at {nearest_node._pos[0]:.2f}, {nearest_node._pos[1]:.2f}")
                 continue    # Somehow we have a vector that too near a node
 
             # If dist_to_nearest is closer than the max_extend_length, just use that distance instead
@@ -254,12 +258,12 @@ class RRT:
         A Path is a list of (x,y) waypoints from start to goal.
         '''
         iterations = 0
-        goal_found = False
+        self.goal_found = False
         while True:
             iterations += 1
             self.explore_one_step()
 
-            if not goal_found:
+            if not self.goal_found:
                 # Check if node is close to target
                 last_endpt = self.node_list[-1]._pos
                 dist_to_goal = np.linalg.norm( last_endpt - self.goal_node._pos )
@@ -279,9 +283,9 @@ class RRT:
                     self.goal_node._cost = self.node_list[-1]._cost + \
                         np.linalg.norm(self.goal_node._pos - self.node_list[-1]._pos)
                     self.node_list.append(self.goal_node)
-                    goal_found = True
+                    self.goal_found = True
 
-            if goal_found and iterations > self.it_min:
+            if self.goal_found and iterations > self.it_min:
                 if self.logger is None:
                     print("Path found!")
                 else:
