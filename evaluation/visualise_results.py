@@ -79,9 +79,12 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 
         res_summary.num_iterations += 1
 
+        total_num_completed_goals = 0
+
+        # Go through test combination keys (robots' indiv results per run)
         for key in res.keys():
             if 'robot' in key:
-                num_completed_goals = 0
+                num_completed_goals = 0 # per-robot score
 
                 res_list = res[key]
                 for elem_dict in res_list:
@@ -116,7 +119,12 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 
                 res_summary.avg_num_completed_goals = \
                     write_to_attr(res_summary.avg_num_completed_goals, num_completed_goals)
-                res_summary.num_completed_goals.append(num_completed_goals)
+                res_summary.per_robot_num_completed_goals.append(num_completed_goals)
+                
+                total_num_completed_goals += num_completed_goals # all goals done per robot
+        
+        # Over all robots
+        res_summary.per_run_num_completed_goals.append(total_num_completed_goals)
     
     else:
         pass
@@ -131,9 +139,9 @@ labels = []
 
 num_iterations = [c.num_iterations for c in test_params.values()]
 print("num_iterations", num_iterations)
-completed_goals_std = [np.std(np.array(c.num_completed_goals)) for c in test_params.values()]
+completed_goals_std = [np.std(np.array(c.per_robot_num_completed_goals)) for c in test_params.values()]
 print("completed_goals_std", completed_goals_std)
-completed_goals_sum = [np.sum(np.array(c.num_completed_goals)) for c in test_params.values()]
+completed_goals_sum = [np.mean(np.array(c.per_run_num_completed_goals)) for c in test_params.values()]
 print("completed_goals_sum", completed_goals_sum)
 completed_goals = [c.avg_num_completed_goals for c in test_params.values()]
 print("completed_goals", completed_goals)
@@ -199,16 +207,16 @@ axs[0].set_xlabel("Number of Robots")
 axs[0].set_ylabel("Total Goals Completed")
 axs[0].plot(num_robots, a_total_goals, 'x-', label="Action Server")
 axs[0].plot(num_robots, r_total_goals, 'x-', label="Replan Server")
-axs[0].set_xticks(np.arange(1, len(num_robots), step=1))  # Set label locations
+axs[0].set_xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
 axs[0].grid()
 axs[0].legend()
 
 axs[1].set_xlabel("Number of Robots")
 axs[1].set_ylabel("Average Goals Completed Per Robot")
-# axs[1].errorbar(num_robots, a_avg_goals, fmt='x-', yerr=a_goal_std, capsize=4.0, barsabove=True, label="Action Server")
-axs[1].plot(num_robots, a_avg_goals, 'x-', label="Action Server")
-# axs[1].errorbar(num_robots, r_avg_goals, fmt='x-', yerr=r_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
-axs[1].plot(num_robots, r_avg_goals, 'x-', label="Replan Server")
+axs[1].errorbar(num_robots, a_avg_goals, fmt='x-', yerr=a_goal_std, capsize=4.0, barsabove=True, label="Action Server")
+axs[1].errorbar(num_robots, r_avg_goals, fmt='x-', yerr=r_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
+# axs[1].plot(num_robots, a_avg_goals, 'x-', label="Action Server")
+# axs[1].plot(num_robots, r_avg_goals, 'x-', label="Replan Server")
 axs[1].set_xticks(np.arange(1, max_num_robots+1, step=1))  # Set label locations
 axs[1].grid()
 axs[1].legend()
