@@ -104,14 +104,39 @@ class GoalCreation(Node):
         self._spawn_start_time = float(self._spawn_start_time[0] + self._spawn_start_time[1]/1e9)
         self._sim_start_time = None     # Track run duration of the simulation
 
+        # Check for things to happen
+        self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
+        self._watchdog_expiry_time = self.get_parameter('watchdog_timeout_s').value
+
+        timeout_its = 10
+        timeout_ctr = 0
+        fail = False
+
         # Code to visualise goals in Gazebo
         self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
         while not self.spawn_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Spawner service not available, waiting again...', once=True)
+            timeout_ctr += 1
 
-        self.delete_client = self.create_client(DeleteEntity, 'delete_entity')
-        while not self.delete_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Deleter service not available, waiting again...', once=True)
+            if timeout_ctr > timeout_its:
+                fail = True
+                break
+        
+        if not fail:
+            self.delete_client = self.create_client(DeleteEntity, 'delete_entity')
+            while not self.delete_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('Deleter service not available, waiting again...', once=True)
+                timeout_ctr += 1
+
+                if timeout_ctr > timeout_its:
+                    fail = True
+                    break
+        
+        # Something failed to spawn
+        if fail:
+            self.get_logger().error(f"Something failed to spawn.")
+            self.destroy_node()
+            rclpy.shutdown()
 
         self.get_logger().debug(f'Goal SDF path: {GOAL_SDF_PATH}')
 
@@ -164,9 +189,6 @@ class GoalCreation(Node):
         # Create a timer callback to periodically assign goals
         goal_timer_period = 1.0
         self.goal_assignment_timer = self.create_timer( goal_timer_period, self.goal_assignment_timer_callback )
-
-        self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
-        self._watchdog_expiry_time = self.get_parameter('watchdog_timeout_s').value
 
         # self._check_sim_rtf_timer = self.create_timer(5.0, self._get_sim_rtf_callback, clock=rclpy.clock.Clock())
 
