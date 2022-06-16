@@ -74,13 +74,29 @@ class DWAReplanServer(DWABaseNode):
             # if dist_to_goal-dist_to_robot > -0.05:
 
             # If there is a robot in the vicinity
-            if dist_to_robot < self.params['robot_radius']*3.0:
+            if dist_to_robot < self.params['robot_radius']*3.5:
                 # Check bearing
                 bearing_to_goal = np.arctan2((self.goal_y-self._y), (self.goal_x-self._x))
                 bearing_to_robot = np.arctan2((self.closest_robot_pos[1]-self._y), (self.closest_robot_pos[0]-self._x))
                 bearing_diff = np.abs(bearing_to_goal - bearing_to_robot)
 
-                if np.degrees(bearing_diff) < 70.0:
+                # Check relative headings
+                curr_hdg_x = self.params['robot_radius']*np.cos(self._yaw) + self._x
+                curr_hdg_y = self.params['robot_radius']*np.sin(self._yaw) + self._y
+
+                other_hdg_x = self.params['robot_radius']*np.cos(self.closest_robot_pos[2]) + self.closest_robot_pos[0]
+                other_hdg_y = self.params['robot_radius']*np.cos(self.closest_robot_pos[2]) + self.closest_robot_pos[1]
+
+                dist_from_headings = np.linalg.norm(
+                    np.array((curr_hdg_x, curr_hdg_y)) - \
+                    np.array((other_hdg_x, other_hdg_y))
+                )
+
+                self.get_logger().info(
+                    f"Curr {self._x:.2f},{self._y:.2f},{np.degrees(self._yaw):.2f} Other {self.closest_robot_pos[0]:.2f},{self.closest_robot_pos[1]:.2f},{self.closest_robot_pos[2]:.2f} Dist1: {dist_to_robot:.2f} Dist2: {dist_from_headings:.2f}"
+                )
+                
+                if dist_from_headings < dist_to_robot and np.degrees(bearing_diff) < 70.0:
                     # Get the current time
                     now_time_f = self.get_clock().now().seconds_nanoseconds()
                     now_time_f = now_time_f[0] + now_time_f[1]/1e9
