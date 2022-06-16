@@ -9,14 +9,32 @@ import itertools
 from typing import Dict, List
 
 # Edit this for the number of repeated experiements per combination
-test_repetitions = 10
-max_num_robots = 10
+TEST_REPETITIONS = 10
+max_num_robots = 16
 
 # Edit this for the number of combinations
 test_variables: Dict[str,List] = {
+    # TEST FOR PLANNER
     'robot_list': [[f"robot{i+1}" for i in range(n+1)] for n in range(max_num_robots)],
     'local_planner' : ['dwa_action_server', 'dwa_replan_server'],
-    # 'angular_speed_limit': [1.0,1.25,1.5,1.75],
+
+    # TEST FOR PARAMS
+    # 'safety_thresh' : [0.25, 0.3, 0.35],
+    # 'simulate_duration' : [0.25, 0.4, 0.55],
+    # 'action_duration' : [0.01, 0.03, 0.05],
+    # 'linear_speed_limit' : [0.4,0.6,0.8],
+    # 'angular_speed_limit': [1.2,1.6],
+    # 'angular_K' : [0.8,1.0,1.2],
+    # 'goal_K' : [7.5,10.0,12.5],
+    # 'obstacle_K': [0.8,1.0,1.2],
+    # 'stall_det_period': [1.0],
+    # 'stall_dist_thresh': [0.1],
+
+    # # Typically for the RRT Action Server
+    # 'rrt_path_bias': [0.1],
+    # 'rrt_it_min' : [200],
+    # 'rrt_max_extend_length' : [1.5],
+    # 'rrt_connect_circle_dist' : [1.5],
 }
 
 def make_grid(pars_dict: Dict[str,List]):
@@ -32,10 +50,3 @@ def make_grid(pars_dict: Dict[str,List]):
 
 # Extract this for test values
 TEST_COMBINATIONS = make_grid(test_variables)
-TEST_GRID = TEST_COMBINATIONS * test_repetitions
-
-# Special case bcos robot_list goes into Scenario, not params
-for a in TEST_COMBINATIONS:
-    if 'robot_list' in a:
-        a['num_robots'] = len(a['robot_list'])
-        a.pop('robot_list')
