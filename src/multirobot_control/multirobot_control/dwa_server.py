@@ -17,7 +17,7 @@ from planner_action_interfaces.srv import GetPlannerStatus, GetRRTWaypoints, Get
 
 from std_msgs.msg import Bool, String, Header, Int8
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist, Point, PointStamped, Quaternion, Vector3
+from geometry_msgs.msg import Twist, Point, PoseStamped, Pose, Quaternion, Vector3
 from visualization_msgs.msg import MarkerArray, Marker
 
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
@@ -72,7 +72,7 @@ class DWABaseNode(Node):
         # Inputs to cmd_vel
         self._linear_twist:float = 0.0
         self._angular_twist:float = 0.0
-        self._planned_pose:Tuple[float,float] = (self._x, self._y)
+        self._planned_pose:Tuple[float,float,float] = (self._x, self._y, self._yaw)
         # Distance accumulator
         self._dist_travelled:float = 0.0
 
@@ -99,10 +99,10 @@ class DWABaseNode(Node):
             "stall_dist_thresh" :   self.get_parameter("stall_dist_thresh").value,
         }
         
-        self.other_robots:Dict[str, Tuple[float,float]] = {} 
+        self.other_robots:Dict[str, Tuple[float,float,float]] = {} 
         '''A dict of the positions of other close robots'''
 
-        self.closest_robot_pos:Union[Tuple[float,float],None] = None
+        self.closest_robot_pos:Union[Tuple[float,float,float],None] = None
         '''Where the closest robot is, if within detection range.'''
 
         # Subscribe to Odom (which has ground truth)
@@ -116,7 +116,7 @@ class DWABaseNode(Node):
         # Publish to cmd_vel
         self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 1)
         # Publish predicted movement
-        self._planned_pos_pub = self.create_publisher(PointStamped, "planned_pos", 10)
+        self._planned_pos_pub = self.create_publisher(PoseStamped, "planned_pos", 10)
         self._vis_planned_pos_pub = self.create_publisher(MarkerArray, "planned_pos_markers", 10)
 
         # Timer callback for planned position
@@ -169,21 +169,22 @@ class DWABaseNode(Node):
         '''Handle incoming data on `otherRobotLocations`, to where other robots are predicted to be'''
         self.other_robots = {}
         self.closest_robot = None
-        self.closest_robot_pos:Union[Tuple[float,float],None] = None
+        self.closest_robot_pos:Union[Tuple[float,float,float],None] = None
         closest_dist = np.inf
 
         for idx in range(len(msg.positions)):
             pose = msg.positions[idx]
             name = msg.names[idx].data
+            yaw = msg.orientations[idx].data
             self.get_logger().debug("[handle_other_robots] {} at x:{:.2f} y:{:.2f}".format(name, pose.x, pose.y))
 
-            self.other_robots[name] = (pose.x, pose.y)
+            self.other_robots[name] = (pose.x, pose.y, yaw)
 
             dist = np.linalg.norm( np.array((pose.x, pose.y))-np.array((self._x, self._y)) )
             if dist < closest_dist:
                 closest_dist = dist
                 self.closest_robot = name
-                self.closest_robot_pos = (pose.x, pose.y)
+                self.closest_robot_pos = (pose.x, pose.y, yaw)
     
     def planned_pos_timer_callback(self):
         ''' 
@@ -191,18 +192,31 @@ class DWABaseNode(Node):
         Else, sends the current position.
         '''
         if self._planner_state == PlannerStatus.PLANNER_EXEC:
-            # If an action is currently being executed=
-            self._planned_pos_pub.publish(PointStamped(
+            # If an action is currently being executed
+
+            quat = quaternion_from_euler(0, 0, self._planned_pose[2])
+            self._planned_pos_pub.publish(PoseStamped(
                 header=Header(frame_id=self.get_namespace()),
-                point=Point(
-                    x=self._planned_pose[0], y=self._planned_pose[1], z=0.0
+                pose=Pose(
+                    position=Point(
+                        x=self._planned_pose[0], y=self._planned_pose[1], z=0.0
+                    ),
+                    orientation=Quaternion(
+                        w=quat[0], x=quat[1], y=quat[2], z=quat[3]
+                    )
                 )))
         else:
-            # No action executed, send current x and y values
-            self._planned_pos_pub.publish(PointStamped(
+            # No action executed, send current x, y, yaw values
+            quat = quaternion_from_euler(0, 0, self._yaw)
+            self._planned_pos_pub.publish(PoseStamped(
                 header=Header(frame_id=self.get_namespace()),
-                point=Point(
-                    x=self._x, y=self._y, z=0.0
+                pose=Pose(
+                    position=Point(
+                        x=self._x, y=self._y, z=0.0
+                    ),
+                    orientation=Quaternion(
+                        w=quat[0], x=quat[1], y=quat[2], z=quat[3]
+                    )
                 )))
 
     def stall_detection_callback(self):
@@ -222,7 +236,7 @@ class DWABaseNode(Node):
                 goal_poses = [] # A collection of poses that are made of vectors away from potential obstacles
 
                 for robot_name in self.other_robots.keys():
-                    robot_x, robot_y = self.other_robots[robot_name]
+                    robot_x, robot_y, robot_yaw = self.other_robots[robot_name]
                     # Calculate a path away from the robots that are too close
                     if self.distToGoal( self._x, self._y, robot_x, robot_y ) < (self.params['inter_robot_dist']*self.params['robot_radius']):
                         self.get_logger().info(f"Robot too close to other robot. Moving away from it.")
@@ -257,11 +271,13 @@ class DWABaseNode(Node):
                 lin_twist = min(
                     (self.params['linear_speed_limit'])*np.cos(hdg_diff),
                      self.params['linear_speed_limit'])
-                # ang_twist = min(
-                #     (self.params['linear_speed_limit'])*np.sin(hdg_diff),
-                #      self.params['linear_speed_limit'])
-                dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((local_goal_x, local_goal_y)))
-                ang_twist = hdg_diff / (dist_to_goal/lin_twist)
+                ang_twist = min(
+                    (self.params['linear_speed_limit'])*np.sin(hdg_diff),
+                     self.params['linear_speed_limit'])
+                
+                # This is theoretically correct but somehow wrong in practice
+                # dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((local_goal_x, local_goal_y)))
+                # ang_twist = hdg_diff / (dist_to_goal/lin_twist)
 
                 # We also discretize the values to one of the steps of the planner.
                 self._linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])
@@ -350,14 +366,22 @@ class DWABaseNode(Node):
             possible_linear = [ self._linear_twist ]
             if (self._linear_twist + self.params['linear_step']) <= self.params['linear_speed_limit']:
                 possible_linear.append(self._linear_twist + self.params['linear_step'])
+            if (self._linear_twist + 2*self.params['linear_step']) <= self.params['linear_speed_limit']:
+                possible_linear.append(self._linear_twist + 2*self.params['linear_step'])
             if (self._linear_twist - self.params['linear_step']) >= -self.params['linear_speed_limit']:
                 possible_linear.append(self._linear_twist - self.params['linear_step'])
+            if (self._linear_twist - 2*self.params['linear_step']) >= -self.params['linear_speed_limit']:
+                possible_linear.append(self._linear_twist - 2*self.params['linear_step'])
 
             possible_angular = [ self._angular_twist ]
             if (self._angular_twist + self.params['angular_step']) <= self.params['angular_speed_limit']:
                 possible_angular.append(self._angular_twist + self.params['angular_step'])
+            if (self._angular_twist + 2*self.params['angular_step']) <= self.params['angular_speed_limit']:
+                possible_angular.append(self._angular_twist + 2*self.params['angular_step'])
             if (self._angular_twist - self.params['angular_step']) >= -self.params['angular_speed_limit']:
                 possible_angular.append(self._angular_twist - self.params['angular_step'])
+            if (self._angular_twist - 2*self.params['angular_step']) >= -self.params['angular_speed_limit']:
+                possible_angular.append(self._angular_twist - 2*self.params['angular_step'])
 
             top_score = -np.inf
             top_pose = (self._x, self._y, self._yaw)
@@ -421,6 +445,7 @@ class DWABaseNode(Node):
             displacement = R @ displacement
             # Eventual position and orientation
             self._planned_pose = displacement + np.array([self._x, self._y])
+            self._planned_pose = (self._planned_pose[0], self._planned_pose[1], effective_yaw)
 
             if self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
                 # Ensure robot is stopped
@@ -519,7 +544,7 @@ class DWABaseNode(Node):
                 score += obstacle_cost # obstacle cost is negative
 
         for robot_name in self.other_robots.keys():
-            x, y = self.other_robots[robot_name]
+            x, y, yaw = self.other_robots[robot_name]
             dist_to_robot = self.distToGoal(end_pose[0], end_pose[1], x, y)
             if dist_to_robot < 2*self.params['robot_radius']:
                 self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
@@ -642,7 +667,6 @@ class DWABaseNode(Node):
 
         # Write parameter result change
         return SetParametersResult(successful=True)
-
 
     def marker_from_traj(self, idx: int, score: float, start_pos: Tuple[float,float], 
         end_pose: Tuple[float, float, float]) -> Marker :

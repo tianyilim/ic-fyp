@@ -11,9 +11,11 @@ from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
 
 from planner_action_interfaces.msg import OtherRobotLocations
-from geometry_msgs.msg import Pose, Twist, Point, PointStamped
+from geometry_msgs.msg import Pose, Twist, Point, PoseStamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String
+from std_msgs.msg import String, Float64
+
+from tf_transformations import euler_from_quaternion
 
 import numpy as np
 
@@ -43,9 +45,9 @@ class OdomDistribution(Node):
         assert len(self.get_parameter("robot_list").value) != 0
 
         for index, robot in enumerate(self.get_parameter("robot_list").value):
-            # robot_locs contains a tuple of (current_pos, name, future_pos)
+            # robot_locs contains a tuple of (current_pose, name, future_pose)
             # Can use a Dataclass in the futures
-            dummyPoint = (Point(x=0.0, y=0.0, z=0.0), robot, Point(x=0.0, y=0.0, z=0.0))
+            dummyPoint = (Point(), robot, Pose())
             self.robot_locs[robot] = dummyPoint
             self.robot_locs[index] = dummyPoint
 
@@ -66,7 +68,7 @@ class OdomDistribution(Node):
             )
 
             self.planned_pos_subscriptions.append(
-                self.create_subscription(PointStamped, robot+'/planned_pos', \
+                self.create_subscription(PoseStamped, robot+'/planned_pos', \
                 self.handle_planned_pos, 10)
             )
 
@@ -147,7 +149,12 @@ class OdomDistribution(Node):
                         
 
                 message.names = robot_names
-                message.positions = robot_poses
+                message.positions = [p.position for p in robot_poses]
+                message.orientations = [Float64(
+                    data=euler_from_quaternion(
+                        (p.orientation.w, p.orientation.x, p.orientation.y, p.orientation.z)
+                    )[2]
+                ) for p in robot_poses]
 
                 self.get_logger().debug("Robot idx {} ({}) publishing names\n{}\nand poses\n{}".format(
                     robot_idx, self.robot_locs[robot_idx][1],
@@ -180,18 +187,22 @@ class OdomDistribution(Node):
         ))
 
     def handle_planned_pos(self, msg):
-        pass
         # update the predicted location of each robot as a class variable
         # Sending message as a PointStamped means we can also encode the robot id inside
         robot_id = msg.header.frame_id.strip('/')
 
-        self.robot_locs[robot_id][2].x = msg.point.x
-        self.robot_locs[robot_id][2].y = msg.point.y
-        self.robot_locs[robot_id][2].z = msg.point.z
+        self.robot_locs[robot_id][2].position.x = msg.pose.position.x
+        self.robot_locs[robot_id][2].position.y = msg.pose.position.y
+        self.robot_locs[robot_id][2].position.z = msg.pose.position.z
+        
+        self.robot_locs[robot_id][2].orientation.w = msg.pose.orientation.w
+        self.robot_locs[robot_id][2].orientation.x = msg.pose.orientation.x
+        self.robot_locs[robot_id][2].orientation.y = msg.pose.orientation.y
+        self.robot_locs[robot_id][2].orientation.z = msg.pose.orientation.z
 
         self.get_logger().debug("Updated robot {} with predicted pos x:{:.2f} y:{:.2f} z:{:.2f}".format(
-            robot_id, self.robot_locs[robot_id][2].x, 
-            self.robot_locs[robot_id][2].y, self.robot_locs[robot_id][2].z
+            robot_id, self.robot_locs[robot_id][2].position.x, 
+            self.robot_locs[robot_id][2].position.y, self.robot_locs[robot_id][2].position.z
         ))
 
     def handle_fin_spawning(self, msg):
