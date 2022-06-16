@@ -3,3 +3,4 @@
 
 std_msgs/String[] names
 geometry_msgs/Point[] positions
+std_msgs/Float64[] orientations
