@@ -39,7 +39,7 @@ scenario_settings = {
     'goal_array': "[]",
     # 'goal_array': "[[(0.0, 1.15), (0.0, -1.15), (-5.5, -1.15), (-5.5, 1.15)]]",
 
-    'realtime_factor': 3.0  # Max speedup
+    'realtime_factor': 1.0  # Max speedup
 }
 
 param_settings = {
@@ -87,7 +87,7 @@ param_settings = {
 elems_search_grid = len(config.TEST_COMBINATIONS)*config.TEST_REPETITIONS
 start_time = datetime.now().strftime('%d%m%y_%H%M%S')
 
-np.random.seed(42)  # Repeatable tests
+# np.random.seed(42)  # Repeatable tests
 
 # Create n identical test configs
 for rep in range(config.TEST_REPETITIONS):
@@ -99,7 +99,7 @@ for rep in range(config.TEST_REPETITIONS):
 
     for i, setting in enumerate( config.TEST_COMBINATIONS):
         # Set filename as time of test
-        filename = f"{start_time}_{(i+1)+rep*len(config.TEST_COMBINATIONS)}_{elems_search_grid}"
+        filename = f"{start_time}_{(i+1)+rep*len(config.TEST_COMBINATIONS):03d}_{elems_search_grid}"
         scenario_filename = f"{TEST_SCENARIO_DIR}/{filename}.yaml"
         param_filename = f"{TEST_PARAMS_DIR}/{filename}.yaml"
 
