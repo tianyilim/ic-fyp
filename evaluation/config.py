@@ -9,7 +9,7 @@ import itertools
 from typing import Dict, List
 
 # Edit this for the number of repeated experiements per combination
-TEST_REPETITIONS = 10
+TEST_REPETITIONS = 6
 max_num_robots = 16
 
 # Edit this for the number of combinations
