@@ -257,9 +257,11 @@ class DWABaseNode(Node):
                 lin_twist = min(
                     (self.params['linear_speed_limit'])*np.cos(hdg_diff),
                      self.params['linear_speed_limit'])
-                ang_twist = min(
-                    (self.params['linear_speed_limit'])*np.sin(hdg_diff),
-                     self.params['linear_speed_limit'])
+                # ang_twist = min(
+                #     (self.params['linear_speed_limit'])*np.sin(hdg_diff),
+                #      self.params['linear_speed_limit'])
+                dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((local_goal_x, local_goal_y)))
+                ang_twist = hdg_diff / (dist_to_goal/lin_twist)
 
                 # We also discretize the values to one of the steps of the planner.
                 self._linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])
@@ -410,7 +412,15 @@ class DWABaseNode(Node):
             self._vis_planned_pos_pub.publish( MarkerArray(markers=vis_msg_array) )
 
             # only write this here because we don't want the value of the class var to be corrupted
-            self._planned_pose = top_pose
+            # Calculate eventual position after a short action is executed
+            effective_yaw = self._yaw + self._angular_twist*self.params['action_duration']
+            c, s = np.cos(effective_yaw), np.sin(effective_yaw)
+            R = np.array(((c, -s), (s, c)))
+            # displacement vector
+            displacement = np.array([ self._linear_twist*self.params['action_duration'], 0 ])
+            displacement = R @ displacement
+            # Eventual position and orientation
+            self._planned_pose = displacement + np.array([self._x, self._y])
 
             if self.closeToGoal(self._x, self._y, self.goal_x, self.goal_y):
                 # Ensure robot is stopped
