@@ -414,7 +414,7 @@ sys     0m20.302s
     - [x] Using "octagon" for expansion instead of naively adding distance to the sides
   - [x] Explain implementation of RRT* extension
 - [ ] Implementation of Local Planner
-  - [ ] RankPose
+  - [x] RankPose
   - [ ] Diagram of services provided by DWA node
   - [ ] Sequence diagram of DWA node
 
@@ -436,10 +436,10 @@ sys     0m20.302s
 - [ ] Comparing DWA implementation:
   - [ ] Individual goals per robot per unit time
   - [ ] Total goals per unit time
-- [ ] Comparing RRT implementation:
-  - [ ] Execution time for the 1 robot case
-  - [ ] Total Manhattan distance
-  - [ ] Total distance travelled by robots
+- [x] Comparing RRT implementation:
+  - [x] Execution time for the 1 robot case
+  - [x] Total Manhattan distance
+  - [x] Total distance travelled by robots
 
 ### Fri 17/06/22
 - Meeting with Supervisor
