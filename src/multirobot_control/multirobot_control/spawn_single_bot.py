@@ -98,13 +98,16 @@ def main():
     request.initial_pose.orientation.w = quat[3]
 
     node.get_logger().info('Sending service request to `/spawn_entity`')
-    future = client.call_async(request)
-    rclpy.spin_until_future_complete(node, future, timeout_sec=args.timeout)
-    if future.result() is not None:
-        node.get_logger().info(f'response: {future.result()!r}')
-    else:
-        raise RuntimeError(
-            f'exception while calling service: {future.exception()!r}')
+    while True:
+        future = client.call_async(request)
+        rclpy.spin_until_future_complete(node, future, timeout_sec=args.timeout)
+        if future.result() is not None:
+            node.get_logger().info(f'response: {future.result()!r}')
+            break
+        else:
+            node.get_logger().error(f'exception while calling service: {future.exception()!r}')
+            # raise RuntimeError(
+            #     f'exception while calling service: {future.exception()!r}')
 
     fin_pub = node.create_publisher(String, f'/{args.robot_namespace}/finished_spawning', 10)
     while fin_pub.get_subscription_count() < 2:

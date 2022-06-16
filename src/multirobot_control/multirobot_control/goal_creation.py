@@ -78,7 +78,7 @@ class GoalCreation(Node):
         if self.randomly_generate_goals:
             self.get_logger().info(f"Randomly generating goals from GOAL_ARRAY. Each robot has {self.get_parameter('total_goals').value} goals.")
         else:
-            self.get_logger().info(f"Taking goals from list:\n{self.goal_array}")
+            self.get_logger().debug(f"Taking goals from list:\n{self.goal_array}")
 
         assert self.get_parameter("robot_list").value is not None
         assert len(self.get_parameter("robot_list").value) != 0
@@ -100,6 +100,8 @@ class GoalCreation(Node):
         self.robots_done_subscriber = {}
         self.plan_done_subscriber = {}
 
+        self._spawn_start_time = self.get_clock().now().seconds_nanoseconds()
+        self._spawn_start_time = float(self._spawn_start_time[0] + self._spawn_start_time[1]/1e9)
         self._sim_start_time = None     # Track run duration of the simulation
 
         # Code to visualise goals in Gazebo
@@ -116,10 +118,12 @@ class GoalCreation(Node):
         # Code to write to file
         self.parameter_file = self.get_parameter('params_filepath').value
         self.get_logger().info(f"Params file: {self.parameter_file}")
+        param_file_name = os.path.basename(self.parameter_file)
 
         result_dir = os.path.join(os.getcwd(), self.get_parameter('result_folder').value)
         if not os.path.exists(result_dir): os.mkdir(result_dir)
-        self.result_file = os.path.join(result_dir, f"{datetime.now().strftime('%d%m%y_%H%M%S')}.yaml")
+        # self.result_file = os.path.join(result_dir, f"{datetime.now().strftime('%d%m%y_%H%M%S')}.yaml")
+        self.result_file = os.path.join(result_dir, f"{param_file_name}")
         self.get_logger().info(f"Writing results to {self.result_file}")
 
         now_s = self.get_clock().now().seconds_nanoseconds()
@@ -292,20 +296,29 @@ class GoalCreation(Node):
 
                     self.send_goal(robot_name, Point(x=goal_coords[0], y=goal_coords[1], z=0.0))
         else:
-            self.get_logger().info(f"Waiting for all robots to spawn...")
+            self.get_logger().info(f"Waiting for all robots to spawn...", once=True)
 
 
     def watchdog_timer_callback(self):
         '''
         Periodically checks if the execution time is greater than the allowed time.
         '''
+        nt = self.get_clock().now().seconds_nanoseconds()
+        now_time = float(nt[0] + nt[1]/1e9)
+
         if self._sim_start_time is not None:
-            nt = self.get_clock().now().seconds_nanoseconds()
-            now_time = float(nt[0] + nt[1]/1e9)
             time_diff = now_time-self._sim_start_time
             
             if time_diff > self._watchdog_expiry_time:
                 self.get_logger().warn(f"Time: {time_diff:.2f}. Timeout of {self.get_parameter('watchdog_timeout_s').value}s reached. Shutting down node.")
+                self.dump_results()
+
+                self.destroy_node()
+                rclpy.shutdown()
+        else:
+            time_diff = now_time - self._spawn_start_time
+            if time_diff > 30.0:
+                self.get_logger().error(f"Time: {time_diff:.2f}. Something failed to spawn.")
                 self.dump_results()
 
                 self.destroy_node()
@@ -419,7 +432,7 @@ class GoalCreation(Node):
         plan_time = msg.data.data
 
         self.results[robot_name][-1].plan_time = plan_time
-        self.get_logger().info(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
+        self.get_logger().debug(f"{robot_name} took {self.results[robot_name][-1].plan_time:.2f}s CPU time to plan RRT.")
         
         if self.get_parameter('realtime_factor').value > 0.0:
             real_to_sim = self.get_parameter('realtime_factor').value
