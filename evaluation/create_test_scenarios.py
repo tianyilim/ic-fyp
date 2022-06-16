@@ -15,6 +15,11 @@ import yaml
 import config
 from datetime import datetime
 
+import numpy as np
+import sys # allow for us to use files from another directory
+sys.path.append('/home/tianyilim/fyp/ic-fyp/src/multirobot_control')
+from multirobot_control.map_params import GOAL_ARRAY
+
 TEST_SCENARIO_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/test_scenarios"
 TEST_PARAMS_DIR = "/home/tianyilim/fyp/ic-fyp/evaluation/test_params"
 
@@ -23,21 +28,22 @@ if not os.path.exists(TEST_PARAMS_DIR): os.mkdir(TEST_PARAMS_DIR)
 
 scenario_settings = {
     'robot_list': ["robot1"],
-    'robot_starting_x': [-5.5],
-    'robot_starting_y': [1.15],
-    'robot_starting_theta': [0.0],
+    'robot_starting_x': [],
+    'robot_starting_y': [],
+    'robot_starting_theta': [],
     'total_goals': 100,
-    'watchdog_timeout_s': 240,
+    'watchdog_timeout_s': 120,
     'result_folder': "result",
     'params_filepath': "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml",
     # If random goals are desired, leave this as an empty list
     'goal_array': "[]",
+    # 'goal_array': "[[(0.0, 1.15), (0.0, -1.15), (-5.5, -1.15), (-5.5, 1.15)]]",
 
-    'realtime_factor': 1.0  # Max speedup
+    'realtime_factor': 3.0  # Max speedup
 }
 
 param_settings = {
-    'pub_freq': 50.0,  # Match action duration
+    'pub_freq': 25.0,  # Match action duration
 
     # Typically for the DWA Action Server
     'robot_radius' : 0.35,
@@ -64,7 +70,7 @@ param_settings = {
     # Typically for the RRT Action Server
     'rrt_path_bias': 0.1,
     'rrt_it_lim' : 2000,
-    'rrt_it_min' : 200,
+    'rrt_it_min' : 50,
     'rrt_max_extend_length' : 1.5,
     'rrt_connect_circle_dist' : 1.5,
     'rrt_debug_plot' : False,
@@ -78,48 +84,65 @@ param_settings = {
     'num_robots': 1
 }
 
-# Tuning parameters
-# local_planner = ['dwa_action_server', 'dwa_multirobot_server','dwa_replan_server']
-
-# TODO : Set this to something legit
-
-elems_search_grid = len(config.TEST_GRID)
+elems_search_grid = len(config.TEST_COMBINATIONS)*config.TEST_REPETITIONS
 start_time = datetime.now().strftime('%d%m%y_%H%M%S')
 
-for i, setting in enumerate( config.TEST_GRID ):
-    # Set filename as time of test
-    filename = f"{start_time}_{i+1}_{elems_search_grid}"
-    scenario_filename = f"{TEST_SCENARIO_DIR}/{filename}.yaml"
-    param_filename = f"{TEST_PARAMS_DIR}/{filename}.yaml"
+np.random.seed(42)  # Repeatable tests
 
-    scenario_settings_copy = copy.deepcopy(scenario_settings)
-    param_settings_copy = copy.deepcopy(param_settings)
-
-    # Ensure that the params filepath points to the correct one
-    scenario_settings_copy['params_filepath'] = param_filename
+# Create n identical test configs
+for rep in range(config.TEST_REPETITIONS):
+    # Define goal set, spawn positions
     
-    ##################### WRITE STUFF INTO SETTINGS HERE #####################
-    
-    for parameter in setting.keys():
-        if parameter in param_settings_copy.keys():
-            param_settings_copy[parameter] = setting[parameter]
+    start_pos_idx = np.random.choice(len(GOAL_ARRAY), config.max_num_robots, replace=False)
+    start_orientation = np.random.rand(config.max_num_robots)*2*np.pi
+    goal_pos_idx = np.random.choice(len(GOAL_ARRAY), (scenario_settings['total_goals'], config.max_num_robots), replace=True )
 
-        if parameter in scenario_settings_copy.keys():
-            scenario_settings_copy[parameter] = setting[parameter]
+    for i, setting in enumerate( config.TEST_COMBINATIONS):
+        # Set filename as time of test
+        filename = f"{start_time}_{(i+1)+rep*len(config.TEST_COMBINATIONS)}_{elems_search_grid}"
+        scenario_filename = f"{TEST_SCENARIO_DIR}/{filename}.yaml"
+        param_filename = f"{TEST_PARAMS_DIR}/{filename}.yaml"
 
-    # number of robots is a special setting
-    if 'robot_list' in setting.keys():
-        param_settings_copy['num_robots'] = len(setting['robot_list'])
+        scenario_settings_copy = copy.deepcopy(scenario_settings)
+        param_settings_copy = copy.deepcopy(param_settings)
 
-    ####################### END WRITE STUFF TO SETTINGS ######################
+        # Ensure that the params filepath points to the correct one
+        scenario_settings_copy['params_filepath'] = param_filename
 
-    scenario_tofile = {'/**': {'ros__parameters': scenario_settings_copy}}
-    param_tofile = {'/**': {'ros__parameters': param_settings_copy}}
-    
-    print(f"Scenario/Parameter filename: {os.path.basename(scenario_filename)}")
+        ##################### WRITE STUFF INTO SETTINGS HERE #####################
+        for parameter in setting.keys():
+            if parameter in param_settings_copy.keys():
+                param_settings_copy[parameter] = setting[parameter]
 
-    with open(scenario_filename, 'w') as f:
-        yaml.safe_dump(scenario_tofile, f)
-    
-    with open(param_filename, 'w') as f:
-        yaml.safe_dump(param_tofile, f)
+            if parameter in scenario_settings_copy.keys():
+                scenario_settings_copy[parameter] = setting[parameter]
+
+        n_robots = len(scenario_settings_copy['robot_list'])
+        param_settings_copy['num_robots'] = n_robots
+
+        goals = []
+
+        # Write to scenario settings
+        for i in range(n_robots):
+            scenario_settings_copy['robot_starting_x'].append(GOAL_ARRAY[start_pos_idx[i]][0])
+            scenario_settings_copy['robot_starting_y'].append(GOAL_ARRAY[start_pos_idx[i]][1])
+            scenario_settings_copy['robot_starting_theta'].append(float(start_orientation[i]))
+
+            goals.append(
+                [GOAL_ARRAY[idx] for idx in goal_pos_idx[:,i]]
+            )
+
+        scenario_settings_copy['goal_array'] = str(goals)
+
+        ####################### END WRITE STUFF TO SETTINGS ######################
+
+        scenario_tofile = {'/**': {'ros__parameters': scenario_settings_copy}}
+        param_tofile = {'/**': {'ros__parameters': param_settings_copy}}
+        
+        print(f"Scenario/Parameter filename: {os.path.basename(scenario_filename)}")
+
+        with open(scenario_filename, 'w') as f:
+            yaml.safe_dump(scenario_tofile, f)
+        
+        with open(param_filename, 'w') as f:
+            yaml.safe_dump(param_tofile, f)
