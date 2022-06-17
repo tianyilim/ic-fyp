@@ -54,7 +54,7 @@ param_settings = {
     'angular_speed_limit' : 1.5,
     'linear_step' : 0.1,
     'angular_step' : 0.2,
-    'dist_thresh_hi' : 0.2,
+    'dist_thresh_hi' : 0.3,
     'dist_thresh_lo' : 0.05,
     'dist_method' : "L2",
     'inter_robot_dist' : 3.0,
