@@ -261,27 +261,7 @@ class DWABaseNode(Node):
                     local_goal_x = goal_pose[0]
                     local_goal_y = goal_pose[1]
 
-                # If we are not too close to an obstacle, move toward the goal on an arc
-                goal_hdg = np.arctan2(local_goal_y-self._y, local_goal_x-self._x)
-                hdg_diff = goal_hdg - self._yaw
-                # Sine and Cosine of the heading diff informs our proposed vector, 
-                # So long we use the same hypotenuse (choose the linear speed limit so 
-                # it's not possible to exceed it)
-                # We cap the linear and angular speed limit so they are not exceeded
-                lin_twist = min(
-                    (self.params['linear_speed_limit'])*np.cos(hdg_diff),
-                     self.params['linear_speed_limit'])
-                ang_twist = min(
-                    (self.params['linear_speed_limit'])*np.sin(hdg_diff),
-                     self.params['linear_speed_limit'])
-                
-                # This is theoretically correct but somehow wrong in practice
-                # dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((local_goal_x, local_goal_y)))
-                # ang_twist = hdg_diff / (dist_to_goal/lin_twist)
-
-                # We also discretize the values to one of the steps of the planner.
-                self._linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])
-                self._angular_twist = self.params['angular_step']*np.round(ang_twist/self.params['angular_step'])
+                self._linear_twist, self._angular_twist = self.moveTowardsGoal((local_goal_x, local_goal_y))
 
                 self.get_logger().info(f"Stall detected. Moving towards local goal {local_goal_x:.2f},{local_goal_y:.2f} with vect {self._linear_twist:.2f}, {self._angular_twist:.2f}")
 
@@ -296,6 +276,9 @@ class DWABaseNode(Node):
         self.goal_y = goal_handle.request.goal_position.y
 
         self.get_logger().info('{} moving towards goal ({:.2f}, {:.2f})'.format(self.get_namespace(), self.goal_x, self.goal_y))
+
+        # Initialize the twists with the direction towards goal.
+        self._linear_twist, self._angular_twist = self.moveTowardsGoal((self.goal_x, self.goal_y))
 
         while not self._planner_state == PlannerStatus.PLANNER_READY:
             # Publish feedback
@@ -501,7 +484,6 @@ class DWABaseNode(Node):
         # dist_plus = min( goal_K / dist_to_goal,
         #                  goal_K / (self.params['dist_thresh']/2)
         #                 )
-        '''
         dist_plus = goal_K / dist_to_goal
         '''
         dist_plus = 0.0
@@ -512,6 +494,7 @@ class DWABaseNode(Node):
             dist_m = goal_K/(1.0-goal_lb)
             dist_c = -dist_m*goal_lb
             dist_plus = dist_m*dist_to_goal + dist_c
+        '''
 
         score += dist_plus
 
@@ -595,6 +578,33 @@ class DWABaseNode(Node):
             return dist
         else:
             raise NotImplementedError("distance function {} not implemented yet".format(method))
+
+    def moveTowardsGoal(self, goal: Tuple[float,float]) -> Tuple[float, float]:
+        '''Calculates the required linear and angular velocities to move from current x,y to goal position.'''
+        local_goal_x, local_goal_y = goal
+
+        goal_hdg = np.arctan2(local_goal_y-self._y, local_goal_x-self._x)
+        hdg_diff = goal_hdg - self._yaw
+        # Sine and Cosine of the heading diff informs our proposed vector, 
+        # So long we use the same hypotenuse (choose the linear speed limit so 
+        # it's not possible to exceed it)
+        # We cap the linear and angular speed limit so they are not exceeded
+        lin_twist = min(
+            (self.params['linear_speed_limit'])*np.cos(hdg_diff),
+                self.params['linear_speed_limit'])
+        ang_twist = min(
+            (self.params['linear_speed_limit'])*np.sin(hdg_diff),
+                self.params['linear_speed_limit'])
+        
+        # This is theoretically correct but somehow wrong in practice
+        # dist_to_goal = np.linalg.norm(np.array((self._x, self._y))-np.array((local_goal_x, local_goal_y)))
+        # ang_twist = hdg_diff / (dist_to_goal/lin_twist)
+
+        # We also discretize the values to one of the steps of the planner.
+        linear_twist = self.params['linear_step']*np.round(lin_twist/self.params['linear_step'])
+        angular_twist = self.params['angular_step']*np.round(ang_twist/self.params['angular_step'])
+
+        return linear_twist, angular_twist
 
     def closeToGoal(self, curr_x, curr_y, goal_x, goal_y):
         '''Returns True if we are `self.params['dist_thresh']` away from the goal'''
