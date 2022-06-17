@@ -454,11 +454,11 @@ Move time: 2.875, total time: 6.395 dist: 6.67, n:10
 ```
 
 ### Wed 15/06/22
-- [ ] Implementation of Replan DWA
-  - [ ] Show case of two robots using vanilla DWA in deadlock
-  - [ ] Show case of two robots using replan DWA and how deadlock is avoided
-  - [ ] Required query services from global planner
-    - [ ] Manhattan distance as a heuristic
+- [x] Implementation of Replan DWA
+  - [x] Show case of two robots using vanilla DWA in deadlock
+  - [x] Show case of two robots using replan DWA and how deadlock is avoided
+  - [x] Required query services from global planner
+    - [x] Manhattan distance as a heuristic
   - [ ] Example sequence diagram for replanning
 
 ### Thu 16/06/22
