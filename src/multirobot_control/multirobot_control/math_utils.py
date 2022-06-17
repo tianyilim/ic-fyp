@@ -184,6 +184,22 @@ def check_line_of_sight(line_start: Tuple[float,float], line_end: Tuple[float,fl
         y0_ = y0-inflate_dist
         x1_ = x1+inflate_dist
         y1_ = y1+inflate_dist
+        
+        c1 = np.array((x0_, y0_))
+        c2 = np.array((x0_, y1_))
+        c3 = np.array((x1_, y1_))
+        c4 = np.array((x1_, y0_))
+
+        i1 = get_intersection( line_start, line_end, c1, c2 )
+        i2 = get_intersection( line_start, line_end, c2, c3 )
+        i3 = get_intersection( line_start, line_end, c3, c4 )
+        i4 = get_intersection( line_start, line_end, c4, c1 )
+        i5 = None
+        i6 = None
+        i7 = None
+        i8 = None
+
+        '''
         # 8 corners of inflated AABB
         c1 = np.array((x0, y0_))
         c2 = np.array((x0_, y0))
@@ -203,6 +219,7 @@ def check_line_of_sight(line_start: Tuple[float,float], line_end: Tuple[float,fl
         i6 = get_intersection( line_start, line_end, c6, c7 )
         i7 = get_intersection( line_start, line_end, c7, c8 )
         i8 = get_intersection( line_start, line_end, c8, c1 )
+        '''
 
         if i1 is not None or i2 is not None or i3 is not None or i4 is not None \
         or i5 is not None or i6 is not None or i7 is not None or i8 is not None :
