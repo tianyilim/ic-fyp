@@ -456,7 +456,7 @@ class DWABaseNode(Node):
             else:
                 if top_score <= -np.inf:
                     # Currently deadlock is handled by stopping the robot.
-                    self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.", once=True)
+                    self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.")
                     self._linear_twist = 0.0
                     self._angular_twist = 0.0
                 
