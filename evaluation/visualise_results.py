@@ -1,6 +1,4 @@
-from math import dist
 import matplotlib.pyplot as plt
-from nbformat import write
 import yaml
 import os
 import numpy as np
@@ -183,23 +181,40 @@ plt.show()
 a_total_goals = []
 a_avg_goals = []
 a_goal_std = []
+a_total_time = []
+a_plan_time = []
+a_move_time = []
 
 r_total_goals = []
 r_avg_goals = []
 r_goal_std = []
+r_total_time = []
+r_plan_time = []
+r_move_time = []
 
-num_robots = np.arange(1, 1+max_num_robots, dtype='int')
+max_r = 0
 
 for x in x_val:
-    d = test_param_dict[keys[x]]
-    if d['local_planner'] == 'dwa_action_server':
-        a_total_goals.append( completed_goals_sum[x] )
-        a_avg_goals.append(completed_goals[x])
-        a_goal_std.append(completed_goals_std[x])
-    elif d['local_planner'] == 'dwa_replan_server':
-        r_total_goals.append( completed_goals_sum[x] )
-        r_avg_goals.append(completed_goals[x])
-        r_goal_std.append(completed_goals_std[x])
+    if num_iterations[x] > 0:
+        max_r += 1
+        d = test_param_dict[keys[x]]
+        if d['local_planner'] == 'dwa_action_server':
+            a_total_goals.append( completed_goals_sum[x] )
+            a_avg_goals.append(completed_goals[x])
+            a_goal_std.append(completed_goals_std[x])
+            a_total_time.append(total_time[x])
+            a_plan_time.append(plan_time[x])
+            a_move_time.append(move_time[x])
+        elif d['local_planner'] == 'dwa_replan_server':
+            r_total_goals.append( completed_goals_sum[x] )
+            r_avg_goals.append(completed_goals[x])
+            r_goal_std.append(completed_goals_std[x])
+            r_total_time.append(total_time[x])
+            r_plan_time.append(plan_time[x])
+            r_move_time.append(move_time[x])
+
+
+num_robots = np.arange(1, 1+(max_r//2), dtype='int')
 
 fig, axs = plt.subplots(2)
 
@@ -217,9 +232,18 @@ axs[1].errorbar(num_robots, a_avg_goals, fmt='x-', yerr=a_goal_std, capsize=4.0,
 axs[1].errorbar(num_robots, r_avg_goals, fmt='x-', yerr=r_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
 # axs[1].plot(num_robots, a_avg_goals, 'x-', label="Action Server")
 # axs[1].plot(num_robots, r_avg_goals, 'x-', label="Replan Server")
-axs[1].set_xticks(np.arange(1, max_num_robots+1, step=1))  # Set label locations
+axs[1].set_xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
 axs[1].grid()
 axs[1].legend()
+
+plt.figure()
+plt.xlabel("Number of Robots")
+plt.ylabel("Average time spent per waypoint (s) ")
+plt.plot(num_robots, a_total_time, 'x-', label="Action Server")
+plt.plot(num_robots, r_total_time, 'x-', label="Replan Server")
+plt.xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
+plt.grid()
+plt.legend()
 
 plt.tight_layout()
 plt.show()
