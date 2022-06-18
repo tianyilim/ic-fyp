@@ -58,9 +58,12 @@ class GoalCreation(Node):
                 ('result_folder', Parameter.Type.STRING),
                 ('params_filepath', Parameter.Type.STRING),
                 ('goal_array', Parameter.Type.STRING),
-                ('realtime_factor', Parameter.Type.DOUBLE)
+                ('realtime_factor', Parameter.Type.DOUBLE),
             ]
         )
+        self.declare_parameter('goal_creation_gz', False)
+        self._spawn_gz_objs = self.get_parameter('goal_creation_gz').value
+
         self.add_on_set_parameters_callback(self.parameter_callback)
 
         # 'goal_array' is a multidimensional array with
@@ -108,37 +111,38 @@ class GoalCreation(Node):
         self.goal_assignment_timer = self.create_timer( 1.0, self.watchdog_timer_callback )
         self._watchdog_expiry_time = self.get_parameter('watchdog_timeout_s').value
 
-        timeout_its = 10
+        timeout_its = 20
         timeout_ctr = 0
         fail = False
 
         # Code to visualise goals in Gazebo
-        self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
-        while not self.spawn_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Spawner service not available, waiting again...', once=True)
-            timeout_ctr += 1
-
-            if timeout_ctr > timeout_its:
-                fail = True
-                break
-        
-        if not fail:
-            self.delete_client = self.create_client(DeleteEntity, 'delete_entity')
-            while not self.delete_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info('Deleter service not available, waiting again...', once=True)
+        if self._spawn_gz_objs:
+            self.spawn_client = self.create_client(SpawnEntity, 'spawn_entity')
+            while not self.spawn_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('Spawner service not available, waiting again...', once=True)
                 timeout_ctr += 1
 
                 if timeout_ctr > timeout_its:
                     fail = True
                     break
-        
-        # Something failed to spawn
-        if fail:
-            self.get_logger().error(f"Something failed to spawn.")
-            self.destroy_node()
-            rclpy.shutdown()
+            
+            if not fail:
+                self.delete_client = self.create_client(DeleteEntity, 'delete_entity')
+                while not self.delete_client.wait_for_service(timeout_sec=1.0):
+                    self.get_logger().info('Deleter service not available, waiting again...', once=True)
+                    timeout_ctr += 1
 
-        self.get_logger().debug(f'Goal SDF path: {GOAL_SDF_PATH}')
+                    if timeout_ctr > timeout_its:
+                        fail = True
+                        break
+            
+            # Something failed to spawn
+            if fail:
+                self.get_logger().error(f"Something failed to spawn.")
+                self.destroy_node()
+                rclpy.shutdown()
+
+            self.get_logger().debug(f'Goal SDF path: {GOAL_SDF_PATH}')
 
         # Code to write to file
         self.parameter_file = self.get_parameter('params_filepath').value
@@ -388,10 +392,11 @@ class GoalCreation(Node):
         else:
             robot_idx = self.robot_name_to_idx[robot_name]
             goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name] + 1
-        self.get_logger().debug(f"Spawning goal {goal_num} for {robot_name}.")
         # Send request
-        self.spawn_future = self.spawn_client.call_async(request)
-        self.spawn_future.add_done_callback(self.spawn_done)
+        if self._spawn_gz_objs:
+            self.get_logger().debug(f"Spawning goal {goal_num} for {robot_name}.")
+            self.spawn_future = self.spawn_client.call_async(request)
+            self.spawn_future.add_done_callback(self.spawn_done)
     
     def spawn_done(self, response):
         self.get_logger().debug("Spawn Service done!")
@@ -407,11 +412,12 @@ class GoalCreation(Node):
             goal_num = self.get_parameter('total_goals').value-self.robot_remaining_goals[robot_name]
         else:
             robot_idx = self.robot_name_to_idx[robot_name]
-            goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name]
-        self.get_logger().debug(f"Deleting goal {goal_num} for {robot_name}.")
+            goal_num = len(self.goal_array[robot_idx])-self.robot_remaining_goals[robot_name]        
         # Send request
-        self.delete_future = self.delete_client.call_async(request)
-        self.delete_future.add_done_callback(self.delete_done)
+        if self._spawn_gz_objs:
+            self.get_logger().debug(f"Deleting goal {goal_num} for {robot_name}.")  
+            self.delete_future = self.delete_client.call_async(request)
+            self.delete_future.add_done_callback(self.delete_done)
     
     def delete_done(self, response):
         self.get_logger().debug("Delete Service done!")

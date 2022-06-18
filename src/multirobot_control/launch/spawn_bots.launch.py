@@ -198,7 +198,11 @@ def generate_launch_description():
         executable="goal_creation",
         output="screen",
         arguments=['--ros-args', '--log-level', log_level],
-        parameters=[scenario_file_dir, {'use_sim_time': True}],
+        parameters=[scenario_file_dir, 
+            {
+                'use_sim_time': True, 
+                'goal_creation_gz': headless_config
+            }],
         condition=IfCondition(goal_creation)
     )
 
