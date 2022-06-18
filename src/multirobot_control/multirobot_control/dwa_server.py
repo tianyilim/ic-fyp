@@ -232,7 +232,7 @@ class DWABaseNode(Node):
             if self._dist_travelled < self.params['stall_dist_thresh']:
                 local_goal_x = self.goal_x
                 local_goal_y = self.goal_y
-                
+                # goal_poses = [(self.goal_x, self.goal_y)] # A collection of poses that are made of vectors away from potential obstacles
                 goal_poses = [] # A collection of poses that are made of vectors away from potential obstacles
 
                 for robot_name in self.other_robots.keys():
@@ -439,7 +439,7 @@ class DWABaseNode(Node):
             else:
                 if top_score <= -np.inf:
                     # Currently deadlock is handled by stopping the robot.
-                    self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.")
+                    self.get_logger().warn(f"No satisfactory new trajectories found. Stopping robot.", once=True)
                     self._linear_twist = 0.0
                     self._angular_twist = 0.0
                 
@@ -533,7 +533,8 @@ class DWABaseNode(Node):
                 self.get_logger().debug(f"End pose {end_pose[0]:.2f}|{end_pose[1]:.2f}|{np.degrees(end_pose[2]):.2f} collision with robot at {x:.2f}|{y:.2f} dist {dist_to_robot:.2f}")
                 score = -np.inf # Collision, don't process further
                 return score
-            elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
+            # elif dist_to_robot < (self.params['inter_robot_dist']*self.params['robot_radius']):
+            elif dist_to_robot < (2*self.params['inter_robot_dist']*self.params['robot_radius']):
                 score -= safety_thresh_K / dist_to_robot
 
         # Calculate heading difference to goal. Set the difference in degrees for more accurate scaling
