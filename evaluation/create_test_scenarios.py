@@ -69,7 +69,7 @@ param_settings = {
 
     # Typically for the RRT Action Server
     'rrt_path_bias': 0.1,
-    'rrt_it_lim' : 2000,
+    'rrt_it_lim' : 500,
     'rrt_it_min' : 50,
     'rrt_max_extend_length' : 1.5,
     'rrt_connect_circle_dist' : 1.5,
