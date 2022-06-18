@@ -226,12 +226,23 @@ class RRTStarActionServer(Node):
        # Check if (re)planning needs to be done. Only do so when robot has stopped.
         if self.global_planner_status == PlannerStatus.PLANNER_PLAN and self.local_planner_status==PlannerStatus.PLANNER_READY:
             # Find a suitable path through the workspace (and save it for future use).
+
+            # set distance thresh while RRT computation is done
+            self.get_logger().info(f"Setting dist_thresh to {self.params['dist_thresh_hi']}")
+            srv = SetParameters.Request()
+            srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
+                type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
+            ))]
+            resp_future = self.dist_thresh_client.call_async(srv)
+            resp_future.add_done_callback(self._set_dist_thresh_callback)
+
             effective_obstacles = OBSTACLE_ARRAY + self._additional_obstacles
-            
-            # Apparently this takes 0 sim time?
-            # start_time = time.process_time()
-            
-            rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
+            start_time = default_timer()
+            start_time_sim = self.get_clock().now()
+            num_nodes = 0
+
+            while num_nodes == 0:
+                rrt_planner = RRTPlanner( start_pos=(self._x, self._y), goal_pos=(self.goal_x, self.intermediate_y),
                                     obstacle_list=effective_obstacles, bounds=OBSTACLE_BOUND,
                                     path_bias=self.params['rrt_path_bias'],
                                     it_lim=self.params['rrt_it_lim'],
@@ -243,30 +254,15 @@ class RRTStarActionServer(Node):
                                     debug_plot=self.params['rrt_debug_plot'],
                                     logger=self.get_logger()    )
  
-            self.goal_x, self.goal_y = rrt_planner.get_goal_xy()
- 
-            # set distance thresh while RRT computation is done
-            self.get_logger().info(f"Setting dist_thresh to {self.params['dist_thresh_hi']}")
-            srv = SetParameters.Request()
-            srv.parameters = [Parameter(name='dist_thresh', value=ParameterValue(
-                type=ParameterType.PARAMETER_DOUBLE, double_value=self.params['dist_thresh_hi']
-            ))]
-            resp_future = self.dist_thresh_client.call_async(srv)
-            resp_future.add_done_callback(self._set_dist_thresh_callback)
+                self.goal_x, self.goal_y = rrt_planner.get_goal_xy()
+                # (Re)plan
+                self.remove_path_marker()
+                self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
+                self.path, num_nodes = rrt_planner.explore()
 
-            # Replan
-            self.remove_path_marker()
-            self.get_logger().info(f"Finding path to goal at {self.goal_x:.2f}, {self.goal_y:.2f}")
-            
-            start_time = default_timer()
-            start_time_sim = self.get_clock().now()
+                # If multiple calls of this function are required, try planning without any obstacles
+                effective_obstacles = OBSTACLE_ARRAY
 
-            self.path, num_nodes = rrt_planner.explore()
-
-            # When done with planning send a message
-            # search_duration = (end_time - start_time).seconds_nanoseconds()
-            # search_duration = search_duration[0] + search_duration[1]/1e9
-            # end_time = time.process_time()
             end_time_sim = self.get_clock().now()
             end_time = default_timer()
 
