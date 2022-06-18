@@ -250,7 +250,7 @@ class RRT:
         assert new_node is not None, "[rrt_explore] new_node must not be None!"
         self.node_list.append( new_node )
 
-    def explore(self) -> List[Tuple[float, float]]:
+    def explore(self) -> Tuple[List[Tuple[float, float]], int]:
         '''
         Plans the path from start to goal while avoiding obstacles. Repeatedly calls 
         `explore_one_step` till goal is found, or max iterations are reached.
@@ -305,7 +305,7 @@ class RRT:
             print(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
         else:
             self.logger.error(f"Could not find a path from start {self.start[0]:.2f}, {self.start[1]:.2f} to end {self.goal[0]:.2f}, {self.goal[1]:.2f}")
-        return []    # Cannot find a path
+        return [], 0    # Cannot find a path
 
     def get_near_idxs(self, new_pos: np.ndarray):
         '''
@@ -454,7 +454,7 @@ class RRT:
         else:
             return res
 
-    def get_path(self) -> List[Tuple[float, float]] :
+    def get_path(self) -> Tuple[List[Tuple[float, float]], float] :
         '''
         Traverse node_list to get path from first node to last node.
         Only call this when exploration is complete, otherwise will throw errors.
