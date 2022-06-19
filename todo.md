@@ -418,41 +418,6 @@ sys     0m20.302s
   - [ ] Diagram of services provided by DWA node
   - [ ] Sequence diagram of DWA node
 
-Raw results:
-```
-dict_items([('safety_thresh', 0.25), ('simulate_duration', 0.25), ('action_duration', 0.01), ('linear_speed_limit', 0.8), ('angular_speed_limit', 1.6)])
-Move time: 2.994, total time: 6.527 dist: 6.76, n:4
-
-dict_items([('safety_thresh', 0.35), ('simulate_duration', 0.4), ('action_duration', 0.01), ('linear_speed_limit', 0.8), ('angular_speed_limit', 1.6)])
-Move time: 3.110, total time: 7.024 dist: 7.18, n:5
-
-dict_items([('safety_thresh', 0.3), ('simulate_duration', 0.4), ('action_duration', 0.03), ('linear_speed_limit', 0.8), ('angular_speed_limit', 1.6)])
-Move time: 3.180, total time: 6.646 dist: 7.10, n:5
-
-dict_items([('safety_thresh', 0.3), ('simulate_duration', 0.25), ('action_duration', 0.05), ('linear_speed_limit', 0.8), ('angular_speed_limit', 1.6)])
-Move time: 3.265, total time: 6.446 dist: 7.17, n:5
-
-dict_items([('safety_thresh', 0.35), ('simulate_duration', 0.55), ('action_duration', 0.01), ('linear_speed_limit', 0.8), ('angular_speed_limit', 1.6)])
-Move time: 3.350, total time: 8.300 dist: 7.10, n:5
-
----
-
-dict_items([('angular_K', 1.2), ('goal_K', 10.0), ('obstacle_K', 0.8)])
-Move time: 2.447, total time: 6.262 dist: 6.02, n:10
-
-dict_items([('angular_K', 1.2), ('goal_K', 10.0), ('obstacle_K', 1.2)])
-Move time: 2.529, total time: 6.206 dist: 6.00, n:10
-
-dict_items([('angular_K', 0.8), ('goal_K', 12.5), ('obstacle_K', 1.2)])
-Move time: 2.771, total time: 6.370 dist: 6.92, n:10
-
-dict_items([('angular_K', 0.8), ('goal_K', 7.5), ('obstacle_K', 0.8)])
-Move time: 2.842, total time: 6.571 dist: 7.01, n:10
-
-dict_items([('angular_K', 1.2), ('goal_K', 7.5), ('obstacle_K', 1.2)])
-Move time: 2.875, total time: 6.395 dist: 6.67, n:10
-```
-
 ### Wed 15/06/22
 - [x] Implementation of Replan DWA
   - [x] Show case of two robots using vanilla DWA in deadlock
@@ -462,11 +427,11 @@ Move time: 2.875, total time: 6.395 dist: 6.67, n:10
   - [ ] Example sequence diagram for replanning
 
 ### Thu 16/06/22
-- [ ] Implementation of Joint DWA
-  - [ ] State machine
+- [x] Implementation of Joint DWA
+  - [x] State machine
   - [ ] Sequence diagram
-  - [ ] Required requests from Global planner
-  - [ ] Due to lack of time, this was deemed not yet ready for demonstration and thus left for future work.
+  - [x] Required requests from Global planner
+  - [x] Due to lack of time, this was deemed not yet ready for demonstration and thus left for future work.
 - [ ] Present results and disucssion
 - [ ] Comparing DWA implementation:
   - [ ] Individual goals per robot per unit time
@@ -494,6 +459,11 @@ Move time: 2.875, total time: 6.395 dist: 6.67, n:10
 - [ ] Get more results if necessary
 
 ### Sun 19/06/22
+- Replan was changed a bit.
+  - Add in min and max time periods for replanning.
+    - Min time: We don't want replanning to happen instantly, sometimes robots just move  out of the way naturally.
+    - Max time: We also don't want replanning to happen too far apart. This causes robots to continually replan if they are facing another robot that has already finished its path but that robot is on top of their current goal.
+  - Bearing diff is now with towards the robot and not towards the goal.
 
 ### Mon 20/06/22
 

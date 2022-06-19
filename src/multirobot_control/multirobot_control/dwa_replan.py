@@ -45,8 +45,10 @@ class DWAReplanServer(DWABaseNode):
         # Check if replan
         self.create_timer(1/2, self._check_replan_timer_callback)
 
-        self._last_replan = Time(seconds=0, nanoseconds=0, clock_type=self.get_clock().clock_type)
+        self._last_replan = self.get_clock().now().seconds_nanoseconds()
         '''The timestamp where replanning was done due to stall detection.'''
+        self._last_replan = float(self._last_replan[0] + self._last_replan[1]/1e9)
+        self._prev_replan_request = self._last_replan
 
         self.closest_robot = None
         self._curr_manhattan_dist = None
@@ -64,21 +66,19 @@ class DWAReplanServer(DWABaseNode):
         manhattan distance
         - If the last replan was more than `replan_duration` ago
         '''
-        if self.closest_robot_pos is not None:
+        if self._planner_state==PlannerStatus.PLANNER_EXEC and self.closest_robot_pos is not None:
             # Check distances
-            dist_to_goal = self.distToGoal(self._x, self._y, self.goal_x, self.goal_y)
+            # dist_to_goal = self.distToGoal(self._x, self._y, self.goal_x, self.goal_y)
             dist_to_robot = self.distToGoal(self._x, self._y, self.closest_robot_pos[0],
                 self.closest_robot_pos[1])
-            
-            # Also account for the case where the other robot is ON the goal
-            # if dist_to_goal-dist_to_robot > -0.05:
 
             # If there is a robot in the vicinity
-            if dist_to_robot < self.params['robot_radius']*3.5:
+            if dist_to_robot < self.params['robot_radius']*3:
                 # Check bearing
                 bearing_to_goal = np.arctan2((self.goal_y-self._y), (self.goal_x-self._x))
                 bearing_to_robot = np.arctan2((self.closest_robot_pos[1]-self._y), (self.closest_robot_pos[0]-self._x))
-                bearing_diff = np.abs(bearing_to_goal - bearing_to_robot)
+                # bearing_diff = np.abs(bearing_to_goal - bearing_to_robot)
+                bearing_diff = np.abs(self._yaw - bearing_to_robot)
 
                 # Check relative headings
                 curr_hdg_x = self.params['robot_radius']*np.cos(self._yaw) + self._x
@@ -93,26 +93,35 @@ class DWAReplanServer(DWABaseNode):
                 )
 
                 self.get_logger().info(
-                    f"Curr {self._x:.2f},{self._y:.2f},{np.degrees(self._yaw):.2f} Other {self.closest_robot_pos[0]:.2f},{self.closest_robot_pos[1]:.2f},{self.closest_robot_pos[2]:.2f} Dist1: {dist_to_robot:.2f} Dist2: {dist_from_headings:.2f}"
+                    f"[Replan] Dist1: {dist_to_robot:.2f} Dist2: {dist_from_headings:.2f}"
                 )
                 
-                if dist_from_headings < dist_to_robot and np.degrees(bearing_diff) < 70.0:
-                    # Get the current time
+                if np.degrees(bearing_diff) < 70.0:
                     now_time_f = self.get_clock().now().seconds_nanoseconds()
                     now_time_f = now_time_f[0] + now_time_f[1]/1e9
-                    last_replan_f = self._last_replan.seconds_nanoseconds()
-                    last_replan_f = last_replan_f[0] + last_replan_f[1]/1e9
-                    time_diff = now_time_f - last_replan_f
 
-                    if self._curr_manhattan_dist > self._target_manhattan_dist:
+                    time_diff_req = now_time_f-self._prev_replan_request
 
-                        if time_diff > self.params['replan_duration']:
-                            self.get_logger().info(f"{self.get_namespace()} aborting current goal.")
-                            self._last_replan = self.get_clock().now()
-                            self.set_planner_state(PlannerStatus.PLANNER_ABORT)
-                        else:
-                            self.get_logger().info(f"Time since last replanning: {time_diff:.2f}. Waiting for {self.params['replan_duration']}.")
-        
+                    # We don't want replanning to happen instantly, sometimes robots just move
+                    # out of the way naturally.
+
+                    # On the other hand we also don't want replanning to happen too far apart.
+                    # This causes robots to continually replan if they are facing another robot
+                    # That has already finished its path but that robot is on top of their current goal.
+                    if (time_diff_req<5.0 and time_diff_req>1.0) or dist_from_headings < dist_to_robot:
+                        # Replan if it was proposed less than 5s ago
+                        time_diff = now_time_f - self._last_replan
+                        
+                        if self._curr_manhattan_dist > self._target_manhattan_dist:
+
+                            if time_diff > self.params['replan_duration']:
+                                self.get_logger().info(f"{self.get_namespace()} aborting current goal.")
+                                self._last_replan = now_time_f
+                                self.set_planner_state(PlannerStatus.PLANNER_ABORT)
+                            else:
+                                self.get_logger().info(f"Time since last replanning: {time_diff:.2f}. Waiting for {self.params['replan_duration']}.")
+
+                    self._prev_replan_request = now_time_f        
         else:
             # No nearby robot for replanning to take place
             pass
