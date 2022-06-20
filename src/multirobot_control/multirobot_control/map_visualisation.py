@@ -19,11 +19,13 @@ class MapVisualisation(Node):
         super().__init__('map_visualisation')
 
         self.get_logger().info("Starting up Map Visualisation Node.")
-        self.map_marker_pub = self.create_publisher(Marker, 'map_markers', len(OBSTACLE_ARRAY))
+        self.map_marker_pub = self.create_publisher(Marker, '/map_markers', len(OBSTACLE_ARRAY))
         
-        for _ in range(10):
-            self.publish_markers()
-            sleep(1)
+        # for _ in range(10):
+            # self.publish_markers()
+            # sleep(2)
+
+        self.publish_markers()
 
         self.get_logger().info("Done! Destroying node.")
         self.destroy_node()
@@ -71,8 +73,10 @@ class MapVisualisation(Node):
                 self.get_logger().warn("Please create a subscriber to the marker.", once=True)
                 sleep(1)
 
+            self.map_marker_pub.publish(marker)
+
             self.get_logger().info(f"Published objects idx {idx} at {(x0 + x1)/2:.2f}, {(y0 + y1)/2:.2f} with scale {x1-x0:.2f}, {y1-y0:.2f}")
-            sleep(0.01) # if not we flood RViz and it drops stuff...
+            sleep(0.02) # if not we flood RViz and it drops stuff...
 
 def main(args=None):
     rclpy.init(args=args)
