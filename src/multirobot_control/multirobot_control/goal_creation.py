@@ -343,7 +343,7 @@ class GoalCreation(Node):
                 rclpy.shutdown()
         else:
             time_diff = now_time - self._spawn_start_time
-            if time_diff > 30.0:
+            if time_diff > 60.0:
                 self.get_logger().error(f"Time: {time_diff:.2f}. Something failed to spawn.")
                 self.dump_results()
 
