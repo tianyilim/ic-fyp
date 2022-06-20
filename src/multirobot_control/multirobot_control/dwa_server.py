@@ -60,6 +60,7 @@ class DWABaseNode(Node):
                 ('obstacle_K', 1.0),
                 ('stall_det_period', 1.0),
                 ('stall_dist_thresh', 0.1),
+                ('move_towards_goal_hint', True)
             ])
 
         self.add_on_set_parameters_callback(self._set_parameter_callback)
@@ -97,6 +98,7 @@ class DWABaseNode(Node):
             "obstacle_K" :          self.get_parameter("obstacle_K").value,
             "stall_det_period" :    self.get_parameter("stall_det_period").value,
             "stall_dist_thresh" :   self.get_parameter("stall_dist_thresh").value,
+            "move_towards_goal_hint" :   self.get_parameter("move_towards_goal_hint").value,
         }
         
         self.other_robots:Dict[str, Tuple[float,float,float]] = {} 
@@ -278,7 +280,10 @@ class DWABaseNode(Node):
         self.get_logger().info('{} moving towards goal ({:.2f}, {:.2f})'.format(self.get_namespace(), self.goal_x, self.goal_y))
 
         # Initialize the twists with the direction towards goal.
-        self._linear_twist, self._angular_twist = self.moveTowardsGoal((self.goal_x, self.goal_y))
+        if self.params['move_towards_goal_hint']:
+            self._linear_twist, self._angular_twist = self.moveTowardsGoal((self.goal_x, self.goal_y))
+        else:
+            self._linear_twist, self._angular_twist = 0.0, 0.0
 
         while not self._planner_state == PlannerStatus.PLANNER_READY:
             # Publish feedback
