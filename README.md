@@ -1,5 +1,5 @@
 # Distributed Multi-Robot Trajectory Planning in a Factory Environment
-Final Year Project for BEng Electronic and Information Engineering at Imperial College London. The thesis paper is [here].
+Final Year Project for BEng Electronic and Information Engineering at Imperial College London. The thesis paper is [here](doc/final_report.pdf).
 
 ## Folder Structure
 - `src`
