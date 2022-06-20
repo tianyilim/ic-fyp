@@ -32,12 +32,18 @@ scenario_settings = {
     'robot_starting_y': [],
     'robot_starting_theta': [],
     'total_goals': 100,
+    # If random goals are desired, leave this as an empty list
+    'goal_array': "[]",
+
+    # 'total_goals': 4,
+    # 'robot_starting_x': [-5.5],
+    # 'robot_starting_y': [1.15],
+    # 'robot_starting_theta': [0.0],
+    # 'goal_array': "[[(0.0, 1.15), (0.0, -1.15), (-5.5, -1.15), (-5.5, 1.15)]]",
+    
     'watchdog_timeout_s': 120,
     'result_folder': "result",
     'params_filepath': "/home/tianyilim/fyp/ic-fyp/src/multirobot_control/params/planner_params.yaml",
-    # If random goals are desired, leave this as an empty list
-    'goal_array': "[]",
-    # 'goal_array': "[[(0.0, 1.15), (0.0, -1.15), (-5.5, -1.15), (-5.5, 1.15)]]",
 
     'realtime_factor': 1.0  # Max speedup
 }
@@ -66,6 +72,7 @@ param_settings = {
     'stall_det_period': 1.0,
     'stall_dist_thresh': 0.1,
     'replan_duration': 5.0,  # How long to wait to replan when an obstacle is reached
+    'move_towards_goal_hint': True,
 
     # Typically for the RRT Action Server
     'rrt_path_bias': 0.1,
