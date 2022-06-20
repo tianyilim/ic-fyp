@@ -12,11 +12,9 @@ mkdir -p result/log
 
 # Regenerates test cases
 # remove all files in the test directories
-# rm -r $TEST_SCENARIO_DIR
-# rm -r $TEST_PARAMS_DIR
-
-# Creates a few variations of test parameters in 
-# python3 create_test_scenarios.py
+rm -r $TEST_SCENARIO_DIR
+rm -r $TEST_PARAMS_DIR
+python3 create_test_scenarios.py
 
 NUM_TEST_FILES=$(ls -1q $TEST_SCENARIO_DIR/* | wc -l)
 TEST_FILE_CTR=1

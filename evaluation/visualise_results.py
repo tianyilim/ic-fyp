@@ -72,11 +72,11 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
         except ValueError:
             test_combination_key[key] = params[key]
 
+    added_already = False
+    print(test_combination_key.items())
+    print(test_params)
     if str(test_combination_key.items()) in test_params:
         res_summary = test_params[str(test_combination_key.items())]
-
-        res_summary.num_iterations += 1
-
         total_num_completed_goals = 0
 
         # Go through test combination keys (robots' indiv results per run)
@@ -86,6 +86,11 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
 
                 res_list = res[key]
                 for elem_dict in res_list:
+                    
+                    if not added_already:
+                        res_summary.num_iterations += 1
+                        added_already = True
+
                     elem = parse_res_dict(elem_dict)
 
                     res_summary.plan_time.append(elem.plan_time)
@@ -128,6 +133,10 @@ for file in glob.glob(RESULT_DIR+"/*.yaml"):
         pass
         # print(f"{test_combination_key} not in test_params. Skipping.")
 
+    # Comment this in if there are issues with simulation
+    # if added_already == False:
+    #     os.remove(file)
+
 # for param in test_params.keys():
 #     print(f"{param}\n{test_params[param]}")
 
@@ -136,28 +145,32 @@ keys = [str(k) for k in test_params.keys()]
 labels = []
 
 num_iterations = [c.num_iterations for c in test_params.values()]
-print("num_iterations", num_iterations)
+print("num_iterations", len(num_iterations), num_iterations)
 completed_goals_std = [np.std(np.array(c.per_robot_num_completed_goals)) for c in test_params.values()]
-print("completed_goals_std", completed_goals_std)
+# print("completed_goals_std", len(completed_goals_std), completed_goals_std)
+completed_goals = [np.mean(np.array(c.per_robot_num_completed_goals)) for c in test_params.values()]
+# print("completed_goals", len(completed_goals), completed_goals)
+total_completed_goals_std = [np.std(np.array(c.per_run_num_completed_goals)) for c in test_params.values()]
+# print("total_completed_goals_std", len(total_completed_goals_std), total_completed_goals_std)
 completed_goals_sum = [np.mean(np.array(c.per_run_num_completed_goals)) for c in test_params.values()]
-print("completed_goals_sum", completed_goals_sum)
-completed_goals = [c.avg_num_completed_goals for c in test_params.values()]
-print("completed_goals", completed_goals)
-dist_travelled = [c.avg_dist_travelled for c in test_params.values()]
-print("dist_travelled", dist_travelled)
-total_time = [c.avg_total_time for c in test_params.values()]
-print("total_time", total_time)
-plan_time = [c.avg_plan_time for c in test_params.values()]
-print("plan_time", plan_time)
-move_time = [c.avg_move_time for c in test_params.values()]
-print("move_time", move_time)
+# print("completed_goals_sum", len(completed_goals_sum), completed_goals_sum)
+dist_travelled = [np.mean(np.array(c.dist_travelled)) for c in test_params.values()]
+# print("dist_travelled", len(dist_travelled), dist_travelled)
+total_time = [np.mean(np.array(c.total_time)) for c in test_params.values()]
+# print("total_time", len(total_time), total_time)
+plan_time = [np.mean(np.array(c.plan_time)) for c in test_params.values()]
+# print("plan_time", len(plan_time), plan_time)
+move_time = [np.mean(np.array(c.move_time)) for c in test_params.values()]
+# print("move_time", len(move_time), move_time)
 
+max_goals_idx = np.argsort(-np.array(completed_goals_sum)) # large to small
+min_time_idx = np.argsort(np.array(move_time))
 
-# min_time_idx = np.argsort(np.array(move_time))
-# for i in range(5):
-#     print(keys[min_time_idx[i]])
-#     print(f"Move time: {move_time[min_time_idx[i]]:.3f}, total time: {total_time[min_time_idx[i]]:.3f} dist: {dist_travelled[min_time_idx[i]]:.2f}, n:{num_iterations[min_time_idx[i]]}")
-#     print()
+for i in range(10):
+    idx = max_goals_idx[i]
+    print(keys[idx])
+    print(f"Move time: {move_time[idx]:.3f}, total time: {total_time[idx]:.3f} dist: {dist_travelled[idx]:.2f}, goals: {completed_goals[idx]:.2f}+-{completed_goals_std[idx]}, n:{num_iterations[idx]}")
+    print()
 
 # Bar chart
 '''
@@ -181,16 +194,20 @@ plt.show()
 a_total_goals = []
 a_avg_goals = []
 a_goal_std = []
+a_total_goal_std = []
 a_total_time = []
 a_plan_time = []
 a_move_time = []
+a_dist_travelled = []
 
 r_total_goals = []
 r_avg_goals = []
 r_goal_std = []
+r_total_goal_std = []
 r_total_time = []
 r_plan_time = []
 r_move_time = []
+r_dist_travelled = []
 
 max_r = 0
 
@@ -202,45 +219,62 @@ for x in x_val:
             a_total_goals.append( completed_goals_sum[x] )
             a_avg_goals.append(completed_goals[x])
             a_goal_std.append(completed_goals_std[x])
+            a_total_goal_std.append(total_completed_goals_std[x])
             a_total_time.append(total_time[x])
             a_plan_time.append(plan_time[x])
             a_move_time.append(move_time[x])
+            a_dist_travelled.append(dist_travelled[x])
         elif d['local_planner'] == 'dwa_replan_server':
             r_total_goals.append( completed_goals_sum[x] )
             r_avg_goals.append(completed_goals[x])
             r_goal_std.append(completed_goals_std[x])
+            r_total_goal_std.append(total_completed_goals_std[x])
             r_total_time.append(total_time[x])
             r_plan_time.append(plan_time[x])
             r_move_time.append(move_time[x])
+            r_dist_travelled.append(dist_travelled[x])
 
 
 num_robots = np.arange(1, 1+(max_r//2), dtype='int')
 
-fig, axs = plt.subplots(2)
-
-axs[0].set_xlabel("Number of Robots")
-axs[0].set_ylabel("Total Goals Completed")
-axs[0].plot(num_robots, a_total_goals, 'x-', label="Action Server")
-axs[0].plot(num_robots, r_total_goals, 'x-', label="Replan Server")
-axs[0].set_xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
-axs[0].grid()
-axs[0].legend()
-
-axs[1].set_xlabel("Number of Robots")
-axs[1].set_ylabel("Average Goals Completed Per Robot")
-axs[1].errorbar(num_robots, a_avg_goals, fmt='x-', yerr=a_goal_std, capsize=4.0, barsabove=True, label="Action Server")
-axs[1].errorbar(num_robots, r_avg_goals, fmt='x-', yerr=r_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
-# axs[1].plot(num_robots, a_avg_goals, 'x-', label="Action Server")
-# axs[1].plot(num_robots, r_avg_goals, 'x-', label="Replan Server")
-axs[1].set_xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
-axs[1].grid()
-axs[1].legend()
+plt.figure()
+plt.xlabel("Number of Robots")
+plt.ylabel("Total Goals Completed")
+# plt.errorbar(num_robots, a_total_goals, fmt='x-', yerr=a_total_goal_std, capsize=4.0, barsabove=True, label="Action Server")
+# plt.errorbar(num_robots, r_total_goals, fmt='x-', yerr=r_total_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
+plt.plot(num_robots, a_total_goals, 'x-', label="Action Server")
+plt.plot(num_robots, r_total_goals, 'x-', label="Replan Server")
+plt.xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
+plt.grid()
+plt.legend()
 
 plt.figure()
 plt.xlabel("Number of Robots")
-plt.ylabel("Average time spent per waypoint (s) ")
-plt.plot(num_robots, a_total_time, 'x-', label="Action Server")
-plt.plot(num_robots, r_total_time, 'x-', label="Replan Server")
+plt.ylabel("Average Goals Completed Per Robot")
+# plt.errorbar(num_robots, a_avg_goals, fmt='x-', yerr=a_goal_std, capsize=4.0, barsabove=True, label="Action Server")
+# plt.errorbar(num_robots, r_avg_goals, fmt='x-', yerr=r_goal_std, capsize=4.0, barsabove=True, label="Replan Server")
+plt.plot(num_robots, a_avg_goals, 'x-', label="Action Server")
+plt.plot(num_robots, r_avg_goals, 'x-', label="Replan Server")
+plt.xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
+plt.grid()
+plt.legend()
+
+plt.figure()
+plt.xlabel("Number of Robots")
+plt.ylabel("Time spent per waypoint (s) ")
+plt.plot(num_robots, a_total_time, 'x-', label="Action Server Total Time")
+plt.plot(num_robots, r_total_time, 'x-', label="Replan Server Total Time")
+# plt.plot(num_robots, a_plan_time, 'x-', label="Action Server Plan Time")
+# plt.plot(num_robots, r_plan_time, 'x-', label="Replan Server Plan Time")
+plt.xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
+plt.grid()
+plt.legend()
+
+plt.figure()
+plt.xlabel("Number of Robots")
+plt.ylabel("Distance Travelled per waypoint (m) ")
+plt.plot(num_robots, a_dist_travelled, 'x-', label="Action Server")
+plt.plot(num_robots, r_dist_travelled, 'x-', label="Replan Server")
 plt.xticks(np.arange(1, len(num_robots)+1, step=1))  # Set label locations
 plt.grid()
 plt.legend()

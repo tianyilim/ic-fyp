@@ -9,7 +9,7 @@ import itertools
 from typing import Dict, List
 
 # Edit this for the number of repeated experiements per combination
-TEST_REPETITIONS = 6
+TEST_REPETITIONS = 10
 max_num_robots = 16
 
 # Edit this for the number of combinations
@@ -29,6 +29,7 @@ test_variables: Dict[str,List] = {
     # 'obstacle_K': [0.8,1.0,1.2],
     # 'stall_det_period': [1.0],
     # 'stall_dist_thresh': [0.1],
+    # 'move_towards_goal_hint': [True, False]
 
     # # Typically for the RRT Action Server
     # 'rrt_path_bias': [0.1],
