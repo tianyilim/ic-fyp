@@ -1,14 +1,4 @@
 # Todo, Changelog, Roadmap for FYP
-
-## Todo
-- [x] Get the multiple robots spawned to be visualised with different colours in Gazebo (eg. Robot1 is red, 2 is blue, etc...)
-- [x] Show a visualization in Gazebo(?) of each robot's goal position
-- [x] `spawn_single_bot.py`/`individual_bot.launch.py` : Xacro is now parsed twice. Try to get the URDF to only be parsed once, preferably in `individual_bot.launch.py`
-  - Parsed in `spawn_bots.launch.py`
-- [x] Programatically create Rviz files for visualising each robot (currently hardcoded)
-- [ ] Figure out how to add VCS to the `neo_simulation2` and `aws-robomaker-small-warehouse-world` folders in `src`
-
----
 ## Changelog
 ### Tue 19/04/22
 - Create package
@@ -445,15 +435,15 @@ sys     0m20.302s
 - Meeting with Supervisor
   - Show results/graphics and check if they are well presented
   - Show algorithm and see if it is easily understandable
-- [ ] Conclusion
+- [x] Conclusion
   - [ ] Ethics
     - [ ] Potential of MRS:
       - [ ] Factories, Farms, Security
       - [ ] Used for making war
       - [ ] These technologies should be developed with bettering the human condition in mind
-  - [ ] Future Work
-    - [ ] Testing with real robots
-    - [ ] Integrating this with simulated/real perception (currently assumes perfect perception)
+  - [x] Future Work
+    - [x] Testing with real robots
+    - [x] Integrating this with simulated/real perception (currently assumes perfect perception)
 
 ### Sat 18/06/22
 - [ ] Get more results if necessary
@@ -466,6 +456,7 @@ sys     0m20.302s
   - Bearing diff is now with towards the robot and not towards the goal.
 
 ### Mon 20/06/22
+- Finished up report and sent for check with supervisor
 
 ### Tue 21/06/22
 
@@ -491,45 +482,3 @@ sys     0m20.302s
 ### Tue 28/06/22
 - Rehearse once/twice before presentation
 - **Presentation @ 4:55pm**
-
----
-
-## Report Checklist
-9 days to write report and present results (if no work on Sundays)
-1 more meeting with supervisor (in ~5 days)
-
-
-- [ ] Set up multi robot joint planner
-  - [ ] Each robot will run DWA by itself, unless they are in close proximity. Then they could perhaps check if they were in danger of colliding.
-  - [ ] if 2 robots are in danger of colliding then we must use a 2-robot planner that searches the 9x9 space of possibilities of each robot
-  - [ ] There is a real chance that more than 2 robots come in proxmity
-- [ ] Something to set heading goals, so robots face the goal with some certainty
-
----
-
-## Report Structure Ideas
-- Methodology / Existing Work
-  - ROS
-  - Gazebo simulator
-    - Simulation environment with justification
-    - Simulated robot (URDF) with justification
-  - Odom distribution algorithm
-    - Purpose: simulation of communication radius between robots
-  - Collision detection
-    - AABB inflation
-  - Global Path Planning
-    - Discuss other methods like D*, A* and why they were not adopted
-      - Mention that they could be adopted with the current architecture
-    - RRT
-    - RRT*
-  - Local Path Planning
-    - DWA
-      - `rankPose`
-      - Tuning parameters
-      - Stall detection
-      - Inherited classes
-- Results
-  - Comparison between RRT and RRT* (esp in computation time)
-  - Comparison in setting a minimum number of nodes for RRT*
-  - Comparison with setting RRT* path_bias parameter
-  - Comparing `dwa_action_server` with `dwa_replan_server` as number of robots increases 
