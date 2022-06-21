@@ -1,4 +1,4 @@
-# Distributed Multi-Robot Trajectory Planning in a Factory Environment
+# Distributed Multi-Robot Trajectory Planning in a Warehouse Environment
 Final Year Project for BEng Electronic and Information Engineering at Imperial College London. The thesis paper is [here](doc/final_report.pdf).
 
 ## Folder Structure
@@ -94,3 +94,71 @@ To test the robots, go into `$WORKSPACE/evaluation`. There are a few files to be
   ![total-goals](doc/Results/res2.png)
 - Average time taken per waypoint per robot per run with increasing robots
   ![total-goals](doc/Results/res3.png)
+
+### Parameters
+#### DWA params
+| Parameter Name | Default Value | Description |
+|--|--|--|
+| robot_radius |  0.35 | The value of $r_r$ , furthest edge of robot from the center. |
+| safety_thresh | 0.3 | Safety distance $r_s$ |
+| simulate_duration | 0.4 | Seconds to forward simulate a set of control inputs |
+| action_duration | 0.03 | Seconds to carry out a set of control inputs |
+| linear_speed_limit | 0.6 | Max value of $v_{lin}$ (m/s) |
+| angular_speed_limit | 1.5 | Max value of $v_{ang}$ (rad/s) |
+| linear_step | 0.1 | Step size for $v_{lin}$ |
+| angular_step | 0.2 | Step size for $v_{ang}$ |
+| dist_thresh_hi  | 0.3 | Distance threshold from robot to goal to consider to have reached a waypoint |
+| dist_thresh_lo | 0.05 | Distance threshold from robot to goal to consider to have reached a goal |
+| dist_method | "L2" | Method of calculating the distance to any point. Currently the only implemented method is the Manhattan distance, or L2 norm. |
+| inter_robot_dist | 3.0 | Multiples of `robot_radius` for robots to keep away from other robots. |
+| orientation_ub_deg | 180.0 | Max orientation difference to be considered in scoring function for heading |
+| orientation_ub_deg | 20.0 | Min orientation difference to be considered in scoring function for heading |
+| angular_K | 1.0 | Max proportion of s goal that would be deducted from the DWA score based on the orientation of the robot |
+| goal_K | 10.0 | Score for distance to goal |
+| obstacle_K | 1.0 | Cost for distance to obstacles |
+| stall_det_period | 1.0 | Time window to check for stall |
+| stall_dist_thresh | 0.1 | Lower distance (m) bound for stall detection |
+| replan_duration | 5.0 | How long to wait (s) to replan when repeated replan requests are made |
+| move_towards_goal_hint | True | Whether or not to use the stall detection method to give the robot inital values for command input |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+| Parameter Name          | Default Value       | Description                                                                       |
+|-------------------------|---------------------|-----------------------------------------------------------------------------------|
+| rrt_path_bias           | 0.1                 | Bias rate for RRT planner to extend directly towards goal                         |
+| rrt_it_lim              | 500                 | Maximum number of RRT iterations                                                  |
+| rrt_it_min              | 50                  | Minimum number of RRT* iterations                                                 |
+| rrt_max_extend_length   | 1.5                 | Distance (m) to extend a new point away from the original point towards a new one |
+| rrt_connect_circle_dist | 1.5                 | Distance (m) to find near nodes in the RRT* algorithm                             |
+| rrt_debug_plot          | False               | Whether or not to plot the pathfinding process to matplotlib                      |
+| waypoint_skip           | True                | Whether or not to skip redundant waypoints                                        |
+| waypoint_replan         | False               | Whether or not to replan if waypoints are too far away                            |
+| local_planner           | "dwa_replan_server" | Choice between DWA-R (default) and base DWA ("dwa_action_server") implementations |
