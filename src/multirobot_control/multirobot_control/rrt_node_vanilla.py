@@ -257,6 +257,9 @@ class RRT:
             iterations += 1
             self.explore_one_step()
 
+            if self.debug_plot:
+                input()
+
             if not goal_found:
                 # Check if node is close to target
                 last_endpt = self.node_list[-1]._pos
@@ -378,6 +381,8 @@ class RRT:
         # path_coords.pop(0)
 
         if self.debug_plot:
-            input()
+            a = ''
+            while a!='q':
+                a = input()
 
         return path_coords, len(self.node_list)
